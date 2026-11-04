@@ -1,0 +1,51 @@
+name: Crear clave de firma (una sola vez)
+
+# Genera la clave con la que se firma el APK y la deja como un archivo descargable
+# por un día. La clave nunca se imprime en los logs. Ver docs/INSTALAR.md.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  crear:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      ES_PRIVADO: ${{ github.event.repository.private }}
+      YA_EXISTE: ${{ secrets.PIANO_KEYSTORE_BASE64 != '' }}
+    steps:
+      - name: Verificaciones de seguridad
+        run: |
+          if [ "$ES_PRIVADO" != "true" ]; then
+            echo "::error title=El repositorio es público::Pasalo a privado (Settings > Danger Zone > Change visibility) antes de crear la clave."
+            exit 1
+          fi
+          if [ "$YA_EXISTE" = "true" ]; then
+            echo "::error title=Ya hay una clave configurada::No se crea otra para no perder la actual."
+            exit 1
+          fi
+
+      - name: Generar la clave
+        run: |
+          set -euo pipefail
+          mkdir -p salida
+          CLAVE="$(openssl rand -base64 48 | tr -dc 'A-Za-z0-9' | head -c 28)"
+          keytool -genkeypair \
+            -keystore salida/piano.jks -storetype PKCS12 \
+            -alias piano -keyalg RSA -keysize 4096 -validity 36500 \
+            -storepass "$CLAVE" -keypass "$CLAVE" \
+            -dname "CN=Piano App, O=Fede, C=AR" > /dev/null
+          base64 -w0 salida/piano.jks > salida/1-PIANO_KEYSTORE_BASE64.txt
+          printf '%s' "$CLAVE" > salida/2-PIANO_KEYSTORE_PASSWORD.txt
+          printf '%s' "$CLAVE" > salida/3-PIANO_KEY_PASSWORD.txt
+          printf '%s' "piano" > salida/4-PIANO_KEY_ALIAS.txt
+
+      - name: Dejar los archivos para descargar (se borran en 1 día)
+        uses: actions/upload-artifact@v7
+        with:
+          name: clave-de-firma
+          path: salida
+          retention-days: 1
