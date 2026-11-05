@@ -16,7 +16,7 @@ El detalle está en Linear, en el proyecto **App de Piano** del team Piano-Fede.
 
 ## Estado
 
-Base del proyecto lista: abre en pantalla completa, bloqueada en horizontal. Todavía no muestra partitura.
+Base del proyecto lista: abre en pantalla completa, bloqueada en horizontal. Todavía no muestra partitura, pero ya existe el modelo de datos de la partitura (ver [docs/MODELO-PARTITURA.md](docs/MODELO-PARTITURA.md)).
 
 ## Instalar en el celular
 
