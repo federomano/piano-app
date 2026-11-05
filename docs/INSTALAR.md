@@ -6,13 +6,7 @@ La app no está en Play Store: se instala descargando el archivo APK desde GitHu
 
 Esto lo hacés desde la compu, en el navegador.
 
-### 1. Poner el repositorio en privado
-
-1. Entrá a `github.com/federomano/piano-app` > **Settings**.
-2. Bajá hasta **Danger Zone** > **Change repository visibility** > **Change to private**.
-3. Confirmá escribiendo el nombre del repo.
-
-### 2. Crear la clave de firma
+### 1. Crear la clave de firma
 
 La clave de firma es lo que permite que cada versión nueva se instale encima de la anterior sin perder tus datos.
 
@@ -21,7 +15,7 @@ La clave de firma es lo que permite que cada versión nueva se instale encima de
 3. Tocá **Run workflow** > **Run workflow**. Tarda un minuto.
 4. Cuando termine en verde, entrá a esa ejecución. Abajo, en **Artifacts**, descargá **clave-de-firma** (es un zip). Descomprimilo.
 
-### 3. Cargar la clave como secretos del repo
+### 2. Cargar la clave como secretos del repo
 
 1. Repo > **Settings** > **Secrets and variables** > **Actions** > **New repository secret**.
 2. Creá cuatro secretos. El nombre es el del archivo (sin el número y sin `.txt`) y el valor es el contenido del archivo, pegado tal cual, sin espacios ni saltos de línea de más:
@@ -33,7 +27,7 @@ La clave de firma es lo que permite que cada versión nueva se instale encima de
 | `PIANO_KEY_PASSWORD` | archivo `3-PIANO_KEY_PASSWORD.txt` |
 | `PIANO_KEY_ALIAS` | archivo `4-PIANO_KEY_ALIAS.txt` |
 
-### 4. Guardar la clave en un lugar seguro
+### 3. Guardar la clave en un lugar seguro
 
 Guardá la carpeta descomprimida (en tu gestor de contraseñas o en un lugar privado). Si perdés la clave, para instalar una versión nueva vas a tener que desinstalar la app y perder sus datos.
 
