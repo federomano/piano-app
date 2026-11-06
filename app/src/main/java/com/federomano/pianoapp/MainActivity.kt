@@ -7,16 +7,27 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.federomano.pianoapp.score.DemoScore
+import com.federomano.pianoapp.ui.InkColor
+import com.federomano.pianoapp.ui.PaperColor
+import com.federomano.pianoapp.ui.ScoreView
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
@@ -65,26 +76,21 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 private fun HomeScreen(version: String) {
-    Column(
+    val demo = remember { DemoScore.create() }
+    Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background),
-        verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically),
-        horizontalAlignment = Alignment.CenterHorizontally,
+            .background(PaperColor)
+            .windowInsetsPadding(WindowInsets.displayCutout.only(WindowInsetsSides.Horizontal)),
     ) {
-        Text(
-            text = stringResourceAppName(),
-            style = MaterialTheme.typography.headlineLarge,
-            color = MaterialTheme.colorScheme.onBackground,
-        )
+        ScoreView(score = demo, modifier = Modifier.fillMaxSize())
         Text(
             text = "Versión $version",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onBackground,
+            color = InkColor.copy(alpha = 0.5f),
+            fontSize = 10.sp,
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(6.dp),
         )
     }
 }
-
-@Composable
-private fun stringResourceAppName(): String =
-    androidx.compose.ui.res.stringResource(R.string.app_name)
