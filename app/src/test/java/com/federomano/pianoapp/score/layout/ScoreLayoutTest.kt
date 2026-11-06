@@ -234,4 +234,32 @@ class ScoreLayoutTest {
         val widths = layout.measures.map { layout.headerAt(it.contentX).width }.distinct()
         assertEquals(listOf(layout.headerWidth), widths)
     }
+
+    @Test
+    fun noTransitionWhenTheNextChangeIsFarAway() {
+        val layout = ScoreLayout.build(DemoScore.create())
+        assertEquals(null, layout.transitionAt(0f))
+    }
+
+    @Test
+    fun transitionStartsWhenTheNewHeaderTouchesTheOldOneAndEndsWhenTheyCoincide() {
+        val layout = ScoreLayout.build(DemoScore.create())
+        val change = layout.measures[3].contentX
+        val start = layout.transitionAt(change - layout.headerWidth + 0.01f)!!
+        assertEquals(0f, start.progress, 0.01f)
+        assertEquals(layout.headerWidth, start.left, 0.02f)
+        val half = layout.transitionAt(change - layout.headerWidth / 2)!!
+        assertEquals(0.5f, half.progress, 0.001f)
+        val end = layout.transitionAt(change - 0.001f)!!
+        assertEquals(1f, end.progress, 0.001f)
+        assertEquals(0f, end.left, 0.01f)
+        assertEquals(layout.headerAt(change).ops, end.header.ops)
+    }
+
+    @Test
+    fun transitionIsOnlyAboutTheNextChange() {
+        val layout = ScoreLayout.build(DemoScore.create())
+        // Pasado el último cambio (compás 10) ya no hay transición.
+        assertEquals(null, layout.transitionAt(layout.measures[9].contentX + 1f))
+    }
 }

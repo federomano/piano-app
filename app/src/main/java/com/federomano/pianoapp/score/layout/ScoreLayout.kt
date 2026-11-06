@@ -46,6 +46,13 @@ data class MeasureLayout(
 data class Header(val ops: List<DrawOp>, val width: Float)
 
 /**
+ * Cambio de encabezado en curso: el [header] nuevo entra como capa opaca por encima del viejo.
+ * [left] es su borde izquierdo en pantalla (en sp, desde el borde de la pantalla; baja hasta 0 y ahí coincide
+ * con el área fija) y [progress] va de 0 a 1. El viejo se dibuja con opacidad 1 - [progress].
+ */
+data class HeaderTransition(val header: Header, val left: Float, val progress: Float)
+
+/**
  * Cálculo del dibujo de la partitura: dos pentagramas unidos con llave, en una sola línea continua.
  * [body] es todo lo que se desplaza (líneas, barras de compás, números y cambios de armadura o
  * compás); [headerAt] da lo que queda fijo a la izquierda.
@@ -77,6 +84,25 @@ class ScoreLayout private constructor(
         return headers.getOrPut(Triple(m.keyFifths, m.timeSignature.numerator, m.timeSignature.denominator)) {
             buildHeader(m.keyFifths, m.timeSignature.numerator, m.timeSignature.denominator, headerWidth)
         }
+    }
+
+    /**
+     * Transición hacia el próximo cambio de encabezado, o null si no hay ninguna en curso.
+     * Empieza cuando el encabezado nuevo toca el borde del viejo y termina cuando coinciden,
+     * justo en el momento en que [headerAt] pasa al nuevo.
+     */
+    fun transitionAt(scrollX: Float): HeaderTransition? {
+        val index = measures.indexOfLast { it.contentX <= scrollX }.coerceAtLeast(0)
+        val current = measures[index].measure
+        val next = measures.drop(index + 1).firstOrNull {
+            it.measure.keyFifths != current.keyFifths ||
+                it.measure.timeSignature.numerator != current.timeSignature.numerator ||
+                it.measure.timeSignature.denominator != current.timeSignature.denominator
+        } ?: return null
+        val left = next.contentX - scrollX
+        if (left >= headerWidth) return null
+        val target = headerAt(next.contentX)
+        return HeaderTransition(target, left.coerceAtLeast(0f), (1f - left / headerWidth).coerceIn(0f, 1f))
     }
 
     companion object {
