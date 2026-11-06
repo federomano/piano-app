@@ -42,38 +42,56 @@ data class MeasureLayout(
     val x1: Float,
 )
 
-/**
- * Lo que queda fijo a la izquierda de la pantalla. [fixed] es lo que no cambia nunca (líneas, llave, claves);
- * [signature] es la armadura y la firma de compás, que es lo único que se reemplaza cuando cambian.
- * [signatureLeft] es donde empieza [signature].
- */
-data class Header(val fixed: List<DrawOp>, val signature: List<DrawOp>, val width: Float, val signatureLeft: Float) {
-    val ops: List<DrawOp> get() = fixed + signature
-}
+/** Lo que queda fijo a la izquierda en un instante: líneas, llave, claves, armadura y compás vigentes. */
+data class Header(val ops: List<DrawOp>, val width: Float)
 
 /**
- * Cambio de encabezado en curso: el [header] nuevo entra como capa opaca por encima del viejo.
- * [left] es su borde izquierdo en pantalla (en sp, desde el borde de la pantalla; baja hasta 0 y ahí coincide
- * con el área fija) y [progress] va de 0 a 1. El viejo se dibuja con opacidad 1 - [progress].
+ * Un cambio de armadura o de firma de compás. Existe una sola vez: viaja con la partitura (dentro del
+ * compás donde ocurre) y al llegar al área fija se queda ahí, reemplazando a la anterior.
+ *
+ * Los dibujos ([ops] y [cancel]) están en coordenadas del área fija. En pantalla, el cambio se dibuja
+ * corrido [dx] hacia la derecha mientras viaja (dx baja hasta 0 y ahí queda fijo).
  */
-data class HeaderTransition(val header: Header, val left: Float, val progress: Float)
+class SignatureChange(
+    val measureIndex: Int,
+    /** La armadura y la firma de compás nuevas, pegadas (así quedan en el área fija). */
+    val ops: List<DrawOp>,
+    /** Becuadros que cancelan la armadura anterior. Solo se ven mientras viaja. */
+    val cancel: List<DrawOp>,
+    /** Donde empieza [ops] en el área fija. */
+    val anchor: Float,
+    /** Posición en la partitura menos posición en el área fija: pantalla = x + shift + headerWidth - scroll. */
+    val shift: Float,
+    /** Desplazamiento (scroll) en el que llega a su lugar fijo. */
+    val pinScroll: Float,
+)
+
+/** Un grupo de dibujos del área fija, corrido [dx] y con opacidad [alpha] (de 0 a 1). */
+data class HeaderDraw(val ops: List<DrawOp>, val dx: Float, val alpha: Float)
 
 /**
  * Cálculo del dibujo de la partitura: dos pentagramas unidos con llave, en una sola línea continua.
- * [body] es todo lo que se desplaza (líneas, barras de compás, números y cambios de armadura o
- * compás); [headerAt] da lo que queda fijo a la izquierda.
+ *
+ * - [staff]: líneas de los pentagramas, a todo lo largo.
+ * - [marks]: barras de compás y números. Pasan por encima del área fija y se desvanecen.
+ * - [fixed]: lo que nunca cambia a la izquierda (líneas, llave, claves).
+ * - [changes]: cambios de armadura y de compás; [headerDraws] dice cómo dibujarlos en cada momento.
  */
 class ScoreLayout private constructor(
     val measures: List<MeasureLayout>,
-    val body: List<DrawOp>,
+    val staff: List<DrawOp>,
+    val marks: List<DrawOp>,
+    private val inline: List<DrawOp>,
+    val fixed: List<DrawOp>,
+    val changes: List<SignatureChange>,
+    private val initial: List<DrawOp>,
+    val headerWidth: Float,
+    val signatureLeft: Float,
     val totalWidth: Float,
     private val quarterWidth: Float,
 ) {
-    /** Ancho del área fija. Es el mismo en toda la pieza (el del encabezado más ancho) para que al cambiar no haya saltos. */
-    val headerWidth: Float = measures.map { Triple(it.measure.keyFifths, it.measure.timeSignature.numerator, it.measure.timeSignature.denominator) }
-        .distinct().maxOf { buildHeader(it.first, it.second, it.third, 0f).width }
-
-    private val headers = HashMap<Triple<Int, Int, Int>, Header>()
+    /** Todo lo que viaja con la partitura (para pruebas): líneas, marcas y cambios en su lugar dentro del compás. */
+    val body: List<DrawOp> = staff + marks + inline
 
     /** Posición horizontal de un instante de la pieza. Es proporcional al tiempo dentro de cada compás. */
     fun xOfTick(tick: Int): Float {
@@ -83,32 +101,33 @@ class ScoreLayout private constructor(
         return m.contentX + (clamped - m.measure.startTick) * quarterWidth / TICKS_PER_QUARTER
     }
 
-    /** Encabezado que corresponde a lo que está en el borde izquierdo de la zona que se desplaza. */
-    fun headerAt(scrollX: Float): Header {
-        val index = measures.indexOfLast { it.contentX <= scrollX }.coerceAtLeast(0)
-        val m = measures[index].measure
-        return headers.getOrPut(Triple(m.keyFifths, m.timeSignature.numerator, m.timeSignature.denominator)) {
-            buildHeader(m.keyFifths, m.timeSignature.numerator, m.timeSignature.denominator, headerWidth)
-        }
+    private fun currentOps(scrollX: Float): List<DrawOp> =
+        changes.lastOrNull { it.pinScroll <= scrollX }?.ops ?: initial
+
+    /** Lo que está fijo a la izquierda con ese desplazamiento, sin contar transiciones en curso. */
+    fun headerAt(scrollX: Float): Header = Header(fixed + currentOps(scrollX), headerWidth)
+
+    /** Avance de un cambio: 0 cuando toca el borde del área fija, 1 cuando coincide con su lugar fijo. */
+    fun progress(change: SignatureChange, scrollX: Float): Float {
+        val dx = change.pinScroll - scrollX
+        return (1f - dx / (headerWidth - change.anchor)).coerceIn(0f, 1f)
     }
 
     /**
-     * Transición hacia el próximo cambio de encabezado, o null si no hay ninguna en curso.
-     * Empieza cuando el encabezado nuevo toca el borde del viejo y termina cuando coinciden,
-     * justo en el momento en que [headerAt] pasa al nuevo.
+     * Armadura y compás a dibujar sobre [fixed]. Los vigentes se desvanecen a medida que el próximo
+     * cambio, que viaja con la partitura, se les acerca y los reemplaza. [viewWidth] es el ancho visible (sp).
      */
-    fun transitionAt(scrollX: Float): HeaderTransition? {
-        val index = measures.indexOfLast { it.contentX <= scrollX }.coerceAtLeast(0)
-        val current = measures[index].measure
-        val next = measures.drop(index + 1).firstOrNull {
-            it.measure.keyFifths != current.keyFifths ||
-                it.measure.timeSignature.numerator != current.timeSignature.numerator ||
-                it.measure.timeSignature.denominator != current.timeSignature.denominator
-        } ?: return null
-        val left = next.contentX - scrollX
-        if (left >= headerWidth) return null
-        val target = headerAt(next.contentX)
-        return HeaderTransition(target, left.coerceAtLeast(0f), (1f - left / headerWidth).coerceIn(0f, 1f))
+    fun headerDraws(scrollX: Float, viewWidth: Float): List<HeaderDraw> {
+        val upcoming = changes.filter { it.pinScroll > scrollX }
+        val fade = upcoming.firstOrNull()?.let { progress(it, scrollX) } ?: 0f
+        val out = mutableListOf(HeaderDraw(currentOps(scrollX), 0f, 1f - fade))
+        for (change in upcoming) {
+            val dx = change.pinScroll - scrollX
+            if (dx > viewWidth) break
+            out += HeaderDraw(change.ops, dx, 1f)
+            if (change.cancel.isNotEmpty()) out += HeaderDraw(change.cancel, dx, 1f - progress(change, scrollX))
+        }
+        return out
     }
 
     companion object {
@@ -118,6 +137,13 @@ class ScoreLayout private constructor(
         private const val ACCIDENTAL_GAP = 0.15f
         private const val SIGNATURE_GAP = 0.9f
 
+        private val BRACE_SCALE = Geometry.SYSTEM_BOTTOM / Smufl.BRACE_HEIGHT
+        private val SYSTEM_LEFT = LEFT_PAD + Smufl.BRACE_WIDTH * BRACE_SCALE + 0.1f
+        private val CLEF_X = SYSTEM_LEFT + Geometry.THIN_BARLINE + 0.7f
+
+        /** Donde empieza la armadura en el área fija. */
+        private val SIGNATURE_LEFT = CLEF_X + Smufl.CLEF_ADVANCE + SIGNATURE_GAP
+
         // Altura de cada alteración de la armadura, en sp desde la línea superior de su pentagrama.
         private val SHARPS_TREBLE = floatArrayOf(0f, 1.5f, -0.5f, 1f, 2.5f, 0.5f, 2f)
         private val SHARPS_BASS = floatArrayOf(1f, 2.5f, 0.5f, 2f, 3.5f, 1.5f, 3f)
@@ -126,12 +152,26 @@ class ScoreLayout private constructor(
 
         fun build(score: Score, quarterWidth: Float = Geometry.QUARTER_WIDTH): ScoreLayout {
             val measures = score.measures()
-            val body = mutableListOf<DrawOp>()
+            val marks = mutableListOf<DrawOp>()
+            val inline = mutableListOf<DrawOp>()
+            val changes = mutableListOf<SignatureChange>()
             val laidOut = mutableListOf<MeasureLayout>()
             val perTick = quarterWidth / TICKS_PER_QUARTER
 
+            // El área fija tiene lugar para la armadura y el compás más anchos de la pieza, así no cambia
+            // de tamaño (y la partitura no pega saltos) cuando hay cambios.
+            fun piece(fifths: Int, numerator: Int, denominator: Int): Pair<List<DrawOp>, Float> {
+                val ops = mutableListOf<DrawOp>()
+                var end = addAccidentals(ops, SIGNATURE_LEFT, fifths)
+                if (fifths != 0) end += SIGNATURE_GAP
+                end = addTimeSignature(ops, end, numerator, denominator)
+                return ops to end
+            }
+            val headerWidth = measures.maxOf { piece(it.keyFifths, it.timeSignature.numerator, it.timeSignature.denominator).second } + 1.0f
+
+            fun pin(shift: Float) = shift + headerWidth
+
             var x = 0f
-            val perMeasure = mutableListOf<DrawOp>()
             for ((index, m) in measures.withIndex()) {
                 val x0 = x
                 var cursor = x0
@@ -142,15 +182,20 @@ class ScoreLayout private constructor(
                         previous.timeSignature.denominator != m.timeSignature.denominator
                     )
                 if (keyChanged || timeChanged) {
+                    // Becuadros + armadura + compás, pegados: es un solo bloque que después se queda fijo a la izquierda.
                     cursor += SIGNATURE_LEAD
-                    if (keyChanged) {
-                        cursor = addKeySignature(perMeasure, cursor, previous!!.keyFifths, m.keyFifths) + SIGNATURE_GAP
+                    val n = m.timeSignature.numerator
+                    val d = m.timeSignature.denominator
+                    val anchorInline = addNaturals(inline, cursor, previous!!.keyFifths, m.keyFifths)
+                    var end = addAccidentals(inline, anchorInline, m.keyFifths)
+                    if (m.keyFifths != 0) end += SIGNATURE_GAP
+                    end = addTimeSignature(inline, end, n, d)
+                    val cancel = mutableListOf<DrawOp>().also {
+                        addNaturals(it, SIGNATURE_LEFT - (anchorInline - cursor), previous.keyFifths, m.keyFifths)
                     }
-                    if (timeChanged) {
-                        cursor = addTimeSignature(
-                            perMeasure, cursor, m.timeSignature.numerator, m.timeSignature.denominator,
-                        ) + SIGNATURE_GAP
-                    }
+                    val shift = anchorInline - SIGNATURE_LEFT
+                    changes += SignatureChange(index, piece(m.keyFifths, n, d).first, cancel, SIGNATURE_LEFT, shift, pin(shift))
+                    cursor = end + SIGNATURE_GAP
                     cursor += MEASURE_LEAD - SIGNATURE_GAP
                 } else {
                     cursor += MEASURE_LEAD
@@ -159,15 +204,15 @@ class ScoreLayout private constructor(
                 val x1 = contentX + (m.endTick - m.startTick) * perTick
 
                 // Número de compás, arriba del pentagrama de la mano derecha.
-                perMeasure += TextOp((index + 1).toString(), x0 + 0.35f, -1.6f, 1.8f)
+                marks += TextOp((index + 1).toString(), x0 + 0.35f, -1.6f, 1.8f)
 
                 // Barra de compás que une los dos pentagramas. La última es doble: fina y gruesa.
                 if (index == measures.lastIndex) {
                     val thickLeft = x1 - Geometry.THICK_BARLINE
-                    perMeasure += RectOp(thickLeft - 0.4f - Geometry.THIN_BARLINE, 0f, Geometry.THIN_BARLINE, Geometry.SYSTEM_BOTTOM)
-                    perMeasure += RectOp(thickLeft, 0f, Geometry.THICK_BARLINE, Geometry.SYSTEM_BOTTOM)
+                    marks += RectOp(thickLeft - 0.4f - Geometry.THIN_BARLINE, 0f, Geometry.THIN_BARLINE, Geometry.SYSTEM_BOTTOM)
+                    marks += RectOp(thickLeft, 0f, Geometry.THICK_BARLINE, Geometry.SYSTEM_BOTTOM)
                 } else {
-                    perMeasure += RectOp(x1 - Geometry.THIN_BARLINE / 2, 0f, Geometry.THIN_BARLINE, Geometry.SYSTEM_BOTTOM)
+                    marks += RectOp(x1 - Geometry.THIN_BARLINE / 2, 0f, Geometry.THIN_BARLINE, Geometry.SYSTEM_BOTTOM)
                 }
 
                 laidOut += MeasureLayout(m, x0, contentX, x1)
@@ -175,9 +220,20 @@ class ScoreLayout private constructor(
             }
 
             val totalWidth = x
-            body += staffLines(0f, totalWidth)
-            body += perMeasure
-            return ScoreLayout(laidOut, body, totalWidth, quarterWidth)
+            val fixed = mutableListOf<DrawOp>()
+            fixed += staffLines(SYSTEM_LEFT, headerWidth)
+            fixed += GlyphOp(Smufl.BRACE, LEFT_PAD, Geometry.SYSTEM_BOTTOM, BRACE_SCALE)
+            fixed += RectOp(SYSTEM_LEFT, 0f, Geometry.THIN_BARLINE, Geometry.SYSTEM_BOTTOM)
+            // Claves: sol en la línea de sol (la 2.ª desde abajo), fa en la línea de fa (la 4.ª desde abajo).
+            fixed += GlyphOp(Smufl.G_CLEF, CLEF_X, Geometry.TREBLE_TOP + 3f)
+            fixed += GlyphOp(Smufl.F_CLEF, CLEF_X, Geometry.BASS_TOP + 1f)
+
+            val first = measures.first()
+            val initial = piece(first.keyFifths, first.timeSignature.numerator, first.timeSignature.denominator).first
+            return ScoreLayout(
+                laidOut, staffLines(0f, totalWidth), marks, inline, fixed, changes, initial,
+                headerWidth, SIGNATURE_LEFT, totalWidth, quarterWidth,
+            )
         }
 
         /** Las diez líneas de los dos pentagramas, entre [fromX] y [toX]. */
@@ -188,72 +244,45 @@ class ScoreLayout private constructor(
             }
         }
 
-        private fun buildHeader(keyFifths: Int, numerator: Int, denominator: Int, minWidth: Float): Header {
-            val ops = mutableListOf<DrawOp>()
-            val signature = mutableListOf<DrawOp>()
+        private fun place(ops: MutableList<DrawOp>, x: Float, codepoint: Int, trebleY: Float, bassY: Float) {
+            ops += GlyphOp(codepoint, x, Geometry.TREBLE_TOP + trebleY)
+            ops += GlyphOp(codepoint, x, Geometry.BASS_TOP + bassY)
+        }
 
-            // Llave: se agranda hasta cubrir los dos pentagramas.
-            val braceScale = Geometry.SYSTEM_BOTTOM / Smufl.BRACE_HEIGHT
-            ops += GlyphOp(Smufl.BRACE, LEFT_PAD, Geometry.SYSTEM_BOTTOM, braceScale)
-            val braceRight = LEFT_PAD + Smufl.BRACE_WIDTH * braceScale
-
-            // Línea que une los dos pentagramas, pegada a la llave.
-            val systemLeft = braceRight + 0.1f
-            ops += RectOp(systemLeft, 0f, Geometry.THIN_BARLINE, Geometry.SYSTEM_BOTTOM)
-            val staffStart = systemLeft
-
-            // Claves: sol en la línea de sol (la 2.ª desde abajo), fa en la línea de fa (la 4.ª desde abajo).
-            var x = systemLeft + Geometry.THIN_BARLINE + 0.7f
-            ops += GlyphOp(Smufl.G_CLEF, x, Geometry.TREBLE_TOP + 3f)
-            ops += GlyphOp(Smufl.F_CLEF, x, Geometry.BASS_TOP + 1f)
-            x += Smufl.CLEF_ADVANCE + SIGNATURE_GAP
-
-            val signatureLeft = x
-            if (keyFifths != 0) {
-                x = addKeySignature(signature, x, 0, keyFifths) + SIGNATURE_GAP
+        /** Dibuja las alteraciones de la armadura [fifths] en los dos pentagramas. Devuelve donde terminan. */
+        private fun addAccidentals(ops: MutableList<DrawOp>, startX: Float, fifths: Int): Float {
+            var x = startX
+            for (i in 0 until abs(fifths)) {
+                if (fifths > 0) {
+                    place(ops, x, Smufl.SHARP, SHARPS_TREBLE[i], SHARPS_BASS[i])
+                    x += Smufl.SHARP_ADVANCE + ACCIDENTAL_GAP
+                } else {
+                    place(ops, x, Smufl.FLAT, FLATS_TREBLE[i], FLATS_BASS[i])
+                    x += Smufl.FLAT_ADVANCE + ACCIDENTAL_GAP
+                }
             }
-            x = addTimeSignature(signature, x, numerator, denominator)
-
-            val width = max(x + 1.0f, minWidth)
-            val fixed = mutableListOf<DrawOp>()
-            fixed += staffLines(staffStart, width)
-            fixed += ops
-            return Header(fixed, signature, width, signatureLeft)
+            return if (fifths != 0) x - ACCIDENTAL_GAP else x
         }
 
         /**
-         * Dibuja la armadura en los dos pentagramas. Si cambia de otra anterior, primero van los
-         * becuadros que cancelan las alteraciones que ya no valen. Devuelve donde termina.
+         * Becuadros que cancelan las alteraciones de la armadura anterior [oldFifths] que ya no valen con
+         * la nueva [newFifths]. Devuelve donde tiene que empezar lo que sigue (si hay becuadros, con su separación).
          */
-        private fun addKeySignature(ops: MutableList<DrawOp>, startX: Float, oldFifths: Int, newFifths: Int): Float {
+        private fun addNaturals(ops: MutableList<DrawOp>, startX: Float, oldFifths: Int, newFifths: Int): Float {
             var x = startX
-            var placed = false
-
-            fun place(codepoint: Int, advance: Float, trebleY: Float, bassY: Float) {
-                ops += GlyphOp(codepoint, x, Geometry.TREBLE_TOP + trebleY)
-                ops += GlyphOp(codepoint, x, Geometry.BASS_TOP + bassY)
-                x += advance + ACCIDENTAL_GAP
-                placed = true
-            }
-
-            val oldCount = abs(oldFifths)
-            val newCount = abs(newFifths)
             val sameKind = oldFifths != 0 && newFifths != 0 && (oldFifths > 0) == (newFifths > 0)
-            val cancelFrom = if (sameKind) newCount else 0
-            for (i in cancelFrom until oldCount) {
+            val from = if (sameKind) abs(newFifths) else 0
+            for (i in from until abs(oldFifths)) {
                 val trebleY = (if (oldFifths > 0) SHARPS_TREBLE else FLATS_TREBLE)[i]
                 val bassY = (if (oldFifths > 0) SHARPS_BASS else FLATS_BASS)[i]
-                place(Smufl.NATURAL, Smufl.NATURAL_ADVANCE, trebleY, bassY)
+                place(ops, x, Smufl.NATURAL, trebleY, bassY)
+                x += Smufl.NATURAL_ADVANCE + ACCIDENTAL_GAP
             }
-            for (i in 0 until newCount) {
-                if (newFifths > 0) {
-                    place(Smufl.SHARP, Smufl.SHARP_ADVANCE, SHARPS_TREBLE[i], SHARPS_BASS[i])
-                } else {
-                    place(Smufl.FLAT, Smufl.FLAT_ADVANCE, FLATS_TREBLE[i], FLATS_BASS[i])
-                }
-            }
-            return if (placed) x - ACCIDENTAL_GAP else x
+            // Si no sigue ninguna alteración, lo que viene (el compás) va con la separación normal.
+            return if (newFifths == 0 && x > startX) x - ACCIDENTAL_GAP + SIGNATURE_GAP else x
         }
+
+        private fun digitsWidth(text: String): Float = text.sumOf { Smufl.timeDigitAdvance(it - '0').toDouble() }.toFloat()
 
         /** Firma de compás con el numerador arriba y el denominador abajo, en los dos pentagramas. Devuelve donde termina. */
         private fun addTimeSignature(ops: MutableList<DrawOp>, startX: Float, numerator: Int, denominator: Int): Float {
@@ -268,8 +297,6 @@ class ScoreLayout private constructor(
             }
             return startX + width
         }
-
-        private fun digitsWidth(text: String): Float = text.sumOf { Smufl.timeDigitAdvance(it - '0').toDouble() }.toFloat()
 
         private fun placeDigits(ops: MutableList<DrawOp>, text: String, startX: Float, baseline: Float) {
             var x = startX

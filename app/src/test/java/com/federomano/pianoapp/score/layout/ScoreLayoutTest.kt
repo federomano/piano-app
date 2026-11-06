@@ -211,67 +211,84 @@ class ScoreLayoutTest {
     }
 
     @Test
-    fun headerFollowsTheSignaturesAtTheLeftEdge() {
-        val layout = ScoreLayout.build(DemoScore.create())
-        fun sharpsAt(x: Float) = layout.headerAt(x).ops.glyphs(Smufl.SHARP).size
-        fun flatsAt(x: Float) = layout.headerAt(x).ops.glyphs(Smufl.FLAT).size
-        assertEquals(0, sharpsAt(0f))
-        assertEquals(0, sharpsAt(layout.measures[3].contentX - 0.01f))
-        assertEquals(4, sharpsAt(layout.measures[3].contentX))
-        assertEquals(6, flatsAt(layout.measures[6].contentX))
-        assertEquals(0, flatsAt(layout.measures[9].contentX))
-    }
-
-    @Test
     fun scrollBeforeTheStartShowsTheFirstHeader() {
         val layout = ScoreLayout.build(DemoScore.create())
         assertEquals(layout.headerAt(0f), layout.headerAt(-5f))
     }
 
+    private val demo get() = ScoreLayout.build(DemoScore.create())
+    private fun ScoreLayout.sharpsAt(x: Float) = headerAt(x).ops.glyphs(Smufl.SHARP).size
+    private fun ScoreLayout.flatsAt(x: Float) = headerAt(x).ops.glyphs(Smufl.FLAT).size
+
     @Test
-    fun fixedAreaKeepsTheSameWidthWhenSignaturesChange() {
-        val layout = ScoreLayout.build(DemoScore.create())
-        val widths = layout.measures.map { layout.headerAt(it.contentX).width }.distinct()
+    fun fixedAreaFollowsTheSignaturesOnceTheyArrive() {
+        val layout = demo
+        val key = layout.changes
+        assertEquals(3, key.size)
+        assertEquals(0, layout.sharpsAt(0f))
+        assertEquals(0, layout.sharpsAt(key[0].pinScroll - 0.01f))
+        assertEquals(4, layout.sharpsAt(key[0].pinScroll))
+        assertEquals(6, layout.flatsAt(key[1].pinScroll))
+        assertEquals(0, layout.flatsAt(key[2].pinScroll))
+    }
+
+    @Test
+    fun fixedAreaNeverChangesWidth() {
+        val layout = demo
+        val widths = layout.changes.map { layout.headerAt(it.pinScroll).width }.distinct()
         assertEquals(listOf(layout.headerWidth), widths)
     }
 
     @Test
-    fun noTransitionWhenTheNextChangeIsFarAway() {
-        val layout = ScoreLayout.build(DemoScore.create())
-        assertEquals(null, layout.transitionAt(0f))
+    fun braceClefsAndLinesAreNotPartOfAnySignature() {
+        val layout = demo
+        for (change in layout.changes) {
+            assertTrue((change.ops + change.cancel).none { it is RectOp })
+            assertTrue((change.ops + change.cancel).filterIsInstance<GlyphOp>().none { it.codepoint == Smufl.BRACE || it.codepoint == Smufl.G_CLEF })
+        }
+        assertEquals(layout.headerAt(0f).ops.glyphs(Smufl.BRACE), layout.headerAt(1000f).ops.glyphs(Smufl.BRACE))
     }
 
     @Test
-    fun transitionStartsWhenTheNewHeaderTouchesTheOldOneAndEndsWhenTheyCoincide() {
-        val layout = ScoreLayout.build(DemoScore.create())
-        val change = layout.measures[3].contentX
-        val start = layout.transitionAt(change - layout.headerWidth + 0.01f)!!
-        assertEquals(0f, start.progress, 0.01f)
-        assertEquals(layout.headerWidth, start.left, 0.02f)
-        val half = layout.transitionAt(change - layout.headerWidth / 2)!!
-        assertEquals(0.5f, half.progress, 0.001f)
-        val end = layout.transitionAt(change - 0.001f)!!
-        assertEquals(1f, end.progress, 0.001f)
-        assertEquals(0f, end.left, 0.01f)
-        assertEquals(layout.headerAt(change).ops, end.header.ops)
+    fun aChangeExistsOnlyOnceOnScreen() {
+        // Mientras el cambio viaja con la partitura, el cuerpo no lo dibuja por su cuenta: solo hay una copia.
+        val layout = demo
+        assertTrue(layout.staff.none { it is GlyphOp } && layout.marks.none { it is GlyphOp })
+        val change = layout.changes.first()
+        val draws = layout.headerDraws(change.pinScroll - 50f, 200f)
+        assertEquals(1, draws.count { it.ops === change.ops })
     }
 
     @Test
-    fun transitionIsOnlyAboutTheNextChange() {
-        val layout = ScoreLayout.build(DemoScore.create())
-        // Pasado el último cambio (compás 10) ya no hay transición.
-        assertEquals(null, layout.transitionAt(layout.measures[9].contentX + 1f))
+    fun theTravellingChangeLandsExactlyWhereTheFixedOneIs() {
+        val layout = demo
+        for (change in layout.changes) {
+            val landed = layout.headerDraws(change.pinScroll, 200f)
+            assertTrue(landed.filter { it.ops === change.ops }.all { it.dx == 0f && it.alpha == 1f })
+            assertEquals(change.ops, layout.headerAt(change.pinScroll).ops.filter { it in change.ops })
+        }
     }
 
     @Test
-    fun onlyTheSignatureIsReplacedNotTheBraceClefsOrLines() {
-        val layout = ScoreLayout.build(DemoScore.create())
-        val a = layout.headerAt(0f)
-        val b = layout.headerAt(layout.measures[6].contentX)
-        assertEquals(a.fixed, b.fixed)
-        assertTrue(a.signature != b.signature)
-        assertTrue(b.signature.none { it is RectOp })
-        assertTrue(b.signature.filterIsInstance<GlyphOp>().all { it.x >= b.signatureLeft })
-        assertTrue(b.fixed.glyphs(Smufl.BRACE).isNotEmpty() && b.fixed.glyphs(Smufl.G_CLEF).isNotEmpty())
+    fun oldSignatureFadesOutWhileTheNewOneArrives() {
+        val layout = demo
+        val change = layout.changes.first()
+        fun oldAlpha(scroll: Float) = layout.headerDraws(scroll, 200f).first { it.dx == 0f && it.ops !== change.ops }.alpha
+        val touching = change.pinScroll - (layout.headerWidth - change.anchor)
+        assertEquals(1f, oldAlpha(touching - 1f), 0.001f)
+        assertEquals(0.5f, oldAlpha((touching + change.pinScroll) / 2), 0.01f)
+        assertEquals(0f, layout.progress(change, change.pinScroll - 0.0001f).let { 1f - it }, 0.01f)
+        val travelling = layout.headerDraws(touching - 5f, 200f).first { it.ops === change.ops }
+        assertEquals(1f, travelling.alpha, 0.001f)
+        assertTrue(travelling.dx > layout.headerWidth - change.anchor)
+    }
+
+    @Test
+    fun cancelledNaturalsFadeWithTheOldSignature() {
+        val layout = demo
+        val change = layout.changes.first { it.cancel.isNotEmpty() }
+        val half = (change.pinScroll - (layout.headerWidth - change.anchor) + change.pinScroll) / 2
+        val naturals = layout.headerDraws(half, 200f).first { it.ops === change.cancel }
+        assertEquals(0.5f, naturals.alpha, 0.01f)
     }
 }

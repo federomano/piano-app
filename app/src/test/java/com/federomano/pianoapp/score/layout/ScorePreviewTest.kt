@@ -32,7 +32,7 @@ class ScorePreviewTest {
         g.color = paper
         g.fillRect(0, 0, widthPx, heightPx)
 
-        fun draw(ops: List<DrawOp>, dx: Float, dy: Float) {
+        fun drawAt(ops: List<DrawOp>, dx: Float, dy: Float) {
             g.color = ink
             for (op in ops) when (op) {
                 is RectOp -> g.fill(Rectangle2D.Float(dx + op.x * spPx, dy + op.y * spPx, op.width * spPx, op.height * spPx))
@@ -48,13 +48,24 @@ class ScorePreviewTest {
         }
 
         val dy = Geometry.MARGIN_TOP * spPx
-        val header = layout.headerAt(scrollSp)
-        val headerPx = (header.width * spPx).toInt()
+        val headerPx = (layout.headerWidth * spPx).toInt()
+        fun draw(ops: List<DrawOp>, dx: Float, alpha: Float) {
+            g.composite = java.awt.AlphaComposite.getInstance(java.awt.AlphaComposite.SRC_OVER, alpha.coerceIn(0f, 1f))
+            drawAt(ops, dx, dy)
+            g.composite = java.awt.AlphaComposite.SrcOver
+        }
         val previousClip = g.clip
         g.clipRect(headerPx, 0, widthPx - headerPx, heightPx)
-        draw(layout.body, headerPx - scrollSp * spPx, dy)
+        draw(layout.staff, headerPx - scrollSp * spPx, 1f)
         g.clip = previousClip
-        draw(header.ops, 0f, dy)
+        draw(layout.fixed, 0f, 1f)
+        for (d in layout.headerDraws(scrollSp, widthPx / spPx)) draw(d.ops, d.dx * spPx, d.alpha)
+        for (op in layout.marks) {
+            val x = (when (op) { is RectOp -> op.x; is TextOp -> op.x; is GlyphOp -> op.x }) - scrollSp + layout.headerWidth
+            if (x < 0f || x > widthPx / spPx) continue
+            val alpha = ((x - layout.signatureLeft) / (layout.headerWidth - layout.signatureLeft)).coerceIn(0f, 1f)
+            draw(listOf(op), (layout.headerWidth - scrollSp) * spPx, alpha)
+        }
         g.dispose()
         return image
     }
@@ -72,12 +83,15 @@ class ScorePreviewTest {
         val out = File("build/previews").apply { mkdirs() }
         val spPx = 26f
         val width = 1900
+        val key = layout.changes
+        val w = layout.headerWidth
         val views = listOf(
             "1-inicio" to 0f,
-            "2-cambio-compas-4" to layout.measures[3].x0 - 14f,
-            "3-cambio-compas-7" to layout.measures[6].x0 - 14f,
-            "4-cambio-compas-10" to layout.measures[9].x0 - 14f,
-            "5-final" to layout.measures[10].x0,
+            "2-viajando-compas-4" to key[0].pinScroll - w * 0.9f,
+            "3-llegando-compas-4" to key[0].pinScroll - w * 0.45f,
+            "4-llego-compas-4" to key[0].pinScroll + 3f,
+            "5-llegando-compas-7" to key[1].pinScroll - w * 0.4f,
+            "6-llegando-compas-10" to key[2].pinScroll - w * 0.4f,
         )
         for ((name, scroll) in views) {
             ImageIO.write(render(layout, scroll, width, spPx, music), "png", File(out, "$name.png"))

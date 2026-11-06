@@ -17,7 +17,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.clipRect
-import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalDensity
@@ -75,51 +74,53 @@ fun ScoreView(score: Score, modifier: Modifier = Modifier, maxStaffSpaceDp: Floa
                 .draggable(draggable, Orientation.Horizontal),
         ) {
             val top = ((heightPx - Geometry.TOTAL_HEIGHT * spPx) / 2f) + Geometry.MARGIN_TOP * spPx
-            val header = layout.headerAt(scrollSp)
-            val headerPx = header.width * spPx
+            val headerPx = layout.headerWidth * spPx
 
-            fun paint(ops: List<DrawOp>, dx: Float) {
-                drawIntoCanvas { canvas ->
-                    val native = canvas.nativeCanvas
-                    for (op in ops) when (op) {
-                        is RectOp -> native.drawRect(
+            fun paintOp(op: DrawOp, dx: Float, alpha: Float) {
+                if (alpha <= 0f) return
+                val native = drawContext.canvas.nativeCanvas
+                val a = (alpha * 255).toInt().coerceIn(0, 255)
+                when (op) {
+                    is RectOp -> {
+                        musicPaint.alpha = a
+                        native.drawRect(
                             dx + op.x * spPx, top + op.y * spPx,
                             dx + (op.x + op.width) * spPx, top + (op.y + op.height) * spPx,
                             musicPaint,
                         )
-                        is GlyphOp -> {
-                            musicPaint.textSize = 4f * spPx * op.scale
-                            native.drawText(String(Character.toChars(op.codepoint)), dx + op.x * spPx, top + op.y * spPx, musicPaint)
-                        }
-                        is TextOp -> {
-                            textPaint.textSize = op.size * spPx
-                            native.drawText(op.text, dx + op.x * spPx, top + op.y * spPx, textPaint)
-                        }
+                    }
+                    is GlyphOp -> {
+                        musicPaint.alpha = a
+                        musicPaint.textSize = 4f * spPx * op.scale
+                        native.drawText(String(Character.toChars(op.codepoint)), dx + op.x * spPx, top + op.y * spPx, musicPaint)
+                    }
+                    is TextOp -> {
+                        textPaint.alpha = a
+                        textPaint.textSize = op.size * spPx
+                        native.drawText(op.text, dx + op.x * spPx, top + op.y * spPx, textPaint)
                     }
                 }
             }
 
+            fun paint(ops: List<DrawOp>, dx: Float, alpha: Float = 1f) = ops.forEach { paintOp(it, dx, alpha) }
+
+            // 1) Líneas de los pentagramas, a la derecha del área fija.
             clipRect(left = headerPx, top = 0f, right = widthPx, bottom = heightPx) {
-                paint(layout.body, headerPx - scrollSp * spPx)
+                paint(layout.staff, headerPx - scrollSp * spPx)
             }
 
-            // Claves, llave y líneas no cambian nunca: quedan siempre fijas y opacas.
-            paint(header.fixed, 0f)
-            val transition = layout.transitionAt(scrollSp)
-            if (transition == null) {
-                paint(header.signature, 0f)
-            } else {
-                // Solo la armadura y el compás se reemplazan: los viejos se desvanecen y los nuevos
-                // entran por encima, sin fondo propio.
-                drawIntoCanvas { canvas ->
-                    val native = canvas.nativeCanvas
-                    val saved = native.saveLayerAlpha(0f, 0f, widthPx, heightPx, ((1f - transition.progress) * 255).toInt())
-                    paint(header.signature, 0f)
-                    native.restoreToCount(saved)
-                }
-                clipRect(left = header.signatureLeft * spPx, top = 0f, right = headerPx, bottom = heightPx) {
-                    paint(transition.header.signature, transition.left * spPx)
-                }
+            // 2) Área fija: líneas, llave y claves (no cambian nunca), y encima la armadura y el compás.
+            paint(layout.fixed, 0f)
+            for (draw in layout.headerDraws(scrollSp, widthPx / spPx)) paint(draw.ops, draw.dx * spPx, draw.alpha)
+
+            // 3) Barras de compás y números: pasan por encima del área fija y se desvanecen
+            //    al acercarse a la clave.
+            val fadeEnd = layout.signatureLeft
+            for (op in layout.marks) {
+                val x = (when (op) { is RectOp -> op.x; is TextOp -> op.x; is GlyphOp -> op.x }) - scrollSp + layout.headerWidth
+                if (x < 0f || x > widthPx / spPx) continue
+                val alpha = ((x - fadeEnd) / (layout.headerWidth - fadeEnd)).coerceIn(0f, 1f)
+                paintOp(op, (layout.headerWidth - scrollSp) * spPx, alpha)
             }
         }
     }
