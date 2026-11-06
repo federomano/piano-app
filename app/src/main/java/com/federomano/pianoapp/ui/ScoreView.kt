@@ -38,7 +38,7 @@ val InkColor = Color(0xFF1A1A1A)
  * la clave, la armadura y el compás quedan fijos a la izquierda.
  */
 @Composable
-fun ScoreView(score: Score, modifier: Modifier = Modifier, maxStaffSpaceDp: Float = 13f) {
+fun ScoreView(score: Score, modifier: Modifier = Modifier, maxStaffSpaceDp: Float = 17f) {
     val context = LocalContext.current
     val layout = remember(score) { ScoreLayout.build(score) }
     val musicFont = remember { Typeface.createFromAsset(context.assets, "fonts/Bravura.otf") }

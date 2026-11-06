@@ -227,4 +227,11 @@ class ScoreLayoutTest {
         val layout = ScoreLayout.build(DemoScore.create())
         assertEquals(layout.headerAt(0f), layout.headerAt(-5f))
     }
+
+    @Test
+    fun fixedAreaKeepsTheSameWidthWhenSignaturesChange() {
+        val layout = ScoreLayout.build(DemoScore.create())
+        val widths = layout.measures.map { layout.headerAt(it.contentX).width }.distinct()
+        assertEquals(listOf(layout.headerWidth), widths)
+    }
 }

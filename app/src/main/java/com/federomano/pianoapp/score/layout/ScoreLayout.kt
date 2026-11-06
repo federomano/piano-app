@@ -19,8 +19,8 @@ object Geometry {
     const val SYSTEM_BOTTOM = BASS_TOP + STAFF_HEIGHT
 
     /** Espacio libre arriba y abajo para líneas adicionales, notas agudas o graves y números de compás. */
-    const val MARGIN_TOP = 7f
-    const val MARGIN_BOTTOM = 7f
+    const val MARGIN_TOP = 5.5f
+    const val MARGIN_BOTTOM = 5.5f
     const val TOTAL_HEIGHT = MARGIN_TOP + SYSTEM_BOTTOM + MARGIN_BOTTOM
 
     const val STAFF_LINE_THICKNESS = 0.13f
@@ -56,6 +56,10 @@ class ScoreLayout private constructor(
     val totalWidth: Float,
     private val quarterWidth: Float,
 ) {
+    /** Ancho del área fija. Es el mismo en toda la pieza (el del encabezado más ancho) para que al cambiar no haya saltos. */
+    val headerWidth: Float = measures.map { Triple(it.measure.keyFifths, it.measure.timeSignature.numerator, it.measure.timeSignature.denominator) }
+        .distinct().maxOf { buildHeader(it.first, it.second, it.third, 0f).width }
+
     private val headers = HashMap<Triple<Int, Int, Int>, Header>()
 
     /** Posición horizontal de un instante de la pieza. Es proporcional al tiempo dentro de cada compás. */
@@ -71,7 +75,7 @@ class ScoreLayout private constructor(
         val index = measures.indexOfLast { it.contentX <= scrollX }.coerceAtLeast(0)
         val m = measures[index].measure
         return headers.getOrPut(Triple(m.keyFifths, m.timeSignature.numerator, m.timeSignature.denominator)) {
-            buildHeader(m.keyFifths, m.timeSignature.numerator, m.timeSignature.denominator)
+            buildHeader(m.keyFifths, m.timeSignature.numerator, m.timeSignature.denominator, headerWidth)
         }
     }
 
@@ -152,7 +156,7 @@ class ScoreLayout private constructor(
             }
         }
 
-        private fun buildHeader(keyFifths: Int, numerator: Int, denominator: Int): Header {
+        private fun buildHeader(keyFifths: Int, numerator: Int, denominator: Int, minWidth: Float): Header {
             val ops = mutableListOf<DrawOp>()
 
             // Llave: se agranda hasta cubrir los dos pentagramas.
@@ -176,7 +180,7 @@ class ScoreLayout private constructor(
             }
             x = addTimeSignature(ops, x, numerator, denominator)
 
-            val width = x + 1.0f
+            val width = max(x + 1.0f, minWidth)
             val all = mutableListOf<DrawOp>()
             all += staffLines(staffStart, width)
             all += ops
