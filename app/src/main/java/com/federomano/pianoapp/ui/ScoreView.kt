@@ -15,8 +15,6 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
@@ -105,21 +103,22 @@ fun ScoreView(score: Score, modifier: Modifier = Modifier, maxStaffSpaceDp: Floa
                 paint(layout.body, headerPx - scrollSp * spPx)
             }
 
+            // Claves, llave y líneas no cambian nunca: quedan siempre fijas y opacas.
+            paint(header.fixed, 0f)
             val transition = layout.transitionAt(scrollSp)
             if (transition == null) {
-                paint(header.ops, 0f)
+                paint(header.signature, 0f)
             } else {
-                // El encabezado viejo se desvanece mientras el nuevo, opaco, entra por encima.
+                // Solo la armadura y el compás se reemplazan: los viejos se desvanecen y los nuevos
+                // entran por encima, sin fondo propio.
                 drawIntoCanvas { canvas ->
                     val native = canvas.nativeCanvas
                     val saved = native.saveLayerAlpha(0f, 0f, widthPx, heightPx, ((1f - transition.progress) * 255).toInt())
-                    paint(header.ops, 0f)
+                    paint(header.signature, 0f)
                     native.restoreToCount(saved)
                 }
-                val leftPx = transition.left * spPx
-                clipRect(left = leftPx, top = 0f, right = headerPx, bottom = heightPx) {
-                    drawRect(PaperColor, topLeft = Offset(leftPx, 0f), size = Size(headerPx, heightPx))
-                    paint(transition.header.ops, leftPx)
+                clipRect(left = header.signatureLeft * spPx, top = 0f, right = headerPx, bottom = heightPx) {
+                    paint(transition.header.signature, transition.left * spPx)
                 }
             }
         }

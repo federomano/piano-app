@@ -42,8 +42,14 @@ data class MeasureLayout(
     val x1: Float,
 )
 
-/** Clave, armadura y firma de compás que quedan fijas a la izquierda de la pantalla. */
-data class Header(val ops: List<DrawOp>, val width: Float)
+/**
+ * Lo que queda fijo a la izquierda de la pantalla. [fixed] es lo que no cambia nunca (líneas, llave, claves);
+ * [signature] es la armadura y la firma de compás, que es lo único que se reemplaza cuando cambian.
+ * [signatureLeft] es donde empieza [signature].
+ */
+data class Header(val fixed: List<DrawOp>, val signature: List<DrawOp>, val width: Float, val signatureLeft: Float) {
+    val ops: List<DrawOp> get() = fixed + signature
+}
 
 /**
  * Cambio de encabezado en curso: el [header] nuevo entra como capa opaca por encima del viejo.
@@ -184,6 +190,7 @@ class ScoreLayout private constructor(
 
         private fun buildHeader(keyFifths: Int, numerator: Int, denominator: Int, minWidth: Float): Header {
             val ops = mutableListOf<DrawOp>()
+            val signature = mutableListOf<DrawOp>()
 
             // Llave: se agranda hasta cubrir los dos pentagramas.
             val braceScale = Geometry.SYSTEM_BOTTOM / Smufl.BRACE_HEIGHT
@@ -201,16 +208,17 @@ class ScoreLayout private constructor(
             ops += GlyphOp(Smufl.F_CLEF, x, Geometry.BASS_TOP + 1f)
             x += Smufl.CLEF_ADVANCE + SIGNATURE_GAP
 
+            val signatureLeft = x
             if (keyFifths != 0) {
-                x = addKeySignature(ops, x, 0, keyFifths) + SIGNATURE_GAP
+                x = addKeySignature(signature, x, 0, keyFifths) + SIGNATURE_GAP
             }
-            x = addTimeSignature(ops, x, numerator, denominator)
+            x = addTimeSignature(signature, x, numerator, denominator)
 
             val width = max(x + 1.0f, minWidth)
-            val all = mutableListOf<DrawOp>()
-            all += staffLines(staffStart, width)
-            all += ops
-            return Header(all, width)
+            val fixed = mutableListOf<DrawOp>()
+            fixed += staffLines(staffStart, width)
+            fixed += ops
+            return Header(fixed, signature, width, signatureLeft)
         }
 
         /**

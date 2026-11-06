@@ -262,4 +262,16 @@ class ScoreLayoutTest {
         // Pasado el último cambio (compás 10) ya no hay transición.
         assertEquals(null, layout.transitionAt(layout.measures[9].contentX + 1f))
     }
+
+    @Test
+    fun onlyTheSignatureIsReplacedNotTheBraceClefsOrLines() {
+        val layout = ScoreLayout.build(DemoScore.create())
+        val a = layout.headerAt(0f)
+        val b = layout.headerAt(layout.measures[6].contentX)
+        assertEquals(a.fixed, b.fixed)
+        assertTrue(a.signature != b.signature)
+        assertTrue(b.signature.none { it is RectOp })
+        assertTrue(b.signature.filterIsInstance<GlyphOp>().all { it.x >= b.signatureLeft })
+        assertTrue(b.fixed.glyphs(Smufl.BRACE).isNotEmpty() && b.fixed.glyphs(Smufl.G_CLEF).isNotEmpty())
+    }
 }
