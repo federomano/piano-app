@@ -4,8 +4,8 @@ import com.federomano.pianoapp.score.Note
 
 /**
  * Decide qué notas tocar y soltar a medida que la posición avanza. No sabe de audio: recibe funciones para
- * tocar y soltar. La posición que se le da es la que se ve bajo la línea de reproducción, así lo que se
- * escucha coincide con lo que se ve.
+ * tocar y soltar. La posición que se le da es el tiempo musical exacto (en ticks), así el ritmo que se
+ * escucha es siempre el de la partitura.
  */
 class NoteTrigger(notes: List<Note>) {
     private val byStart = notes.sortedBy { it.startTick }

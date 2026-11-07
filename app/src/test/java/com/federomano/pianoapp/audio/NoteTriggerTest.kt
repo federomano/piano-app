@@ -1,11 +1,8 @@
 package com.federomano.pianoapp.audio
 
 import com.federomano.pianoapp.score.DemoScore
-import com.federomano.pianoapp.score.Hand
 import com.federomano.pianoapp.score.Note
 import com.federomano.pianoapp.score.TempoMap
-import com.federomano.pianoapp.score.layout.Geometry
-import com.federomano.pianoapp.score.layout.ScoreLayout
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -68,33 +65,28 @@ class NoteTriggerTest {
         assertEquals(1, log.on.size); assertEquals(listOf(1), log.off)
     }
 
-    /** Reproduce el recorrido real (tempo, línea fija, suavizado) cuadro a cuadro y mira cuándo suena cada nota. */
+    /** Reproduce el recorrido cuadro a cuadro con el reloj del tempo: cada nota suena una vez, a tiempo. */
     @Test
-    fun everyNoteSoundsOnceAtTheMomentItCrossesThePlayhead() {
+    fun everyNoteSoundsOnceOnTheExactMusicalClock() {
         val score = DemoScore.create()
-        val layout = ScoreLayout.build(score)
         val tempo = TempoMap(score.tempos)
-        val playhead = 800f / 17f * Geometry.PLAYHEAD_FRACTION * 2.4f
         val trigger = NoteTrigger(score.notes); val log = Log()
-        fun visualTick(tick: Float): Float {
-            val scroll = layout.scrollForTick(tick, playhead)
-            return layout.tickAtX(scroll + playhead - layout.headerWidth)
-        }
         var tick = 0f
-        trigger.reset(visualTick(tick) - 24f)
+        trigger.reset(tick - 24f)
         val frame = 1f / 120f
         val firedAt = HashMap<Note, Float>()
-        while (tick < layout.endTick) {
+        while (tick < score.notes.maxOf { it.endTick } + 10f) {
             tick = tempo.advance(tick, frame)
             val before = log.on.size
-            trigger.advance(visualTick(tick), log::noteOn, log.off::add)
-            for (i in before until log.on.size) firedAt[log.on[i].first] = visualTick(tick)
+            trigger.advance(tick, log::noteOn, log.off::add)
+            for (i in before until log.on.size) firedAt[log.on[i].first] = tick
         }
         assertEquals(score.notes.size, log.on.size)
         for (n in score.notes) {
-            val vis = firedAt.getValue(n)
-            val perFrame = tempo.ticksPerSecond(vis) * frame * 3f
-            assertTrue("nota en ${n.startTick}: sonó con la posición visible en $vis", vis >= n.startTick && vis - n.startTick <= perFrame)
+            val at = firedAt.getValue(n)
+            val oneFrame = tempo.ticksPerSecond(at) * frame
+            assertTrue("nota en ${n.startTick}: sonó en $at", at >= n.startTick && at - n.startTick <= oneFrame + 0.01f)
         }
+        assertEquals(score.notes.size, log.off.size)
     }
 }

@@ -83,8 +83,9 @@ fun ScoreView(score: Score, modifier: Modifier = Modifier, maxStaffSpaceDp: Floa
     var seek by remember { mutableIntStateOf(0) }
     val tempoMap = remember(score) { TempoMap(score.tempos) }
 
-    // Sonido: el piano se carga en segundo plano al abrir la partitura. Las notas suenan cuando pasan por
-    // la línea de reproducción, tal como se ven (no según el reloj), para que ojo y oído coincidan.
+    // Sonido: el piano se carga en segundo plano al abrir la partitura. Las notas suenan según el tiempo
+    // musical exacto (el reloj del tempo), aunque el dibujo, que se mueve suavizado, llegue a la línea
+    // unas milésimas después en los cambios de compás o de armadura.
     val player = remember { PianoPlayer(context) }
     DisposableEffect(player) {
         player.start()
@@ -145,10 +146,8 @@ fun ScoreView(score: Score, modifier: Modifier = Modifier, maxStaffSpaceDp: Floa
             val from = if (scrollSp.isNaN()) currentMin else scrollSp
             var tick = layout.tickAtScroll(from, currentPlayhead).coerceAtLeast(0f)
             if (tick >= end - 1f) tick = 0f
-            // La posición que se ve bajo la línea (la del dibujo exacto, sin el suavizado del movimiento).
-            fun seen(scroll: Float) = layout.tickAtX(scroll + currentPlayhead - layout.headerWidth)
             // Un poco antes, para no perder la nota que justo está en la línea al retomar o saltar.
-            trigger.reset(seen(layout.scrollForTick(tick, currentPlayhead)) - SOUND_START_TOLERANCE_TICKS)
+            trigger.reset(tick - SOUND_START_TOLERANCE_TICKS)
             var last = withFrameNanos { it }
             try {
                 while (true) {
@@ -163,7 +162,7 @@ fun ScoreView(score: Score, modifier: Modifier = Modifier, maxStaffSpaceDp: Floa
                         break
                     }
                     scrollSp = layout.scrollForTick(tick, currentPlayhead)
-                    trigger.advance(seen(scrollSp), { player.noteOn(it.pitch.midi) }, player::noteOff)
+                    trigger.advance(tick, { player.noteOn(it.pitch.midi) }, player::noteOff)
                 }
             } finally {
                 // Pausa, salto o arrastre: lo que suena se apaga suavemente.
