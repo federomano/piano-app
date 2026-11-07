@@ -188,9 +188,9 @@ class ScoreLayoutTest {
         val layout = ScoreLayout.build(demo)
         assertEquals(12, layout.measures.size)
         // Compás 4: 2 sostenidos y 3/4. Compás 7: cancela 2 sostenidos, 3 bemoles y 6/8. Compás 10: cancela 3 bemoles y 4/4.
-        assertEquals(4 + 4 + 4 + 6 + 4 + 6 + 4, layout.body.count { it is GlyphOp })
+        assertEquals(4 + 4 + 4 + 6 + 4 + 6 + 4, layout.inlineChanges.size)
         // Becuadros: 2 en cada pentagrama en el compás 7 y 3 en cada uno en el compás 10.
-        assertEquals(4 + 6, layout.body.glyphs(Smufl.NATURAL).size)
+        assertEquals(4 + 6, layout.inlineChanges.glyphs(Smufl.NATURAL).size)
     }
 
     @Test
@@ -198,7 +198,7 @@ class ScoreLayoutTest {
         val demo = DemoScore.create()
         val layout = ScoreLayout.build(demo)
         val measure10 = layout.measures[9]
-        val naturalsInMeasure10 = layout.body.glyphs(Smufl.NATURAL).filter { it.x in measure10.x0..measure10.contentX }
+        val naturalsInMeasure10 = layout.inlineChanges.glyphs(Smufl.NATURAL).filter { it.x in measure10.x0..measure10.contentX }
         assertEquals(6, naturalsInMeasure10.size)
     }
 
@@ -253,7 +253,7 @@ class ScoreLayoutTest {
     fun aChangeExistsOnlyOnceOnScreen() {
         // Mientras el cambio viaja con la partitura, el cuerpo no lo dibuja por su cuenta: solo hay una copia.
         val layout = demo
-        assertTrue(layout.staff.none { it is GlyphOp } && layout.marks.none { it is GlyphOp })
+        assertTrue(layout.staff.none { it is GlyphOp })
         val change = layout.changes.first()
         val draws = layout.headerDraws(change.pinScroll - 50f, 200f)
         assertEquals(1, draws.count { it.ops === change.ops })

@@ -28,7 +28,7 @@ object Geometry {
     const val THICK_BARLINE = 0.5f
 
     /** Ancho de una negra. Un compás de 4/4 mide 4 veces esto. */
-    const val QUARTER_WIDTH = 4.5f
+    const val QUARTER_WIDTH = 5f
 }
 
 /** Un compás ya ubicado en el eje horizontal. */
@@ -81,7 +81,8 @@ class ScoreLayout private constructor(
     val measures: List<MeasureLayout>,
     val staff: List<DrawOp>,
     val marks: List<DrawOp>,
-    private val inline: List<DrawOp>,
+    /** Cambios de armadura y compás en su lugar dentro del compás (solo para pruebas: se dibujan con [headerDraws]). */
+    val inlineChanges: List<DrawOp>,
     val fixed: List<DrawOp>,
     val changes: List<SignatureChange>,
     private val initial: List<DrawOp>,
@@ -91,7 +92,7 @@ class ScoreLayout private constructor(
     private val quarterWidth: Float,
 ) {
     /** Todo lo que viaja con la partitura (para pruebas): líneas, marcas y cambios en su lugar dentro del compás. */
-    val body: List<DrawOp> = staff + marks + inline
+    val body: List<DrawOp> = staff + marks + inlineChanges
 
     /** Posición horizontal de un instante de la pieza. Es proporcional al tiempo dentro de cada compás. */
     fun xOfTick(tick: Int): Float {
@@ -132,7 +133,7 @@ class ScoreLayout private constructor(
 
     companion object {
         private const val LEFT_PAD = 0.8f
-        private const val MEASURE_LEAD = 1.0f
+        private const val MEASURE_LEAD = 2.2f
         private const val SIGNATURE_LEAD = 0.8f
         private const val ACCIDENTAL_GAP = 0.15f
         private const val SIGNATURE_GAP = 0.9f
@@ -196,7 +197,7 @@ class ScoreLayout private constructor(
                     val shift = anchorInline - SIGNATURE_LEFT
                     changes += SignatureChange(index, piece(m.keyFifths, n, d).first, cancel, SIGNATURE_LEFT, shift, pin(shift))
                     cursor = end + SIGNATURE_GAP
-                    cursor += MEASURE_LEAD - SIGNATURE_GAP
+                    cursor += MEASURE_LEAD + 0.4f - SIGNATURE_GAP
                 } else {
                     cursor += MEASURE_LEAD
                 }
@@ -204,7 +205,7 @@ class ScoreLayout private constructor(
                 val x1 = contentX + (m.endTick - m.startTick) * perTick
 
                 // Número de compás, arriba del pentagrama de la mano derecha.
-                marks += TextOp((index + 1).toString(), x0 + 0.35f, -1.6f, 1.8f)
+                marks += TextOp((index + 1).toString(), x0 + 0.35f, -3.0f, 1.8f)
 
                 // Barra de compás que une los dos pentagramas. La última es doble: fina y gruesa.
                 if (index == measures.lastIndex) {
@@ -220,6 +221,10 @@ class ScoreLayout private constructor(
             }
 
             val totalWidth = x
+            marks += NoteLayout.build(score, laidOut) { tick ->
+                val m = laidOut[laidOut.indexOfLast { it.measure.startTick <= tick }.coerceAtLeast(0)]
+                m.contentX + (tick.coerceAtMost(m.measure.endTick) - m.measure.startTick) * perTick
+            }
             val fixed = mutableListOf<DrawOp>()
             fixed += staffLines(SYSTEM_LEFT, headerWidth)
             fixed += GlyphOp(Smufl.BRACE, LEFT_PAD, Geometry.SYSTEM_BOTTOM, BRACE_SCALE)

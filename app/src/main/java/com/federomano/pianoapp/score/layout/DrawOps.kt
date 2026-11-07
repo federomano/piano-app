@@ -45,6 +45,22 @@ object Smufl {
     const val BRACE_HEIGHT = 4.002f
     const val BRACE_WIDTH = 0.277f
 
+    // Notas (medidas en espacios de pentagrama; la cabeza se centra verticalmente sobre su línea de base).
+    const val NOTEHEAD_WHOLE = 0xE0A2
+    const val NOTEHEAD_HALF = 0xE0A3
+    const val NOTEHEAD_BLACK = 0xE0A4
+    const val NOTEHEAD_WHOLE_WIDTH = 1.688f
+    const val NOTEHEAD_WIDTH = 1.18f
+    const val FLAG_8TH_UP = 0xE240
+    const val FLAG_8TH_DOWN = 0xE241
+    const val FLAG_16TH_UP = 0xE242
+    const val FLAG_16TH_DOWN = 0xE243
+    const val AUGMENTATION_DOT = 0xE1E7
+    const val DOUBLE_SHARP = 0xE263
+    const val DOUBLE_FLAT = 0xE264
+    const val DOUBLE_SHARP_ADVANCE = 1.0f
+    const val DOUBLE_FLAT_ADVANCE = 1.652f
+
     /** Dígitos de las firmas de compás: centrados verticalmente sobre su línea de base. */
     fun timeDigit(digit: Int): Int = 0xE080 + digit
 

@@ -83,16 +83,9 @@ class ScorePreviewTest {
         val out = File("build/previews").apply { mkdirs() }
         val spPx = 26f
         val width = 1900
-        val key = layout.changes
         val w = layout.headerWidth
-        val views = listOf(
-            "1-inicio" to 0f,
-            "2-viajando-compas-4" to key[0].pinScroll - w * 0.9f,
-            "3-llegando-compas-4" to key[0].pinScroll - w * 0.45f,
-            "4-llego-compas-4" to key[0].pinScroll + 3f,
-            "5-llegando-compas-7" to key[1].pinScroll - w * 0.4f,
-            "6-llegando-compas-10" to key[2].pinScroll - w * 0.4f,
-        )
+        val views = listOf("1" to 0, "2" to 1, "3" to 3, "4" to 4, "5" to 5, "6" to 6, "7" to 7, "8" to 8, "9" to 9, "10" to 10, "11" to 11)
+            .map { (name, m) -> "m" + name.padStart(2, '0') to if (m == 0) 0f else layout.measures[m].x0 - w + 0.1f }
         for ((name, scroll) in views) {
             ImageIO.write(render(layout, scroll, width, spPx, music), "png", File(out, "$name.png"))
         }
