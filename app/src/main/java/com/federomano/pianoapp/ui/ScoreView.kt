@@ -2,6 +2,9 @@ package com.federomano.pianoapp.ui
 
 import android.graphics.Paint
 import android.graphics.Typeface
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.animateDecay
+import androidx.compose.animation.core.exponentialDecay
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -14,6 +17,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.getValue
@@ -43,6 +49,12 @@ val PaperColor = Color(0xFFF6F3EA)
 val InkColor = Color(0xFF1A1A1A)
 
 val PlayheadColor = Color(0xFFB3261E)
+
+/** Velocidad mínima (espacios por segundo) con la que soltar el dedo deja a la partitura deslizándose. */
+private const val MIN_FLING_SPEED = 8f
+
+/** Cuánto frena la inercia: más chico, se desliza más lejos (1 es el valor normal de Android). */
+private const val FLING_FRICTION = 0.7f
 
 /**
  * Partitura de dos pentagramas en una línea continua. La clave, la armadura y el compás quedan fijos
@@ -80,17 +92,32 @@ fun ScoreView(score: Score, modifier: Modifier = Modifier, maxStaffSpaceDp: Floa
         val currentPlayhead by rememberUpdatedState(playheadSp)
         val currentMin by rememberUpdatedState(minScroll)
 
+        // Arrastre tipo vinilo: mientras el dedo está abajo, o la partitura sigue deslizándose por inercia,
+        // la reproducción se suspende ([holding]); al terminar retoma desde donde quedó, y si estaba en
+        // pausa sigue en pausa.
+        val scope = rememberCoroutineScope()
+        var holding by remember { mutableStateOf(false) }
+        var flingJob by remember { mutableStateOf<Job?>(null) }
+        var stoppedFling by remember { mutableStateOf(false) }
+
+        fun stopFling(): Boolean {
+            val job = flingJob
+            flingJob = null
+            if (job?.isActive != true) return false
+            job.cancel()
+            holding = false
+            return true
+        }
+
         val draggable = rememberDraggableState { delta ->
-            if (!playing) {
-                val now = if (scrollSp.isNaN()) minScroll else scrollSp
-                scrollSp = (now - delta / spPx).coerceIn(minScroll, maxScroll)
-            }
+            val now = if (scrollSp.isNaN()) minScroll else scrollSp
+            scrollSp = (now - delta / spPx).coerceIn(minScroll, maxScroll)
         }
 
         // Reproducción: en cada cuadro avanza el tiempo según el tempo y la partitura se desliza para que
         // ese instante quede sobre la línea.
-        LaunchedEffect(playing, layout, seek) {
-            if (!playing) return@LaunchedEffect
+        LaunchedEffect(playing, holding, layout, seek) {
+            if (!playing || holding) return@LaunchedEffect
             val end = layout.endTick.toFloat()
             val from = if (scrollSp.isNaN()) currentMin else scrollSp
             var tick = layout.tickAtScroll(from, currentPlayhead).coerceAtLeast(0f)
@@ -126,8 +153,38 @@ fun ScoreView(score: Score, modifier: Modifier = Modifier, maxStaffSpaceDp: Floa
         Canvas(
             modifier = Modifier
                 .fillMaxSize()
-                .pointerInput(Unit) { detectTapGestures { playing = !playing } }
-                .draggable(draggable, Orientation.Horizontal),
+                .pointerInput(Unit) {
+                    detectTapGestures(
+                        // Tocar durante la inercia la frena en seco, sin cambiar play ni pausa.
+                        onPress = { stoppedFling = stopFling() },
+                        onTap = { if (!stoppedFling) playing = !playing },
+                    )
+                }
+                .draggable(
+                    state = draggable,
+                    orientation = Orientation.Horizontal,
+                    onDragStarted = {
+                        stopFling()
+                        holding = true
+                    },
+                    onDragStopped = { velocityPx ->
+                        // La partitura se mueve al revés que el dedo; la velocidad se pasa a espacios por segundo.
+                        val velocity = -velocityPx / spPx
+                        if (kotlin.math.abs(velocity) < MIN_FLING_SPEED) {
+                            holding = false
+                        } else {
+                            flingJob = scope.launch {
+                                // Con límites: al llegar al principio o al final la animación se detiene ahí, sin rebotes.
+                                val animation = Animatable(if (scrollSp.isNaN()) minScroll else scrollSp)
+                                animation.updateBounds(minScroll, maxScroll)
+                                animation.animateDecay(velocity, exponentialDecay(frictionMultiplier = FLING_FRICTION)) {
+                                    scrollSp = value
+                                }
+                                holding = false
+                            }
+                        }
+                    },
+                ),
         ) {
             val scroll = if (scrollSp.isNaN()) minScroll else scrollSp
             val top = ((heightPx - Geometry.TOTAL_HEIGHT * spPx) / 2f) + Geometry.MARGIN_TOP * spPx
@@ -206,10 +263,12 @@ fun ScoreView(score: Score, modifier: Modifier = Modifier, maxStaffSpaceDp: Floa
             endTick = layout.endTick,
             currentTick = { layout.tickAtScroll(if (scrollSp.isNaN()) minScroll else scrollSp, playheadSp) },
             onSeek = { tick ->
+                stopFling()
                 scrollSp = layout.scrollForTick(tick.toFloat(), playheadSp)
                 seek++
             },
             onRestart = {
+                stopFling()
                 scrollSp = minScroll
                 seek++
             },
