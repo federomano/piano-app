@@ -88,9 +88,14 @@ class ScoreLayoutTest {
     fun horizontalSpaceIsProportionalToTime() {
         val layout = ScoreLayout.build(scoreOf(measures = 2))
         val perQuarter = Geometry.QUARTER_WIDTH
-        assertEquals(perQuarter, layout.xOfTick(Ticks.QUARTER) - layout.xOfTick(0), 0.001f)
-        assertEquals(perQuarter / 2, layout.xOfTick(Ticks.EIGHTH) - layout.xOfTick(0), 0.001f)
-        assertEquals(4 * perQuarter, layout.xOfTick(Ticks.WHOLE) - layout.xOfTick(0) - (layout.measures[1].contentX - layout.measures[0].x1), 0.001f)
+        // El compás mide 4 negras de ancho; el tiempo, en cambio, llega hasta la primera nota del siguiente
+        // (pasa por la barra y el margen), así que se reparte parejo en ese tramo.
+        val first = layout.measures[0]
+        assertEquals(4 * perQuarter, first.x1 - first.contentX, 0.001f)
+        assertEquals(layout.measures[1].contentX, layout.xOfTick(Ticks.WHOLE), 0.001f)
+        val quarter = layout.xOfTick(Ticks.QUARTER) - layout.xOfTick(0)
+        assertEquals(quarter / 2, layout.xOfTick(Ticks.EIGHTH) - layout.xOfTick(0), 0.001f)
+        assertEquals(4 * quarter, layout.xOfTick(Ticks.WHOLE) - layout.xOfTick(0), 0.001f)
     }
 
     @Test

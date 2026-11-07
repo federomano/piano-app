@@ -69,3 +69,39 @@ class PlayheadMappingTest {
         }
     }
 }
+
+class MeasureBoundaryTest {
+    private val layout = ScoreLayout.build(DemoScore.create())
+
+    @Test
+    fun noJumpWhenOneMeasureEndsAndTheNextBegins() {
+        // Justo antes del fin de un compás y justo en el comienzo del siguiente, la posición casi no cambia
+        // (también donde hay cambio de armadura y de compás: compases 4, 7 y 10 de la demo).
+        for (i in 1 until layout.measures.size) {
+            val start = layout.measures[i].measure.startTick
+            val before = layout.xOfTick(start - 1f)
+            val after = layout.xOfTick(start.toFloat())
+            assertTrue("compás ${i + 1}: salto de ${after - before} sp", after - before < 0.1f)
+        }
+    }
+
+    @Test
+    fun theBarlineFallsInsideTheTimeOfTheLastNote() {
+        for (i in 0 until layout.measures.size - 1) {
+            val m = layout.measures[i]
+            val end = m.measure.endTick
+            val barline = m.x1
+            // La barra está entre la última nota y la primera del compás siguiente.
+            assertTrue(layout.xOfTick(end - 1f) < layout.measures[i + 1].contentX)
+            assertTrue(barline < layout.measures[i + 1].contentX)
+            // Y la posición del medio del tramo cae pasada la barra o antes, pero siempre creciendo.
+            assertTrue(layout.xOfTick(end - 60f) <= layout.xOfTick(end - 1f))
+        }
+    }
+
+    @Test
+    fun theLastMeasureStillEndsAtItsBarline() {
+        val last = layout.measures.last()
+        assertEquals(last.x1, layout.xOfTick(last.measure.endTick), 0.001f)
+    }
+}

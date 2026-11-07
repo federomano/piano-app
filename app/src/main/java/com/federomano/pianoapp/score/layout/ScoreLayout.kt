@@ -46,6 +46,12 @@ data class MeasureLayout(
     /** Puntos de anclaje del tiempo del compás (ver [Spacing]). */
     val anchors: Spacing.Anchors? = null,
     private val perTick: Float = 0f,
+    /**
+     * Posición que corresponde al final del compás en el tiempo: la primera nota del compás siguiente.
+     * El tramo entre la última nota y ese punto incluye la barra de compás (y un eventual cambio de
+     * armadura), así la partitura avanza sin saltos al pasar de un compás al otro.
+     */
+    val timeEndX: Float = x1,
 ) {
     /** Posición horizontal de un instante dentro de este compás. */
     fun xOfTick(tick: Int): Float = xOfTick(tick.toFloat())
@@ -53,12 +59,24 @@ data class MeasureLayout(
     fun xOfTick(tick: Float): Float {
         val t = tick.coerceAtMost(measure.endTick.toFloat())
         val a = anchors ?: return contentX + (t - measure.startTick) * perTick
+        val last = a.ticks.lastIndex
+        if (last >= 1 && t > a.ticks[last - 1]) {
+            // Último tramo: de la última nota a la primera del compás siguiente.
+            val fromX = contentX + a.offsets[last - 1]
+            return fromX + (timeEndX - fromX) * (t - a.ticks[last - 1]) / (a.ticks[last] - a.ticks[last - 1])
+        }
         return contentX + a.offsetOf(t, perTick)
     }
 
     /** El instante que corresponde a una posición horizontal dentro de este compás. */
     fun tickAtX(x: Float): Float {
         val a = anchors ?: return measure.startTick + (x - contentX) / perTick
+        val last = a.ticks.lastIndex
+        if (last >= 1 && x > contentX + a.offsets[last - 1]) {
+            val fromX = contentX + a.offsets[last - 1]
+            val fraction = ((x - fromX) / (timeEndX - fromX)).coerceIn(0f, 1f)
+            return a.ticks[last - 1] + (a.ticks[last] - a.ticks[last - 1]) * fraction
+        }
         return a.tickAt(x - contentX, perTick).coerceIn(measure.startTick.toFloat(), measure.endTick.toFloat())
     }
 }
@@ -261,8 +279,10 @@ class ScoreLayout private constructor(
             }
 
             val totalWidth = x
-            marks += NoteLayout.build(score, laidOut) { tick ->
-                laidOut[laidOut.indexOfLast { it.measure.startTick <= tick }.coerceAtLeast(0)].xOfTick(tick)
+            // El final de cada compás, en el tiempo, es la primera nota del siguiente (ver MeasureLayout.timeEndX).
+            val timed = laidOut.mapIndexed { i, m -> m.copy(timeEndX = laidOut.getOrNull(i + 1)?.contentX ?: m.x1) }
+            marks += NoteLayout.build(score, timed) { tick ->
+                timed[timed.indexOfLast { it.measure.startTick <= tick }.coerceAtLeast(0)].xOfTick(tick)
             }
             val fixed = mutableListOf<DrawOp>()
             fixed += staffLines(SYSTEM_LEFT, headerWidth)
@@ -275,7 +295,7 @@ class ScoreLayout private constructor(
             val first = measures.first()
             val initial = piece(first.keyFifths, first.timeSignature.numerator, first.timeSignature.denominator).first
             return ScoreLayout(
-                laidOut, staffLines(-STAFF_LEAD, totalWidth), marks, inline, fixed, changes, initial,
+                timed, staffLines(-STAFF_LEAD, totalWidth), marks, inline, fixed, changes, initial,
                 headerWidth, SIGNATURE_LEFT, totalWidth, quarterWidth,
             )
         }
