@@ -88,6 +88,8 @@ object DemoScore {
             title = "Demostración del dibujo",
             timeSignatures = sections.map { it.second },
             keySignatures = sections.map { KeySignatureChange(it.second.startTick, it.third) },
+            // Tempo: arranca a 90, baja a 60 en el 3/4, sube a 80 en el 6/8 y vuelve a 100 en el último 4/4.
+            tempos = listOf(TempoChange(0, 90.0), TempoChange(5760, 60.0), TempoChange(10080, 80.0), TempoChange(14400, 100.0)),
             notes = notes.toList(),
             rests = rests.toList(),
         )

@@ -22,13 +22,22 @@ object Spacing {
     /** Puntos de anclaje de un compás: instantes y su distancia (sp) al comienzo del tiempo del compás. */
     class Anchors(val ticks: List<Int>, val offsets: List<Float>) {
         /** Posición (relativa al comienzo del tiempo del compás) de un instante; entre dos puntos se interpola. */
-        fun offsetOf(tick: Int, perTick: Float): Float {
+        fun offsetOf(tick: Float, perTick: Float): Float {
             if (ticks.isEmpty()) return 0f
             if (tick <= ticks.first()) return offsets.first() + (tick - ticks.first()) * perTick
             if (tick >= ticks.last()) return offsets.last()
             val i = ticks.indexOfLast { it <= tick }
             val span = ticks[i + 1] - ticks[i]
             return offsets[i] + (offsets[i + 1] - offsets[i]) * (tick - ticks[i]) / span
+        }
+
+        /** Lo inverso: el instante que corresponde a una posición (relativa al comienzo del tiempo del compás). */
+        fun tickAt(offset: Float, perTick: Float): Float {
+            if (ticks.isEmpty()) return 0f
+            if (offset <= offsets.first()) return ticks.first() + (offset - offsets.first()) / perTick
+            if (offset >= offsets.last()) return ticks.last().toFloat()
+            val i = offsets.indexOfLast { it <= offset }
+            return ticks[i] + (ticks[i + 1] - ticks[i]) * (offset - offsets[i]) / (offsets[i + 1] - offsets[i])
         }
     }
 

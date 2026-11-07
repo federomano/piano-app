@@ -35,7 +35,7 @@ class ScoreLayoutTest {
         val layout = ScoreLayout.build(scoreOf(measures = 8))
         val lines = layout.body.filterIsInstance<RectOp>().filter { it.height == Geometry.STAFF_LINE_THICKNESS }
         assertEquals(10, lines.size)
-        assertTrue(lines.all { it.x == 0f && it.width == layout.totalWidth })
+        assertTrue(lines.all { it.x == -ScoreLayout.STAFF_LEAD && it.x + it.width == layout.totalWidth })
     }
 
     @Test

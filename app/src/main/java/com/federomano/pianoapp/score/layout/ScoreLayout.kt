@@ -29,6 +29,9 @@ object Geometry {
 
     /** Ancho de una negra. Un compás de 4/4 mide 4 veces esto. */
     const val QUARTER_WIDTH = 5f
+
+    /** Dónde está la línea de reproducción, como fracción del ancho de la pantalla desde la izquierda. */
+    const val PLAYHEAD_FRACTION = 0.3f
 }
 
 /** Un compás ya ubicado en el eje horizontal. */
@@ -45,9 +48,18 @@ data class MeasureLayout(
     private val perTick: Float = 0f,
 ) {
     /** Posición horizontal de un instante dentro de este compás. */
-    fun xOfTick(tick: Int): Float {
-        val a = anchors ?: return contentX + (tick.coerceAtMost(measure.endTick) - measure.startTick) * perTick
-        return contentX + a.offsetOf(tick.coerceAtMost(measure.endTick), perTick)
+    fun xOfTick(tick: Int): Float = xOfTick(tick.toFloat())
+
+    fun xOfTick(tick: Float): Float {
+        val t = tick.coerceAtMost(measure.endTick.toFloat())
+        val a = anchors ?: return contentX + (t - measure.startTick) * perTick
+        return contentX + a.offsetOf(t, perTick)
+    }
+
+    /** El instante que corresponde a una posición horizontal dentro de este compás. */
+    fun tickAtX(x: Float): Float {
+        val a = anchors ?: return measure.startTick + (x - contentX) / perTick
+        return a.tickAt(x - contentX, perTick).coerceIn(measure.startTick.toFloat(), measure.endTick.toFloat())
     }
 }
 
@@ -104,8 +116,28 @@ class ScoreLayout private constructor(
     val body: List<DrawOp> = staff + marks + inlineChanges
 
     /** Posición horizontal de un instante de la pieza. Es proporcional al tiempo, salvo donde hace falta más lugar. */
-    fun xOfTick(tick: Int): Float =
+    fun xOfTick(tick: Int): Float = xOfTick(tick.toFloat())
+
+    fun xOfTick(tick: Float): Float =
         measures[measures.indexOfLast { it.measure.startTick <= tick }.coerceAtLeast(0)].xOfTick(tick)
+
+    /** El instante que corresponde a una posición horizontal de la partitura (al revés de [xOfTick]). */
+    fun tickAtX(x: Float): Float {
+        val m = measures.lastOrNull { it.contentX <= x } ?: return measures.first().measure.startTick.toFloat()
+        return m.tickAtX(x)
+    }
+
+    /** Fin de la pieza, en ticks. */
+    val endTick: Int get() = measures.last().measure.endTick
+
+    /**
+     * Desplazamiento (scroll) con el que el instante [tick] queda justo en la línea de reproducción,
+     * que está [playheadX] (sp) desde el borde izquierdo de la pantalla.
+     */
+    fun scrollForTick(tick: Float, playheadX: Float): Float = xOfTick(tick) + headerWidth - playheadX
+
+    /** Al revés: qué instante está sobre la línea de reproducción con ese desplazamiento. */
+    fun tickAtScroll(scroll: Float, playheadX: Float): Float = tickAtX(scroll + playheadX - headerWidth)
 
     private fun currentOps(scrollX: Float): List<DrawOp> =
         changes.lastOrNull { it.pinScroll <= scrollX }?.ops ?: initial
@@ -137,6 +169,8 @@ class ScoreLayout private constructor(
     }
 
     companion object {
+        /** Las líneas siguen hacia la izquierda del comienzo, para cuando la línea de reproducción está en la primera nota. */
+        const val STAFF_LEAD = 60f
         private const val LEFT_PAD = 0.8f
         private const val MEASURE_LEAD = 2.2f
         private const val SIGNATURE_LEAD = 0.8f
@@ -241,7 +275,7 @@ class ScoreLayout private constructor(
             val first = measures.first()
             val initial = piece(first.keyFifths, first.timeSignature.numerator, first.timeSignature.denominator).first
             return ScoreLayout(
-                laidOut, staffLines(0f, totalWidth), marks, inline, fixed, changes, initial,
+                laidOut, staffLines(-STAFF_LEAD, totalWidth), marks, inline, fixed, changes, initial,
                 headerWidth, SIGNATURE_LEFT, totalWidth, quarterWidth,
             )
         }
