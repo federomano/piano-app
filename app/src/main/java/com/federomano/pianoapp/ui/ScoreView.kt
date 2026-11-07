@@ -2,9 +2,6 @@ package com.federomano.pianoapp.ui
 
 import android.graphics.Paint
 import android.graphics.Typeface
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.animateDecay
-import androidx.compose.animation.core.exponentialDecay
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -50,11 +47,14 @@ val InkColor = Color(0xFF1A1A1A)
 
 val PlayheadColor = Color(0xFFB3261E)
 
-/** Velocidad mínima (espacios por segundo) con la que soltar el dedo deja a la partitura deslizándose. */
-private const val MIN_FLING_SPEED = 8f
+/** En pausa, velocidad mínima (espacios por segundo) con la que soltar el dedo deja a la partitura deslizándose. */
+private const val MIN_FLING_SPEED = 1.5f
 
-/** Cuánto frena la inercia: más chico, se desliza más lejos (1 es el valor normal de Android). */
-private const val FLING_FRICTION = 0.7f
+/** Qué tan rápido se acerca la inercia a la velocidad de reproducción (por segundo): más chico, frena más despacio. */
+internal const val FLING_RATE = 1.5f
+
+/** La inercia termina cuando la velocidad ya está así de cerca de la de reproducción (espacios por segundo). */
+private const val FLING_END_SPEED = 0.4f
 
 /**
  * Partitura de dos pentagramas en una línea continua. La clave, la armadura y el compás quedan fijos
@@ -107,6 +107,14 @@ fun ScoreView(score: Score, modifier: Modifier = Modifier, maxStaffSpaceDp: Floa
             job.cancel()
             holding = false
             return true
+        }
+
+        // Cuántos espacios por segundo avanza la partitura al reproducir en esa posición.
+        fun playbackSpeedAt(position: Float): Float {
+            val tick = layout.tickAtScroll(position, currentPlayhead)
+            val step = 0.02f
+            val next = tempoMap.advance(tick, step)
+            return (layout.scrollForTick(next, currentPlayhead) - layout.scrollForTick(tick, currentPlayhead)) / step
         }
 
         val draggable = rememberDraggableState { delta ->
@@ -170,15 +178,39 @@ fun ScoreView(score: Score, modifier: Modifier = Modifier, maxStaffSpaceDp: Floa
                     onDragStopped = { velocityPx ->
                         // La partitura se mueve al revés que el dedo; la velocidad se pasa a espacios por segundo.
                         val velocity = -velocityPx / spPx
-                        if (kotlin.math.abs(velocity) < MIN_FLING_SPEED) {
+                        if (!playing && kotlin.math.abs(velocity) < MIN_FLING_SPEED) {
                             holding = false
                         } else {
                             flingJob = scope.launch {
-                                // Con límites: al llegar al principio o al final la animación se detiene ahí, sin rebotes.
-                                val animation = Animatable(if (scrollSp.isNaN()) minScroll else scrollSp)
-                                animation.updateBounds(minScroll, maxScroll)
-                                animation.animateDecay(velocity, exponentialDecay(frictionMultiplier = FLING_FRICTION)) {
-                                    scrollSp = value
+                                // Inercia: arranca a la velocidad con que se soltó y se va acercando, con
+                                // frenado suave, a la velocidad de la reproducción (cero si está en pausa).
+                                // Si venía para atrás mientras reproduce, frena, pasa por cero y arranca
+                                // hacia adelante.
+                                var position = if (scrollSp.isNaN()) minScroll else scrollSp
+                                var v = velocity
+                                var last = withFrameNanos { it }
+                                while (true) {
+                                    val now = withFrameNanos { it }
+                                    val seconds = ((now - last) / 1_000_000_000f).coerceAtMost(0.05f)
+                                    last = now
+                                    val target = if (playing) playbackSpeedAt(position) else 0f
+                                    v = Inertia.step(v, target, seconds, FLING_RATE)
+                                    position += v * seconds
+                                    if (position <= minScroll) {
+                                        position = minScroll
+                                        if (v < 0f) v = 0f
+                                    }
+                                    var atEnd = false
+                                    if (position >= maxScroll) {
+                                        position = maxScroll
+                                        atEnd = true
+                                    }
+                                    scrollSp = position
+                                    if (atEnd) {
+                                        playing = false
+                                        break
+                                    }
+                                    if (kotlin.math.abs(v - target) < FLING_END_SPEED) break
                                 }
                                 holding = false
                             }
