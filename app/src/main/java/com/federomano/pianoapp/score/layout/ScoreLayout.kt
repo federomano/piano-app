@@ -129,6 +129,8 @@ class ScoreLayout private constructor(
     val signatureLeft: Float,
     val totalWidth: Float,
     private val quarterWidth: Float,
+    /** Curva suave tiempo → posición, solo para mover la vista en la reproducción (ver [Curve]). */
+    private val smooth: Curve,
 ) {
     /** Todo lo que viaja con la partitura (para pruebas): líneas, marcas y cambios en su lugar dentro del compás. */
     val body: List<DrawOp> = staff + marks + inlineChanges
@@ -152,10 +154,10 @@ class ScoreLayout private constructor(
      * Desplazamiento (scroll) con el que el instante [tick] queda justo en la línea de reproducción,
      * que está [playheadX] (sp) desde el borde izquierdo de la pantalla.
      */
-    fun scrollForTick(tick: Float, playheadX: Float): Float = xOfTick(tick) + headerWidth - playheadX
+    fun scrollForTick(tick: Float, playheadX: Float): Float = smooth.positionAt(tick) + headerWidth - playheadX
 
     /** Al revés: qué instante está sobre la línea de reproducción con ese desplazamiento. */
-    fun tickAtScroll(scroll: Float, playheadX: Float): Float = tickAtX(scroll + playheadX - headerWidth)
+    fun tickAtScroll(scroll: Float, playheadX: Float): Float = smooth.tickAt(scroll + playheadX - headerWidth)
 
     private fun currentOps(scrollX: Float): List<DrawOp> =
         changes.lastOrNull { it.pinScroll <= scrollX }?.ops ?: initial
@@ -292,11 +294,25 @@ class ScoreLayout private constructor(
             fixed += GlyphOp(Smufl.G_CLEF, CLEF_X, Geometry.TREBLE_TOP + 3f)
             fixed += GlyphOp(Smufl.F_CLEF, CLEF_X, Geometry.BASS_TOP + 1f)
 
+            // Puntos por donde pasa el cabezal: cada instante en que empieza algo, y el final de la pieza.
+            val knotTicks = mutableListOf<Float>()
+            val knotXs = mutableListOf<Float>()
+            for (m in timed) {
+                val a = m.anchors ?: continue
+                for (i in 0 until a.ticks.lastIndex) {
+                    knotTicks += a.ticks[i].toFloat()
+                    knotXs += m.contentX + a.offsets[i]
+                }
+            }
+            knotTicks += timed.last().measure.endTick.toFloat()
+            knotXs += timed.last().x1
+            val smooth = Curve(knotTicks, knotXs)
+
             val first = measures.first()
             val initial = piece(first.keyFifths, first.timeSignature.numerator, first.timeSignature.denominator).first
             return ScoreLayout(
                 timed, staffLines(-STAFF_LEAD, totalWidth), marks, inline, fixed, changes, initial,
-                headerWidth, SIGNATURE_LEFT, totalWidth, quarterWidth,
+                headerWidth, SIGNATURE_LEFT, totalWidth, quarterWidth, smooth,
             )
         }
 

@@ -50,13 +50,47 @@ class PlayheadMappingTest {
     }
 
     @Test
-    fun scrollPutsTheTickExactlyOnThePlayhead() {
+    fun scrollPutsEveryNoteExactlyOnThePlayheadAtItsTime() {
+        val playhead = 16f
+        // En el instante en que empieza cada nota o silencio, la nota está justo en la línea.
+        val onsets = layout.measures.flatMap { it.anchors!!.ticks.dropLast(1) }
+        for (tick in onsets) {
+            val scroll = layout.scrollForTick(tick.toFloat(), playhead)
+            assertEquals(playhead, layout.xOfTick(tick) + layout.headerWidth - scroll, 0.002f)
+        }
+    }
+
+    @Test
+    fun scrollAndTickAreInverse() {
         val playhead = 16f
         for (tick in listOf(0f, 500f, 3840f + 240f, 8000f, 15000f)) {
-            val scroll = layout.scrollForTick(tick, playhead)
-            assertEquals(tick, layout.tickAtScroll(scroll, playhead), 0.05f)
-            assertEquals(playhead, layout.xOfTick(tick) + layout.headerWidth - scroll, 0.001f)
+            assertEquals(tick, layout.tickAtScroll(layout.scrollForTick(tick, playhead), playhead), 0.05f)
         }
+    }
+
+    @Test
+    fun theSmoothCurveStaysCloseToTheStraightOneAndChangesSpeedGently() {
+        val playhead = 16f
+        var worstDistance = 0f
+        var smoothJump = 0f
+        var straightJump = 0f
+        var previousSmooth = 0f
+        var previousStraight = 0f
+        var first = true
+        for (tick in 0 until layout.endTick - 10 step 10) {
+            val smooth = layout.scrollForTick(tick + 10f, playhead) - layout.scrollForTick(tick.toFloat(), playhead)
+            val straight = layout.xOfTick(tick + 10f) - layout.xOfTick(tick.toFloat())
+            worstDistance = maxOf(worstDistance, kotlin.math.abs(layout.scrollForTick(tick.toFloat(), playhead) + playhead - layout.headerWidth - layout.xOfTick(tick)))
+            if (!first) {
+                smoothJump = maxOf(smoothJump, kotlin.math.abs(smooth - previousSmooth))
+                straightJump = maxOf(straightJump, kotlin.math.abs(straight - previousStraight))
+            }
+            first = false
+            previousSmooth = smooth
+            previousStraight = straight
+        }
+        assertTrue("se aleja $worstDistance sp de la recta", worstDistance < 2.0f)
+        assertTrue("salto de velocidad $smoothJump contra $straightJump", smoothJump < straightJump * 0.6f)
     }
 
     @Test
