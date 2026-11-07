@@ -4,6 +4,8 @@ import com.federomano.pianoapp.score.Hand
 import com.federomano.pianoapp.score.KeySignatureChange
 import com.federomano.pianoapp.score.Note
 import com.federomano.pianoapp.score.Pitch
+import com.federomano.pianoapp.score.Rest
+import com.federomano.pianoapp.score.TimeSignatureChange
 import com.federomano.pianoapp.score.Score
 import com.federomano.pianoapp.score.Step
 import com.federomano.pianoapp.score.Ticks
@@ -102,10 +104,10 @@ class NoteLayoutTest {
 
     @Test
     fun eighthsAndSixteenthsGetFlagsPointingTheRightWay() {
-        val up = layoutOf(note("D4", 0, Ticks.EIGHTH), note("E4", 240, Ticks.SIXTEENTH)).marks
+        val up = layoutOf(note("D4", 0, Ticks.EIGHTH), note("E4", 960, Ticks.SIXTEENTH)).marks
         assertEquals(1, up.glyphs(Smufl.FLAG_8TH_UP).size)
         assertEquals(1, up.glyphs(Smufl.FLAG_16TH_UP).size)
-        val down = layoutOf(note("C5", 0, Ticks.EIGHTH), note("D5", 240, Ticks.SIXTEENTH)).marks
+        val down = layoutOf(note("C5", 0, Ticks.EIGHTH), note("D5", 960, Ticks.SIXTEENTH)).marks
         assertEquals(1, down.glyphs(Smufl.FLAG_8TH_DOWN).size)
         assertEquals(1, down.glyphs(Smufl.FLAG_16TH_DOWN).size)
         assertEquals(0, layoutOf(note("D4", 0, Ticks.QUARTER)).marks.glyphs(Smufl.FLAG_8TH_UP).size)
@@ -266,5 +268,186 @@ class NoteLayoutTest {
         val layout = layoutOf(note("G4", 0), note("G4", 480))
         val xs = layout.marks.heads().map { it.x }
         assertEquals(Geometry.QUARTER_WIDTH, xs[1] - xs[0], 0.001f)
+    }
+
+    // --- Barras ---
+
+    private fun List<DrawOp>.beams() = filterIsInstance<PolygonOp>().filter { it.points.size == 8 }
+
+    private fun eighths(vararg pitches: String, start: Int = 0, duration: Int = Ticks.EIGHTH, hand: Hand = Hand.RIGHT) =
+        pitches.mapIndexed { i, p -> note(p, start + i * duration, duration, hand) }.toTypedArray()
+
+    @Test
+    fun twoEighthsInTheSameBeatAreJoinedByABeamWithoutFlags() {
+        val ops = layoutOf(*eighths("C5", "D5")).marks
+        assertEquals(1, ops.beams().size)
+        assertEquals(0, ops.glyphs(Smufl.FLAG_8TH_DOWN).size + ops.glyphs(Smufl.FLAG_8TH_UP).size)
+        assertEquals(2, ops.stems().size)
+    }
+
+    @Test
+    fun eighthsInDifferentBeatsAreNotJoined() {
+        val ops = layoutOf(note("C5", 240, Ticks.EIGHTH), note("D5", 480, Ticks.EIGHTH)).marks
+        assertEquals(0, ops.beams().size)
+        assertEquals(2, ops.glyphs(Smufl.FLAG_8TH_DOWN).size)
+    }
+
+    @Test
+    fun fourEighthsInFourFourMakeTwoGroupsOfTwo() {
+        assertEquals(2, layoutOf(*eighths("C5", "D5", "C5", "D5")).marks.beams().size)
+    }
+
+    @Test
+    fun sixEighthsInSixEightMakeTwoGroupsOfThree() {
+        val signature = TimeSignatureChange(0, 6, 8)
+        val score = Score(
+            title = "Prueba", timeSignatures = listOf(signature),
+            notes = eighths("E4", "F4", "G4", "A4", "B4", "C5").toList(),
+        )
+        val beams = ScoreLayout.build(score).marks.beams()
+        assertEquals(2, beams.size)
+        // Cada barra abarca tres plicas: es más larga que la de dos corcheas.
+        val two = layoutOf(*eighths("E4", "F4")).marks.beams().single()
+        val widthOf = { b: PolygonOp -> b.points[2] - b.points[0] }
+        assertTrue(widthOf(beams[0]) > widthOf(two))
+    }
+
+    @Test
+    fun aRestBreaksTheBeamGroup() {
+        val score = Score(
+            title = "Prueba",
+            notes = listOf(note("C5", 0, Ticks.EIGHTH), note("D5", 360, Ticks.EIGHTH)),
+            rests = listOf(Rest(Hand.RIGHT, 240, 120)),
+        )
+        assertEquals(0, ScoreLayout.build(score).marks.beams().size)
+    }
+
+    @Test
+    fun sixteenthsGetASecondBeam() {
+        val ops = layoutOf(*eighths("C5", "D5", "E5", "F5", duration = Ticks.SIXTEENTH)).marks
+        assertEquals(2, ops.beams().size)
+    }
+
+    @Test
+    fun loneSixteenthNextToAnEighthGetsAShortSecondBeam() {
+        val ops = layoutOf(note("C5", 0, Ticks.EIGHTH), note("D5", 240, Ticks.SIXTEENTH)).marks
+        val beams = ops.beams()
+        assertEquals(2, beams.size)
+        val widths = beams.map { it.points[2] - it.points[0] }
+        assertTrue(widths[1] < widths[0])
+    }
+
+    @Test
+    fun allStemsOfAGroupPointTheSameWay() {
+        // Dos notas bajas con una alta: manda la más alejada de la línea central.
+        val ops = layoutOf(note("E4", 0, Ticks.EIGHTH), note("C6", 240, Ticks.EIGHTH)).marks
+        val stems = ops.stems()
+        assertEquals(2, stems.size)
+        val layout = layoutOf(note("E4", 0, Ticks.EIGHTH), note("C6", 240, Ticks.EIGHTH))
+        // C6 está mucho más lejos de la línea central que E4: las dos plicas hacia abajo, a la izquierda de cada cabeza.
+        val heads = layout.marks.heads()
+        assertEquals(heads[0].x, layout.marks.stems()[0].x, 0.001f)
+    }
+
+    @Test
+    fun beamsFollowTheMelodyButWithALimitedSlope() {
+        val rising = layoutOf(*eighths("E4", "G4", "B4", "D5", "F5", "A5", duration = Ticks.SIXTEENTH).take(2).toTypedArray()).marks.beams().first()
+        val slope = (rising.points[3] - rising.points[1]) / (rising.points[2] - rising.points[0])
+        assertTrue(slope <= 0.3f + 1e-4f && slope >= -0.3f - 1e-4f)
+    }
+
+    @Test
+    fun beamedStemsReachTheBeam() {
+        val layout = layoutOf(*eighths("C5", "D5"))
+        val beam = layout.marks.beams().single()
+        val stems = layout.marks.stems()
+        val beamTops = listOf(beam.points[1], beam.points[3])
+        // Plicas hacia abajo: terminan en el borde inferior de la barra.
+        stems.forEachIndexed { i, stem -> assertEquals(beamTops[i] + 0f, stem.y + stem.height - 0.0f, 0.6f) }
+    }
+
+    // --- Silencios ---
+
+    private fun restLayout(duration: Int, hand: Hand = Hand.RIGHT, start: Int = 0) =
+        ScoreLayout.build(Score(title = "Prueba", rests = listOf(Rest(hand, start, duration)))).marks
+
+    @Test
+    fun eachDurationHasItsOwnRest() {
+        assertEquals(1, restLayout(Ticks.WHOLE).glyphs(Smufl.REST_WHOLE).size)
+        assertEquals(1, restLayout(Ticks.HALF).glyphs(Smufl.REST_HALF).size)
+        assertEquals(1, restLayout(Ticks.QUARTER).glyphs(Smufl.REST_QUARTER).size)
+        assertEquals(1, restLayout(Ticks.EIGHTH).glyphs(Smufl.REST_8TH).size)
+        assertEquals(1, restLayout(Ticks.SIXTEENTH).glyphs(Smufl.REST_16TH).size)
+    }
+
+    @Test
+    fun restsSitOnTheRightLineOfTheirStaff() {
+        assertEquals(1f, restLayout(Ticks.WHOLE).glyphs(Smufl.REST_WHOLE).single().y, 0.001f)
+        assertEquals(2f, restLayout(Ticks.HALF).glyphs(Smufl.REST_HALF).single().y, 0.001f)
+        assertEquals(Geometry.BASS_TOP + 2f, restLayout(Ticks.QUARTER, Hand.LEFT).glyphs(Smufl.REST_QUARTER).single().y, 0.001f)
+    }
+
+    @Test
+    fun aWholeMeasureRestIsCenteredInTheMeasureWhateverTheTimeSignature() {
+        val score = Score(
+            title = "Prueba", timeSignatures = listOf(TimeSignatureChange(0, 3, 4)),
+            rests = listOf(Rest(Hand.RIGHT, 0, 1440)),
+        )
+        val layout = ScoreLayout.build(score)
+        val rest = layout.marks.glyphs(Smufl.REST_WHOLE).single()
+        val m = layout.measures[0]
+        assertEquals((m.contentX + m.x1) / 2, rest.x + Smufl.REST_WHOLE_WIDTH / 2, 0.01f)
+    }
+
+    @Test
+    fun dottedRestHasADot() {
+        assertEquals(1, restLayout(720).glyphs(Smufl.AUGMENTATION_DOT).size)
+        assertEquals(1, restLayout(720).glyphs(Smufl.REST_QUARTER).size)
+    }
+
+    // --- Ligaduras ---
+
+    private fun ties(vararg notes: Note) = layoutOf(*notes).marks.filterIsInstance<PolygonOp>().filter { it.points.size > 8 }
+
+    @Test
+    fun tieJoinsTwoEqualNotes() {
+        val tie = ties(note("G4", 0, tied = true), note("G4", 480)).single()
+        val layout = layoutOf(note("G4", 0, tied = true), note("G4", 480))
+        val heads = layout.marks.heads()
+        val xs = tie.points.filterIndexed { i, _ -> i % 2 == 0 }
+        assertTrue(xs.min() > heads[0].x)
+        assertTrue(xs.max() < heads[1].x + 1.18f)
+    }
+
+    @Test
+    fun tieGoesOppositeToTheStem() {
+        // Sol4 tiene la plica hacia arriba: la ligadura va por debajo de la cabeza (y mayor).
+        val below = ties(note("G4", 0, tied = true), note("G4", 480)).single()
+        val ys = below.points.filterIndexed { i, _ -> i % 2 == 1 }
+        assertTrue(ys.min() > 3f - 0.01f)
+        // Do5 tiene la plica hacia abajo: la ligadura va por encima.
+        val above = ties(note("C5", 0, tied = true), note("C5", 480)).single()
+        assertTrue(above.points.filterIndexed { i, _ -> i % 2 == 1 }.max() < 1.5f + 0.01f)
+    }
+
+    @Test
+    fun tieCrossesTheBarline() {
+        val layout = layoutOf(note("C4", 1440, tied = true), note("C4", 1920))
+        val tie = layout.marks.filterIsInstance<PolygonOp>().single { it.points.size > 8 }
+        val barline = layout.measures[0].x1
+        val xs = tie.points.filterIndexed { i, _ -> i % 2 == 0 }
+        assertTrue(xs.min() < barline && xs.max() > barline)
+    }
+
+    @Test
+    fun untiedNotesHaveNoTie() {
+        assertEquals(0, ties(note("G4", 0), note("G4", 480)).size)
+    }
+
+    @Test
+    fun tieOnOneNoteOfAChordOnlyTiesThatNote() {
+        val first = note("C4", 0, tied = true)
+        val second = note("E4", 0)
+        assertEquals(1, ties(first, second, note("C4", 480)).size)
     }
 }

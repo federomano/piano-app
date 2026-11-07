@@ -25,6 +25,7 @@ import com.federomano.pianoapp.score.Score
 import com.federomano.pianoapp.score.layout.DrawOp
 import com.federomano.pianoapp.score.layout.Geometry
 import com.federomano.pianoapp.score.layout.GlyphOp
+import com.federomano.pianoapp.score.layout.PolygonOp
 import com.federomano.pianoapp.score.layout.RectOp
 import com.federomano.pianoapp.score.layout.ScoreLayout
 import com.federomano.pianoapp.score.layout.TextOp
@@ -94,6 +95,17 @@ fun ScoreView(score: Score, modifier: Modifier = Modifier, maxStaffSpaceDp: Floa
                         musicPaint.textSize = 4f * spPx * op.scale
                         native.drawText(String(Character.toChars(op.codepoint)), dx + op.x * spPx, top + op.y * spPx, musicPaint)
                     }
+                    is PolygonOp -> {
+                        musicPaint.alpha = a
+                        val path = android.graphics.Path()
+                        for (i in op.points.indices step 2) {
+                            val px = dx + op.points[i] * spPx
+                            val py = top + op.points[i + 1] * spPx
+                            if (i == 0) path.moveTo(px, py) else path.lineTo(px, py)
+                        }
+                        path.close()
+                        native.drawPath(path, musicPaint)
+                    }
                     is TextOp -> {
                         textPaint.alpha = a
                         textPaint.textSize = op.size * spPx
@@ -117,7 +129,7 @@ fun ScoreView(score: Score, modifier: Modifier = Modifier, maxStaffSpaceDp: Floa
             //    al acercarse a la clave.
             val fadeEnd = layout.signatureLeft
             for (op in layout.marks) {
-                val x = (when (op) { is RectOp -> op.x; is TextOp -> op.x; is GlyphOp -> op.x }) - scrollSp + layout.headerWidth
+                val x = (when (op) { is RectOp -> op.x; is TextOp -> op.x; is GlyphOp -> op.x; is PolygonOp -> op.minX }) - scrollSp + layout.headerWidth
                 if (x < 0f || x > widthPx / spPx) continue
                 val alpha = ((x - fadeEnd) / (layout.headerWidth - fadeEnd)).coerceIn(0f, 1f)
                 paintOp(op, (layout.headerWidth - scrollSp) * spPx, alpha)

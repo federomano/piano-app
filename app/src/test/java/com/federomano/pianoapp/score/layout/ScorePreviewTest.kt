@@ -40,6 +40,16 @@ class ScorePreviewTest {
                     g.font = music.deriveFont(4f * spPx * op.scale)
                     g.drawString(String(Character.toChars(op.codepoint)), dx + op.x * spPx, dy + op.y * spPx)
                 }
+                is PolygonOp -> {
+                    val path = java.awt.geom.Path2D.Float()
+                    for (i in op.points.indices step 2) {
+                        val px = dx + op.points[i] * spPx
+                        val py = dy + op.points[i + 1] * spPx
+                        if (i == 0) path.moveTo(px, py) else path.lineTo(px, py)
+                    }
+                    path.closePath()
+                    g.fill(path)
+                }
                 is TextOp -> {
                     g.font = Font(Font.SANS_SERIF, Font.PLAIN, 1).deriveFont(op.size * spPx)
                     g.drawString(op.text, dx + op.x * spPx, dy + op.y * spPx)
@@ -61,7 +71,7 @@ class ScorePreviewTest {
         draw(layout.fixed, 0f, 1f)
         for (d in layout.headerDraws(scrollSp, widthPx / spPx)) draw(d.ops, d.dx * spPx, d.alpha)
         for (op in layout.marks) {
-            val x = (when (op) { is RectOp -> op.x; is TextOp -> op.x; is GlyphOp -> op.x }) - scrollSp + layout.headerWidth
+            val x = (when (op) { is RectOp -> op.x; is TextOp -> op.x; is GlyphOp -> op.x; is PolygonOp -> op.minX }) - scrollSp + layout.headerWidth
             if (x < 0f || x > widthPx / spPx) continue
             val alpha = ((x - layout.signatureLeft) / (layout.headerWidth - layout.signatureLeft)).coerceIn(0f, 1f)
             draw(listOf(op), (layout.headerWidth - scrollSp) * spPx, alpha)

@@ -26,6 +26,14 @@ data class GlyphOp(val codepoint: Int, val x: Float, val y: Float, val scale: Fl
 /** Texto común (números de compás). [x] es el borde izquierdo, [y] la línea de base, [size] el alto de letra. */
 data class TextOp(val text: String, val x: Float, val y: Float, val size: Float) : DrawOp
 
+/**
+ * Polígono relleno, con puntos [x0, y0, x1, y1, ...]. Se usa para las barras (vigas) inclinadas y las
+ * ligaduras, que no se pueden hacer con rectángulos.
+ */
+data class PolygonOp(val points: List<Float>) : DrawOp {
+    val minX: Float get() = points.filterIndexed { i, _ -> i % 2 == 0 }.min()
+}
+
 /** Códigos de los símbolos de Bravura que usa el dibujo (https://w3c.github.io/smufl/). */
 object Smufl {
     const val BRACE = 0xE000
@@ -60,6 +68,18 @@ object Smufl {
     const val DOUBLE_FLAT = 0xE264
     const val DOUBLE_SHARP_ADVANCE = 1.0f
     const val DOUBLE_FLAT_ADVANCE = 1.652f
+
+    // Silencios. La redonda cuelga de su línea de base; la blanca se apoya en ella; los demás se centran.
+    const val REST_WHOLE = 0xE4E3
+    const val REST_HALF = 0xE4E4
+    const val REST_QUARTER = 0xE4E5
+    const val REST_8TH = 0xE4E6
+    const val REST_16TH = 0xE4E7
+    const val REST_WHOLE_WIDTH = 1.128f
+    const val REST_HALF_WIDTH = 1.128f
+    const val REST_QUARTER_WIDTH = 1.08f
+    const val REST_8TH_WIDTH = 0.988f
+    const val REST_16TH_WIDTH = 1.28f
 
     /** Dígitos de las firmas de compás: centrados verticalmente sobre su línea de base. */
     fun timeDigit(digit: Int): Int = 0xE080 + digit

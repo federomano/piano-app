@@ -178,7 +178,7 @@ class ScoreLayoutTest {
     @Test
     fun noInlineSignaturesWhenNothingChanges() {
         val layout = ScoreLayout.build(scoreOf(measures = 6, fifths = 2))
-        assertTrue(layout.body.none { it is GlyphOp })
+        assertTrue(layout.inlineChanges.isEmpty())
     }
 
     @Test
