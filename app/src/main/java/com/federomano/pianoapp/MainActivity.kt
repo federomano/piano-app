@@ -89,7 +89,7 @@ private fun HomeScreen(version: String) {
             color = InkColor.copy(alpha = 0.5f),
             fontSize = 10.sp,
             modifier = Modifier
-                .align(Alignment.BottomEnd)
+                .align(Alignment.TopEnd)
                 .padding(6.dp),
         )
     }

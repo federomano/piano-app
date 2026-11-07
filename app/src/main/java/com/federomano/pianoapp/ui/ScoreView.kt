@@ -13,6 +13,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.withFrameNanos
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.getValue
@@ -48,8 +49,9 @@ val PlayheadColor = Color(0xFFB3261E)
  * a la izquierda, y la línea de reproducción queda fija cerca del 30% de la pantalla: la partitura se
  * desliza hacia la izquierda y la nota que toca pasa justo por esa línea.
  *
- * Provisorio hasta que haya botones (PIA-14): un toque en la pantalla reproduce o pausa. En pausa se
- * puede arrastrar con el dedo para cambiar la posición.
+ * Un toque en la partitura reproduce o pausa. En pausa se puede arrastrar con el dedo para cambiar la
+ * posición. Abajo, siempre visibles, quedan el botón de reiniciar y la barra de progreso (tocar un
+ * compás salta hasta ahí).
  */
 @Composable
 fun ScoreView(score: Score, modifier: Modifier = Modifier, maxStaffSpaceDp: Float = 17f) {
@@ -59,6 +61,8 @@ fun ScoreView(score: Score, modifier: Modifier = Modifier, maxStaffSpaceDp: Floa
     // NaN = todavía no se movió: se queda en el comienzo de la pieza.
     var scrollSp by remember { mutableFloatStateOf(Float.NaN) }
     var playing by remember { mutableStateOf(false) }
+    // Sube cada vez que la posición cambia por un salto (barra, reiniciar): la reproducción retoma desde ahí.
+    var seek by remember { mutableIntStateOf(0) }
     val tempoMap = remember(score) { TempoMap(score.tempos) }
 
     BoxWithConstraints(modifier = modifier.background(PaperColor)) {
@@ -85,7 +89,7 @@ fun ScoreView(score: Score, modifier: Modifier = Modifier, maxStaffSpaceDp: Floa
 
         // Reproducción: en cada cuadro avanza el tiempo según el tempo y la partitura se desliza para que
         // ese instante quede sobre la línea.
-        LaunchedEffect(playing, layout) {
+        LaunchedEffect(playing, layout, seek) {
             if (!playing) return@LaunchedEffect
             val end = layout.endTick.toFloat()
             val from = if (scrollSp.isNaN()) currentMin else scrollSp
@@ -196,5 +200,19 @@ fun ScoreView(score: Score, modifier: Modifier = Modifier, maxStaffSpaceDp: Floa
                 strokeWidth = 0.14f * spPx,
             )
         }
+
+        PlaybackControls(
+            measureStarts = layout.measures.map { it.measure.startTick },
+            endTick = layout.endTick,
+            currentTick = { layout.tickAtScroll(if (scrollSp.isNaN()) minScroll else scrollSp, playheadSp) },
+            onSeek = { tick ->
+                scrollSp = layout.scrollForTick(tick.toFloat(), playheadSp)
+                seek++
+            },
+            onRestart = {
+                scrollSp = minScroll
+                seek++
+            },
+        )
     }
 }
