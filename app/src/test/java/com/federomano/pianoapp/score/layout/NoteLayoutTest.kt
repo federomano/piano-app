@@ -357,6 +357,15 @@ class NoteLayoutTest {
     }
 
     @Test
+    fun aDottedEighthAndASixteenthRisingKeepTheBeamRising() {
+        // Antes la segunda barra de la semicorchea corría el extremo y la barra bajaba aunque las notas subían.
+        val rising = layoutOf(note("G5", 0, Ticks.dotted(Ticks.EIGHTH)), note("A5", 360, Ticks.SIXTEENTH)).marks.beams().first()
+        assertTrue("la barra tiene que subir (y baja con el número)", rising.points[3] < rising.points[1])
+        val falling = layoutOf(note("A5", 0, Ticks.dotted(Ticks.EIGHTH)), note("G5", 360, Ticks.SIXTEENTH)).marks.beams().first()
+        assertTrue("la barra tiene que bajar", falling.points[3] > falling.points[1])
+    }
+
+    @Test
     fun beamedStemsReachTheBeam() {
         val layout = layoutOf(*eighths("C5", "D5"))
         val beam = layout.marks.beams().single()

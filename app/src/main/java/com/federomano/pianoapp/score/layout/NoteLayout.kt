@@ -111,8 +111,8 @@ object NoteLayout {
         val stemAnchorBottom: Float get() = yOf(lowest) - STEM_ANCHOR
 
         /** Donde terminaría la plica si no hubiera barra. */
-        fun idealTip(): Float {
-            val extra = (beams - 1) * (BEAM_THICKNESS + BEAM_SPACING) + if (group == null && beams > 1) 0.5f else 0f
+        fun idealTip(beamLevels: Int = beams): Float {
+            val extra = (beamLevels - 1) * (BEAM_THICKNESS + BEAM_SPACING) + if (group == null && beams > 1) 0.5f else 0f
             val middle = staffTop(hand) + 2f
             return if (stemDown) max(yOf(lowest) + STEM_LENGTH + extra, middle) else min(yOf(highest) - STEM_LENGTH - extra, middle)
         }
@@ -223,7 +223,10 @@ object NoteLayout {
     private fun layoutBeam(group: BeamGroup) {
         val first = group.plans.first()
         val last = group.plans.last()
-        val tips = group.plans.map { it.idealTip() }
+        // Todas las plicas del grupo usan el mismo margen para las barras (las del grupo con más barras),
+        // así la inclinación depende solo de las notas y no de cuántas barras tiene cada una.
+        val levels = group.plans.maxOf { it.beams }
+        val tips = group.plans.map { it.idealTip(levels) }
         val dx = last.stemX - first.stemX
         val slope = if (dx > 0f) ((tips.last() - tips.first()) / dx).coerceIn(-MAX_BEAM_SLOPE, MAX_BEAM_SLOPE) else 0f
         group.slope = slope
