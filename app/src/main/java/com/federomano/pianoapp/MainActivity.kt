@@ -19,7 +19,12 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.material3.TextButton
+import com.federomano.pianoapp.ui.SoundLab
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -77,6 +82,8 @@ class MainActivity : ComponentActivity() {
 @Composable
 private fun HomeScreen(version: String) {
     val demo = remember { DemoScore.create() }
+    var lab by remember { mutableStateOf(false) }
+    if (lab) { SoundLab(onClose = { lab = false }); return }
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -84,6 +91,9 @@ private fun HomeScreen(version: String) {
             .windowInsetsPadding(WindowInsets.displayCutout.only(WindowInsetsSides.Horizontal)),
     ) {
         ScoreView(score = demo, modifier = Modifier.fillMaxSize())
+        TextButton(onClick = { lab = true }, modifier = Modifier.align(Alignment.TopStart)) {
+            Text("Prueba de sonido", fontSize = 10.sp, color = InkColor.copy(alpha = 0.6f))
+        }
         Text(
             text = "Versión $version",
             color = InkColor.copy(alpha = 0.5f),
