@@ -50,14 +50,11 @@ class PlayheadMappingTest {
     }
 
     @Test
-    fun scrollPutsEveryNoteExactlyOnThePlayheadAtItsTime() {
+    fun scrollPutsTheStartAndTheEndExactlyOnThePlayhead() {
         val playhead = 16f
-        // En el instante en que empieza cada nota o silencio, la nota está justo en la línea.
-        val onsets = layout.measures.flatMap { it.anchors!!.ticks.dropLast(1) }
-        for (tick in onsets) {
-            val scroll = layout.scrollForTick(tick.toFloat(), playhead)
-            assertEquals(playhead, layout.xOfTick(tick) + layout.headerWidth - scroll, 0.002f)
-        }
+        assertEquals(playhead, layout.xOfTick(0) + layout.headerWidth - layout.scrollForTick(0f, playhead), 0.01f)
+        val end = layout.endTick.toFloat()
+        assertEquals(playhead, layout.xOfTick(end) + layout.headerWidth - layout.scrollForTick(end, playhead), 0.01f)
     }
 
     @Test
@@ -66,31 +63,6 @@ class PlayheadMappingTest {
         for (tick in listOf(0f, 500f, 3840f + 240f, 8000f, 15000f)) {
             assertEquals(tick, layout.tickAtScroll(layout.scrollForTick(tick, playhead), playhead), 0.05f)
         }
-    }
-
-    @Test
-    fun theSmoothCurveStaysCloseToTheStraightOneAndChangesSpeedGently() {
-        val playhead = 16f
-        var worstDistance = 0f
-        var smoothJump = 0f
-        var straightJump = 0f
-        var previousSmooth = 0f
-        var previousStraight = 0f
-        var first = true
-        for (tick in 0 until layout.endTick - 10 step 10) {
-            val smooth = layout.scrollForTick(tick + 10f, playhead) - layout.scrollForTick(tick.toFloat(), playhead)
-            val straight = layout.xOfTick(tick + 10f) - layout.xOfTick(tick.toFloat())
-            worstDistance = maxOf(worstDistance, kotlin.math.abs(layout.scrollForTick(tick.toFloat(), playhead) + playhead - layout.headerWidth - layout.xOfTick(tick)))
-            if (!first) {
-                smoothJump = maxOf(smoothJump, kotlin.math.abs(smooth - previousSmooth))
-                straightJump = maxOf(straightJump, kotlin.math.abs(straight - previousStraight))
-            }
-            first = false
-            previousSmooth = smooth
-            previousStraight = straight
-        }
-        assertTrue("se aleja $worstDistance sp de la recta", worstDistance < 2.0f)
-        assertTrue("salto de velocidad $smoothJump contra $straightJump", smoothJump < straightJump * 0.6f)
     }
 
     @Test
@@ -137,5 +109,37 @@ class MeasureBoundaryTest {
     fun theLastMeasureStillEndsAtItsBarline() {
         val last = layout.measures.last()
         assertEquals(last.x1, layout.xOfTick(last.measure.endTick), 0.001f)
+    }
+}
+
+class SmoothPathTest {
+    private val score = DemoScore.create()
+    private val tempo = com.federomano.pianoapp.score.TempoMap(score.tempos)
+
+    private fun peakSpeed(layout: ScoreLayout): Float {
+        var peak = 0f
+        var t = 0
+        while (t < layout.endTick - 30) {
+            val v = (layout.scrollForTick(t + 30f, 16f) - layout.scrollForTick(t.toFloat(), 16f)) / tempo.secondsBetween(t.toFloat(), t + 30f)
+            peak = maxOf(peak, v)
+            t += 30
+        }
+        return peak
+    }
+
+    @Test
+    fun smoothingLowersTheBurstsOfSpeedWhenCrossingASignatureChange() {
+        val exact = ScoreLayout.build(score, smoothingSeconds = 0f)
+        val smooth = ScoreLayout.build(score)
+        assertTrue(peakSpeed(smooth) < peakSpeed(exact) * 0.7f)
+    }
+
+    @Test
+    fun notesStayCloseToThePlayheadAtTheirTime() {
+        val layout = ScoreLayout.build(score)
+        for (tick in layout.measures.flatMap { it.anchors!!.noteTicks }) {
+            val onPlayhead = layout.scrollForTick(tick.toFloat(), 16f) + 16f - layout.headerWidth
+            assertTrue("tick $tick a ${kotlin.math.abs(onPlayhead - layout.xOfTick(tick))} sp", kotlin.math.abs(onPlayhead - layout.xOfTick(tick)) < 3f)
+        }
     }
 }

@@ -3,6 +3,7 @@ package com.federomano.pianoapp.score.layout
 import com.federomano.pianoapp.score.Measure
 import com.federomano.pianoapp.score.Score
 import com.federomano.pianoapp.score.TICKS_PER_QUARTER
+import com.federomano.pianoapp.score.TempoMap
 import com.federomano.pianoapp.score.measures
 import kotlin.math.abs
 import kotlin.math.max
@@ -129,8 +130,8 @@ class ScoreLayout private constructor(
     val signatureLeft: Float,
     val totalWidth: Float,
     private val quarterWidth: Float,
-    /** Curva suave tiempo → posición, solo para mover la vista en la reproducción (ver [Curve]). */
-    private val smooth: Curve,
+    /** Recorrido suave tiempo → posición, solo para mover la vista en la reproducción (ver [SmoothPath]). */
+    private val smooth: SmoothPath,
 ) {
     /** Todo lo que viaja con la partitura (para pruebas): líneas, marcas y cambios en su lugar dentro del compás. */
     val body: List<DrawOp> = staff + marks + inlineChanges
@@ -191,6 +192,9 @@ class ScoreLayout private constructor(
     companion object {
         /** Las líneas siguen hacia la izquierda del comienzo, para cuando la línea de reproducción está en la primera nota. */
         const val STAFF_LEAD = 60f
+
+        /** Ancho (en segundos) de la ventana con que se suaviza el avance de la vista. */
+        const val PLAYHEAD_SMOOTHING_SECONDS = 0.3f
         private const val LEFT_PAD = 0.8f
         private const val MEASURE_LEAD = 2.2f
         private const val SIGNATURE_LEAD = 0.8f
@@ -210,7 +214,11 @@ class ScoreLayout private constructor(
         private val FLATS_TREBLE = floatArrayOf(2f, 0.5f, 2.5f, 1f, 3f, 1.5f, 3.5f)
         private val FLATS_BASS = floatArrayOf(3f, 1.5f, 3.5f, 2f, 4f, 2.5f, 4.5f)
 
-        fun build(score: Score, quarterWidth: Float = Geometry.QUARTER_WIDTH): ScoreLayout {
+        fun build(
+            score: Score,
+            quarterWidth: Float = Geometry.QUARTER_WIDTH,
+            smoothingSeconds: Float = PLAYHEAD_SMOOTHING_SECONDS,
+        ): ScoreLayout {
             val measures = score.measures()
             val marks = mutableListOf<DrawOp>()
             val inline = mutableListOf<DrawOp>()
@@ -294,25 +302,18 @@ class ScoreLayout private constructor(
             fixed += GlyphOp(Smufl.G_CLEF, CLEF_X, Geometry.TREBLE_TOP + 3f)
             fixed += GlyphOp(Smufl.F_CLEF, CLEF_X, Geometry.BASS_TOP + 1f)
 
-            // Puntos por donde pasa el cabezal: cada instante en que empieza algo, y el final de la pieza.
-            val knotTicks = mutableListOf<Float>()
-            val knotXs = mutableListOf<Float>()
-            for (m in timed) {
-                val a = m.anchors ?: continue
-                for (i in 0 until a.ticks.lastIndex) {
-                    knotTicks += a.ticks[i].toFloat()
-                    knotXs += m.contentX + a.offsets[i]
-                }
-            }
-            knotTicks += timed.last().measure.endTick.toFloat()
-            knotXs += timed.last().x1
-            val smooth = Curve(knotTicks, knotXs)
+            val path = SmoothPath.build(
+                endTick = timed.last().measure.endTick.toFloat(),
+                exactX = { tick -> timed[timed.indexOfLast { it.measure.startTick <= tick }.coerceAtLeast(0)].xOfTick(tick) },
+                tempo = TempoMap(score.tempos),
+                windowSeconds = smoothingSeconds,
+            )
 
             val first = measures.first()
             val initial = piece(first.keyFifths, first.timeSignature.numerator, first.timeSignature.denominator).first
             return ScoreLayout(
                 timed, staffLines(-STAFF_LEAD, totalWidth), marks, inline, fixed, changes, initial,
-                headerWidth, SIGNATURE_LEFT, totalWidth, quarterWidth, smooth,
+                headerWidth, SIGNATURE_LEFT, totalWidth, quarterWidth, path,
             )
         }
 

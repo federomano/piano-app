@@ -20,7 +20,7 @@ object Spacing {
     private const val DOTS = 0.9f
 
     /** Puntos de anclaje de un compás: instantes y su distancia (sp) al comienzo del tiempo del compás. */
-    class Anchors(val ticks: List<Int>, val offsets: List<Float>) {
+    class Anchors(val ticks: List<Int>, val offsets: List<Float>, val noteTicks: Set<Int> = emptySet()) {
         /** Posición (relativa al comienzo del tiempo del compás) de un instante; entre dos puntos se interpola. */
         fun offsetOf(tick: Float, perTick: Float): Float {
             if (ticks.isEmpty()) return 0f
@@ -81,6 +81,6 @@ object Spacing {
             }
             offsets += offsets.last() + maxOf(natural, if (right.containsKey(ticks[i - 1]) || toEnd) needed else 0f)
         }
-        return Anchors(ticks, offsets)
+        return Anchors(ticks, offsets, score.notes.filter { inside(it.startTick) }.map { it.startTick }.toSet())
     }
 }
