@@ -40,7 +40,16 @@ data class MeasureLayout(
     val contentX: Float,
     /** Barra de compás de la derecha. */
     val x1: Float,
-)
+    /** Puntos de anclaje del tiempo del compás (ver [Spacing]). */
+    val anchors: Spacing.Anchors? = null,
+    private val perTick: Float = 0f,
+) {
+    /** Posición horizontal de un instante dentro de este compás. */
+    fun xOfTick(tick: Int): Float {
+        val a = anchors ?: return contentX + (tick.coerceAtMost(measure.endTick) - measure.startTick) * perTick
+        return contentX + a.offsetOf(tick.coerceAtMost(measure.endTick), perTick)
+    }
+}
 
 /** Lo que queda fijo a la izquierda en un instante: líneas, llave, claves, armadura y compás vigentes. */
 data class Header(val ops: List<DrawOp>, val width: Float)
@@ -94,13 +103,9 @@ class ScoreLayout private constructor(
     /** Todo lo que viaja con la partitura (para pruebas): líneas, marcas y cambios en su lugar dentro del compás. */
     val body: List<DrawOp> = staff + marks + inlineChanges
 
-    /** Posición horizontal de un instante de la pieza. Es proporcional al tiempo dentro de cada compás. */
-    fun xOfTick(tick: Int): Float {
-        val index = measures.indexOfLast { it.measure.startTick <= tick }.coerceAtLeast(0)
-        val m = measures[index]
-        val clamped = tick.coerceAtMost(m.measure.endTick)
-        return m.contentX + (clamped - m.measure.startTick) * quarterWidth / TICKS_PER_QUARTER
-    }
+    /** Posición horizontal de un instante de la pieza. Es proporcional al tiempo, salvo donde hace falta más lugar. */
+    fun xOfTick(tick: Int): Float =
+        measures[measures.indexOfLast { it.measure.startTick <= tick }.coerceAtLeast(0)].xOfTick(tick)
 
     private fun currentOps(scrollX: Float): List<DrawOp> =
         changes.lastOrNull { it.pinScroll <= scrollX }?.ops ?: initial
@@ -202,7 +207,8 @@ class ScoreLayout private constructor(
                     cursor += MEASURE_LEAD
                 }
                 val contentX = cursor
-                val x1 = contentX + (m.endTick - m.startTick) * perTick
+                val anchors = Spacing.anchors(score, m, perTick, isLast = index == measures.lastIndex)
+                val x1 = contentX + anchors.offsets.last()
 
                 // Número de compás, arriba del pentagrama de la mano derecha.
                 marks += TextOp((index + 1).toString(), x0 + 0.35f, -3.0f, 1.8f)
@@ -216,14 +222,13 @@ class ScoreLayout private constructor(
                     marks += RectOp(x1 - Geometry.THIN_BARLINE / 2, 0f, Geometry.THIN_BARLINE, Geometry.SYSTEM_BOTTOM)
                 }
 
-                laidOut += MeasureLayout(m, x0, contentX, x1)
+                laidOut += MeasureLayout(m, x0, contentX, x1, anchors, perTick)
                 x = x1
             }
 
             val totalWidth = x
             marks += NoteLayout.build(score, laidOut) { tick ->
-                val m = laidOut[laidOut.indexOfLast { it.measure.startTick <= tick }.coerceAtLeast(0)]
-                m.contentX + (tick.coerceAtMost(m.measure.endTick) - m.measure.startTick) * perTick
+                laidOut[laidOut.indexOfLast { it.measure.startTick <= tick }.coerceAtLeast(0)].xOfTick(tick)
             }
             val fixed = mutableListOf<DrawOp>()
             fixed += staffLines(SYSTEM_LEFT, headerWidth)
