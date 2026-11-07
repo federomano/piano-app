@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.Canvas
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.runtime.mutableIntStateOf
@@ -32,6 +33,8 @@ import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalContext
+import com.federomano.pianoapp.audio.NoteTrigger
+import com.federomano.pianoapp.audio.PianoPlayer
 import com.federomano.pianoapp.score.Score
 import com.federomano.pianoapp.score.TempoMap
 import com.federomano.pianoapp.score.layout.DrawOp
@@ -46,6 +49,9 @@ val PaperColor = Color(0xFFF6F3EA)
 val InkColor = Color(0xFF1A1A1A)
 
 val PlayheadColor = Color(0xFFB3261E)
+
+/** Al empezar a reproducir, cuántos ticks hacia atrás se mira para no perder la nota que está justo en la línea. */
+private const val SOUND_START_TOLERANCE_TICKS = 24f
 
 /** En pausa, velocidad mínima (espacios por segundo) con la que soltar el dedo deja a la partitura deslizándose. */
 private const val MIN_FLING_SPEED = 1.5f
@@ -76,6 +82,15 @@ fun ScoreView(score: Score, modifier: Modifier = Modifier, maxStaffSpaceDp: Floa
     // Sube cada vez que la posición cambia por un salto (barra, reiniciar): la reproducción retoma desde ahí.
     var seek by remember { mutableIntStateOf(0) }
     val tempoMap = remember(score) { TempoMap(score.tempos) }
+
+    // Sonido: el piano se carga en segundo plano al abrir la partitura. Las notas suenan cuando pasan por
+    // la línea de reproducción, tal como se ven (no según el reloj), para que ojo y oído coincidan.
+    val player = remember { PianoPlayer(context) }
+    DisposableEffect(player) {
+        player.start()
+        onDispose { player.stop() }
+    }
+    val trigger = remember(score) { NoteTrigger(score.notes) }
 
     BoxWithConstraints(modifier = modifier.background(PaperColor)) {
         val density = LocalDensity.current.density
@@ -130,18 +145,29 @@ fun ScoreView(score: Score, modifier: Modifier = Modifier, maxStaffSpaceDp: Floa
             val from = if (scrollSp.isNaN()) currentMin else scrollSp
             var tick = layout.tickAtScroll(from, currentPlayhead).coerceAtLeast(0f)
             if (tick >= end - 1f) tick = 0f
+            // La posición que se ve bajo la línea (la del dibujo exacto, sin el suavizado del movimiento).
+            fun seen(scroll: Float) = layout.tickAtX(scroll + currentPlayhead - layout.headerWidth)
+            // Un poco antes, para no perder la nota que justo está en la línea al retomar o saltar.
+            trigger.reset(seen(layout.scrollForTick(tick, currentPlayhead)) - SOUND_START_TOLERANCE_TICKS)
             var last = withFrameNanos { it }
-            while (true) {
-                val now = withFrameNanos { it }
-                val seconds = ((now - last) / 1_000_000_000f).coerceAtMost(0.1f)
-                last = now
-                tick = tempoMap.advance(tick, seconds)
-                if (tick >= end) {
-                    scrollSp = layout.scrollForTick(end, currentPlayhead)
-                    playing = false
-                    break
+            try {
+                while (true) {
+                    val now = withFrameNanos { it }
+                    val seconds = ((now - last) / 1_000_000_000f).coerceAtMost(0.1f)
+                    last = now
+                    tick = tempoMap.advance(tick, seconds)
+                    if (tick >= end) {
+                        scrollSp = layout.scrollForTick(end, currentPlayhead)
+                        trigger.advance(Float.MAX_VALUE, { player.noteOn(it.pitch.midi) }, player::noteOff)
+                        playing = false
+                        break
+                    }
+                    scrollSp = layout.scrollForTick(tick, currentPlayhead)
+                    trigger.advance(seen(scrollSp), { player.noteOn(it.pitch.midi) }, player::noteOff)
                 }
-                scrollSp = layout.scrollForTick(tick, currentPlayhead)
+            } finally {
+                // Pausa, salto o arrastre: lo que suena se apaga suavemente.
+                trigger.releaseAll(player::noteOff)
             }
         }
 

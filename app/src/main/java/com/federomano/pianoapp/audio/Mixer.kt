@@ -19,6 +19,7 @@ class Mixer(private val sampleRate: Int = PianoMapping.SAMPLE_RATE, private val 
     private sealed interface Command
     private class On(val voice: Voice) : Command
     private class Off(val id: Int) : Command
+    private object AllOff : Command
 
     private val commands = ConcurrentLinkedQueue<Command>()
     private val voices = ArrayList<Voice>()
@@ -38,6 +39,9 @@ class Mixer(private val sampleRate: Int = PianoMapping.SAMPLE_RATE, private val 
 
     fun noteOff(id: Int) { commands.add(Off(id)) }
 
+    /** Suelta todas las notas que suenan (con el apagado suave de siempre). */
+    fun allOff() { commands.add(AllOff) }
+
     /** Calcula [frames] cuadros de audio mono en [out] (float, -1..1). */
     fun render(out: FloatArray, frames: Int) {
         while (true) {
@@ -47,6 +51,7 @@ class Mixer(private val sampleRate: Int = PianoMapping.SAMPLE_RATE, private val 
                     voices.add(c.voice)
                 }
                 is Off -> voices.firstOrNull { it.id == c.id }?.releasing = true
+                AllOff -> voices.forEach { it.releasing = true }
             }
         }
         out.fill(0f, 0, frames)

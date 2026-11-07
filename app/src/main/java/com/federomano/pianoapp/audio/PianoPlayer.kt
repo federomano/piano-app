@@ -82,6 +82,8 @@ class PianoPlayer(private val context: Context) {
 
     fun noteOff(id: Int) { if (id >= 0) mixer.noteOff(id) }
 
+    fun allOff() = mixer.allOff()
+
     private fun load() {
         for (note in PianoMapping.sampleNotes) for (loud in listOf(false, true)) {
             val name = PianoMapping.Pick(note, loud, 1f, 1f).fileName
