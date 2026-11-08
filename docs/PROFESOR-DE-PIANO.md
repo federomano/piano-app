@@ -1,25 +1,20 @@
-# Proyecto de Claude «Profesor de piano»
+# Profesor de piano dentro del Proyecto «Fede musica»
 
 Instrucciones y archivos para armar el Proyecto en claude.ai (PIA-42). Si hay que recrearlo, todo sale de acá.
 
 ## Cómo se arma
 
-1. En claude.ai: **Proyectos → Nuevo proyecto**, nombre «Profesor de piano».
-2. En **Instrucciones**, pegar el texto de la sección siguiente.
-3. En **Archivos del proyecto**, subir estos 7 archivos (están en `profesor-de-piano.zip`, o en el repo):
-   - `docs/MODELO-PARTITURA.md`
-   - `docs/CONTRATO-ARCHIVOS.md`
-   - `tools/validar_partitura.py`
-   - `docs/ejemplos/escala-do-mayor.json`
-   - `docs/ejemplos/himno-a-la-alegria.json`
-   - `docs/ejemplos/ejercicio-todo-lo-que-dibuja.json`
-   - `docs/ejemplos/partitura-ejemplo.json`
-4. Tener activada la **ejecución de código / creación de archivos** (Configuración → Capacidades), para que Claude corra el validador y te entregue el `.json` como archivo.
+Decisión (8 nov 2026): no se crea un Proyecto aparte. Se usa el Proyecto **«Fede musica»**, que ya existe y es más amplio (la app, clases de piano y, más adelante, producción). Cada tema va en su propia conversación dentro del Proyecto.
+
+1. Los 7 archivos ya están cargados en el Proyecto, en la carpeta `piano/` (modelo, contrato, validador y 4 ejemplos). Si cambian en el repo, se vuelven a subir.
+2. En **Instrucciones del Proyecto** (Configuración del Proyecto → Instrucciones), pegar el texto de la sección siguiente.
+3. Tener activada la **ejecución de código / creación de archivos** (Configuración → Capacidades), para que Claude corra el validador y entregue el `.json` como archivo.
+4. Para dar clases: abrir una conversación nueva dentro de «Fede musica».
 
 ## Instrucciones para pegar
 
 ```
-Sos mi profesor de piano. Me llamo Fede, hablame en español rioplatense (vos), simple y directo, sin vueltas ni introducciones largas. No soy programador: nada de jerga técnica de código.
+Este Proyecto es para todo lo de música: clases de piano, la app de piano que armo y, más adelante, producción. Cuando te pida clases, lecciones, partituras o explicaciones de música, sos mi profesor de piano (lo que sigue). Me llamo Fede, hablame en español rioplatense (vos), simple y directo, sin vueltas ni introducciones largas. No soy programador: nada de jerga técnica de código.
 
 QUIÉN SOY
 - Toqué piano de chico (desde los 6), después batería (desde los 15) y consola/DJ (desde los 25). Tengo muy buen oído y sentido del ritmo.
@@ -49,7 +44,7 @@ Descargo el archivo del chat y lo abro con mi app (Compartir o Abrir con → Pia
 
 ## Pruebas (criterios de PIA-42)
 
-Se prueban en el Proyecto ya creado, con tres pedidos reales:
+Se prueban en una conversación nueva del Proyecto, con tres pedidos reales:
 
 1. «Armame la lección 1» → entrega `.json` que pasa el validador y se abre en la app.
 2. «Simplificá esta canción» (con una canción real) → explica qué simplificó y entrega `.json` válido.
