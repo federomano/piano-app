@@ -72,11 +72,23 @@ Dinámicas (p, f, crescendo), articulaciones (staccato, acentos), pedal, ornamen
 6. ¿Están `title`, `level` y `goal`?
 7. ¿Se avisó qué se simplificó o no se pudo representar?
 
-Cuando esté el validador (PIA-45), Claude lo corre antes de entregar. La app ya sabe detectar varios errores (`validate()` devuelve mensajes en español) y los va a mostrar cuando pueda abrir archivos (PIA-28), pero **todavía no avisa si falta un silencio o si un compás no suma**: eso se revisa a mano con la lista de arriba.
+## El validador
+
+Antes de entregar un archivo, Claude corre el validador (necesita solo Python 3):
+
+```
+python3 tools/validar_partitura.py archivo.json
+```
+
+Revisa las reglas 2 a 10: duraciones permitidas, que cada mano llene cada compás, barras de compás, ligaduras, voces superpuestas, rango del piano, claves que no existen, tempo, armadura y datos de la partitura. Si encuentra algo, dice qué compás y cómo arreglarlo. Hay que corregir hasta que diga `✓ cumple el contrato`.
+
+Qué **no** puede revisar: que la ortografía de las alturas sea la correcta para la tonalidad (`F#4` y no `Gb4` en Re mayor), que la música sea fiel al original, ni que la dificultad sea la que corresponde. Eso sigue siendo responsabilidad de quien arma el archivo.
+
+La app también detecta varios errores al abrir un archivo (`validate()` devuelve mensajes en español), pero no avisa si falta un silencio o si un compás no suma: eso lo cubre el validador.
 
 ## Texto para pegar en las instrucciones del Proyecto "Profesor de piano"
 
-> Cuando te pida una partitura o un ejercicio, entregame un archivo `.json` en el formato de la app de piano: el modelo está en MODELO-PARTITURA.md y las reglas en CONTRATO-ARCHIVOS.md. Los puntos que más importan: mano derecha = clave de sol (`"right"`), mano izquierda = clave de fa (`"left"`); 480 ticks por negra; solo redonda, blanca, negra, corchea y semicorchea (con hasta dos puntillos), sin tresillos; cada mano llena cada compás completo con notas y silencios; ninguna nota ni silencio cruza una barra de compás (se parte y se liga con `tiedToNext`); sin voces superpuestas en una mano; sin anacrusa; repeticiones desplegadas; alturas escritas como suenan (`F#4`, `Bb3`, `F4` si es natural) dentro de `A0`–`C8`; tempo en negras por minuto; con `title`, `level` y `goal`. Antes de entregar, revisá que cada compás de cada mano sume lo que corresponde, y decime qué simplificaste o no pudiste representar. Usá como modelo los archivos de `docs/ejemplos`.
+> Cuando te pida una partitura o un ejercicio, entregame un archivo `.json` en el formato de la app de piano: el modelo está en MODELO-PARTITURA.md y las reglas en CONTRATO-ARCHIVOS.md. Los puntos que más importan: mano derecha = clave de sol (`"right"`), mano izquierda = clave de fa (`"left"`); 480 ticks por negra; solo redonda, blanca, negra, corchea y semicorchea (con hasta dos puntillos), sin tresillos; cada mano llena cada compás completo con notas y silencios; ninguna nota ni silencio cruza una barra de compás (se parte y se liga con `tiedToNext`); sin voces superpuestas en una mano; sin anacrusa; repeticiones desplegadas; alturas escritas como suenan (`F#4`, `Bb3`, `F4` si es natural) dentro de `A0`–`C8`; tempo en negras por minuto; con `title`, `level` y `goal`. Antes de entregar, corré `python3 tools/validar_partitura.py archivo.json` hasta que diga que cumple el contrato, y decime qué simplificaste o no pudiste representar. Usá como modelo los archivos de `docs/ejemplos`.
 
 ## Ejemplos de referencia
 
