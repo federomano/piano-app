@@ -268,8 +268,8 @@ class ScoreLayout private constructor(
                 } else {
                     cursor += MEASURE_LEAD
                 }
-                val contentX = cursor
                 val anchors = Spacing.anchors(score, m, perTick, isLast = index == measures.lastIndex)
+                val contentX = cursor + anchors.leadExtra
                 val x1 = contentX + anchors.offsets.last()
 
                 // Número de compás, arriba del pentagrama de la mano derecha.

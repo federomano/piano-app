@@ -39,6 +39,13 @@ object NoteLayout {
     private const val ACCIDENTAL_MARGIN = 0.2f
     private const val ACCIDENTAL_COLUMN_GAP = 0.15f
 
+    // Notas de adorno: chiquitas, con plica hacia arriba, banderita y una rayita cruzada.
+    private const val GRACE_SCALE = 0.62f
+    private const val GRACE_GAP = 0.9f
+    private const val GRACE_STEM_LENGTH = 2.4f
+    private const val GRACE_STEM_THICKNESS = 0.1f
+    private const val GRACE_SLASH_THICKNESS = 0.12f
+
     /** Posición diatónica de la línea inferior de cada pentagrama: Mi4 en clave de sol, Sol2 en clave de fa. */
     private const val TREBLE_BOTTOM = 4 * 7 + 2
     private const val BASS_BOTTOM = 2 * 7 + 4
@@ -173,7 +180,7 @@ object NoteLayout {
 
         // Plicas: con varias voces en una mano, la voz 1 va arriba y las otras abajo.
         for (hand in Hand.entries) {
-            if (score.notes.none { it.hand == hand && it.voice > 1 }) continue
+            if (score.notes.none { it.hand == hand && it.voice > 1 && !it.grace }) continue
             plans.filter { it.hand == hand }.forEach { it.forcedStemDown = it.voice != 1; it.stemDown = it.voice != 1 }
         }
 
@@ -217,6 +224,8 @@ object NoteLayout {
         // 3) Dibujo de acordes, en orden, para llevar la cuenta de las alteraciones de cada compás.
         var stateMeasure = -1
         val state = mutableMapOf<Hand, MutableMap<Pair<Step, Int>, Int>>()
+        // Cada adorno se dibuja a la izquierda de la nota principal de su mano en ese tick (la de la voz más baja).
+        val graceOwner = plans.groupBy { it.hand to it.chord.startTick }.mapValues { (_, group) -> group.minBy { it.voice } }
         for (plan in plans) {
             if (plan.measureIndex != stateMeasure) {
                 stateMeasure = plan.measureIndex
@@ -227,7 +236,18 @@ object NoteLayout {
                 note.startTick == plan.measure.startTick &&
                     score.notes.any { it.hand == note.hand && it.pitch.midi == note.pitch.midi && it.endTick == note.startTick && it.tiedToNext }
             }.toSet()
-            drawChord(ops, plan, plan.measure.keyFifths, handState, tiedFromBefore)
+            val ownGraces = if (graceOwner[plan.hand to plan.chord.startTick] === plan) {
+                score.notes.filter { it.grace && it.hand == plan.hand && it.startTick == plan.chord.startTick }.sortedBy { it.pitch.midi }
+            } else emptyList()
+            // La alteración de un adorno vale para el resto del compás, igual que la de cualquier nota.
+            val graceAccidentals = ownGraces.map { grace ->
+                val key = grace.pitch.step to grace.pitch.octave
+                val current = handState[key] ?: keyAlter(plan.measure.keyFifths, grace.pitch.step)
+                handState[key] = grace.pitch.alter
+                grace to (grace.pitch.alter != current)
+            }
+            val leftMost = drawChord(ops, plan, plan.measure.keyFifths, handState, tiedFromBefore)
+            if (graceAccidentals.isNotEmpty()) drawGrace(ops, plan.hand, graceAccidentals, leftMost)
         }
         for (group in plans.mapNotNull { it.group }.distinct()) drawBeam(ops, group)
 
@@ -239,7 +259,7 @@ object NoteLayout {
             val index = measureIndexAt(rest.startTick)
             // Con varias voces en la mano durante ese compás, el silencio de la voz 1 sube y el de las demás baja.
             val m = measures[index].measure
-            val manyVoices = score.notes.any { it.hand == rest.hand && it.voice > 1 && it.startTick < m.endTick && it.endTick > m.startTick } ||
+            val manyVoices = score.notes.any { it.hand == rest.hand && it.voice > 1 && !it.grace && it.startTick < m.endTick && it.endTick > m.startTick } ||
                 score.rests.any { it.hand == rest.hand && it.voice > 1 && it.startTick < m.endTick && it.endTick > m.startTick }
             val yShift = if (!manyVoices) 0f else if (rest.voice == 1) -REST_VOICE_SHIFT else REST_VOICE_SHIFT
             drawRest(ops, rest.hand, rest.startTick, rest.durationTicks, rest.tuplet, measures[index], xOfTick(rest.startTick), yShift, manyVoices)
@@ -429,7 +449,7 @@ object NoteLayout {
         fifths: Int,
         handState: MutableMap<Pair<Step, Int>, Int>,
         tiedFromBefore: Set<Note>,
-    ) {
+    ): Float {
         val hand = plan.hand
         val figure = plan.figure
         val headCode = when (figure.base) {
@@ -440,6 +460,8 @@ object NoteLayout {
         val heads = plan.heads
         val leftEdge = plan.leftEdge
         val rightEdge = plan.rightEdge
+        // Lo más a la izquierda que llega lo dibujado (cabezas, líneas adicionales y alteraciones): ahí termina el lugar del adorno.
+        var leftMost = leftEdge
 
         // Líneas adicionales (una sola vez por línea, a lo ancho de todo el acorde).
         val ledgers = sortedSetOf<Int>()
@@ -448,6 +470,7 @@ object NoteLayout {
             if (p <= -2) for (q in p..-2) if (q % 2 == 0) ledgers += q
             if (p >= 10) for (q in 10..p) if (q % 2 == 0) ledgers += q
         }
+        if (ledgers.isNotEmpty()) leftMost = minOf(leftMost, leftEdge - LEDGER_OVERHANG)
         for (q in ledgers) {
             ops += RectOp(leftEdge - LEDGER_OVERHANG, plan.yOf(q) - LEDGER_THICKNESS / 2, rightEdge - leftEdge + 2 * LEDGER_OVERHANG, LEDGER_THICKNESS)
         }
@@ -493,7 +516,9 @@ object NoteLayout {
         for ((_, alter, column) in placed) columnWidth[column] = max(columnWidth[column], accidentalAdvance(alter).toDouble())
         for ((head, alter, column) in placed) {
             val offset = (0..column).sumOf { columnWidth[it] } + column * ACCIDENTAL_COLUMN_GAP
-            ops += GlyphOp(accidentalCode(alter), leftEdge - ACCIDENTAL_MARGIN - offset.toFloat(), plan.yOf(head.position))
+            val accidentalX = leftEdge - ACCIDENTAL_MARGIN - offset.toFloat()
+            leftMost = minOf(leftMost, accidentalX)
+            ops += GlyphOp(accidentalCode(alter), accidentalX, plan.yOf(head.position))
         }
 
         // Puntillos: a la derecha de todas las cabezas, en el espacio (si la nota está en una línea, el de arriba).
@@ -507,6 +532,46 @@ object NoteLayout {
                 }
             }
         }
+        return leftMost
+    }
+
+    /**
+     * Adorno (acciaccatura): una o más notas chiquitas, pegadas a la izquierda de [leftMost], con plica hacia arriba, banderita y una
+     * rayita en diagonal. [graces] trae cada nota y si lleva alteración.
+     */
+    private fun drawGrace(ops: MutableList<DrawOp>, hand: Hand, graces: List<Pair<Note, Boolean>>, leftMost: Float) {
+        val headWidth = Smufl.NOTEHEAD_WIDTH * GRACE_SCALE
+        val headX = leftMost - GRACE_GAP - headWidth
+        val positions = graces.map { staffPosition(it.first.pitch, hand) }
+        fun yOf(position: Int) = NoteLayout.yOf(position, hand)
+
+        for ((note, needsAccidental) in graces) {
+            if (!needsAccidental) continue
+            val alter = note.pitch.alter
+            val x = headX - accidentalAdvance(alter) * GRACE_SCALE - ACCIDENTAL_MARGIN * GRACE_SCALE
+            ops += GlyphOp(accidentalCode(alter), x, yOf(staffPosition(note.pitch, hand)), GRACE_SCALE)
+        }
+        val ledgers = sortedSetOf<Int>()
+        for (p in positions) {
+            if (p <= -2) for (q in p..-2) if (q % 2 == 0) ledgers += q
+            if (p >= 10) for (q in 10..p) if (q % 2 == 0) ledgers += q
+        }
+        for (q in ledgers) {
+            ops += RectOp(headX - 0.25f, yOf(q) - LEDGER_THICKNESS / 2, headWidth + 0.5f, LEDGER_THICKNESS)
+        }
+        for (p in positions) ops += GlyphOp(Smufl.NOTEHEAD_BLACK, headX, yOf(p), GRACE_SCALE)
+
+        val stemX = headX + headWidth - GRACE_STEM_THICKNESS
+        val bottom = yOf(positions.min()) - STEM_ANCHOR * GRACE_SCALE
+        val tip = yOf(positions.max()) - GRACE_STEM_LENGTH
+        ops += RectOp(stemX, tip, GRACE_STEM_THICKNESS, bottom - tip)
+        ops += GlyphOp(Smufl.FLAG_8TH_UP, stemX, tip, GRACE_SCALE)
+        // Rayita en diagonal que cruza la plica (de abajo a la izquierda hacia arriba a la derecha).
+        val x1 = stemX - 0.5f
+        val y1 = tip + 1.3f
+        val x2 = stemX + 0.9f
+        val y2 = tip + 0.5f
+        ops += PolygonOp(listOf(x1, y1, x2, y2, x2, y2 + GRACE_SLASH_THICKNESS, x1, y1 + GRACE_SLASH_THICKNESS))
     }
 
     // --- Ligaduras de prolongación ---

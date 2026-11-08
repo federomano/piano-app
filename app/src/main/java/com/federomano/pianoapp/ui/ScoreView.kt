@@ -36,6 +36,7 @@ import androidx.compose.ui.platform.LocalContext
 import com.federomano.pianoapp.audio.NoteTrigger
 import com.federomano.pianoapp.audio.PianoPlayer
 import com.federomano.pianoapp.score.Score
+import com.federomano.pianoapp.score.playedNotes
 import com.federomano.pianoapp.score.Speed
 import com.federomano.pianoapp.score.TempoMap
 import com.federomano.pianoapp.score.layout.DrawOp
@@ -101,7 +102,7 @@ fun ScoreView(score: Score, modifier: Modifier = Modifier, maxStaffSpaceDp: Floa
         player.start()
         onDispose { player.stop() }
     }
-    val trigger = remember(score) { NoteTrigger(score.notes) }
+    val trigger = remember(score) { NoteTrigger(score.playedNotes()) }
 
     BoxWithConstraints(modifier = modifier.background(PaperColor)) {
         val density = LocalDensity.current.density

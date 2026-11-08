@@ -21,6 +21,7 @@ class ReferenceFilesTest {
         "ejercicio-tresillos.json" to "tresillos",
         "ejercicio-dos-voces.json" to "voces",
         "ejercicio-anacrusa.json" to "anacrusa",
+        "ejercicio-adornos.json" to "adornos",
     )
 
     @Test
@@ -82,7 +83,7 @@ class ReferenceFilesTest {
             block("keySignatures", score.keySignatures) { "{ \"startTick\": ${it.startTick}, \"fifths\": ${it.fifths} }" },
             block("tempos", score.tempos) { "{ \"startTick\": ${it.startTick}, \"bpm\": ${it.bpm} }" },
             block("notes", score.notes.sortedWith(compareBy({ it.hand }, { it.voice }, { it.startTick }, { it.pitch.midi })), { it.hand to it.voice }) {
-                val extra = (if (it.tiedToNext) ", \"tiedToNext\": true" else "") + (it.finger?.let { f -> ", \"finger\": $f" } ?: "") + (it.tuplet?.let { t -> ", \"tuplet\": \"$t\"" } ?: "") + (if (it.voice != 1) ", \"voice\": ${it.voice}" else "")
+                val extra = (if (it.tiedToNext) ", \"tiedToNext\": true" else "") + (it.finger?.let { f -> ", \"finger\": $f" } ?: "") + (it.tuplet?.let { t -> ", \"tuplet\": \"$t\"" } ?: "") + (if (it.voice != 1) ", \"voice\": ${it.voice}" else "") + (if (it.grace) ", \"grace\": true" else "")
                 "{ \"hand\": \"${if (it.hand == Hand.RIGHT) "right" else "left"}\", \"pitch\": \"${it.pitch}\", \"startTick\": ${it.startTick}, \"durationTicks\": ${it.durationTicks}$extra }"
             },
             block("rests", score.rests.sortedWith(compareBy({ it.hand }, { it.voice }, { it.startTick })), { it.hand to it.voice }) {

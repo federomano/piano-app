@@ -55,13 +55,17 @@ fun Score.measures(): List<Measure> {
  * Un acorde son notas de la misma mano y voz que empiezan juntas y duran lo mismo.
  */
 fun Score.chords(hand: Hand? = null): List<Chord> =
-    notes.filter { hand == null || it.hand == hand }
+    notes.filter { !it.grace && (hand == null || it.hand == hand) }
         .groupBy { listOf(it.hand, it.voice, it.startTick, it.durationTicks) }
         .map { (_, group) ->
             val first = group.first()
             Chord(first.hand, first.startTick, first.durationTicks, group.sortedBy { it.pitch.midi }, first.tuplet, first.voice)
         }
         .sortedWith(compareBy({ it.startTick }, { it.hand }, { it.voice }))
+
+/** Las notas como suenan: un adorno se toca justo antes de su tiempo, con su duración corta. Es lo que lee el sonido. */
+fun Score.playedNotes(): List<Note> =
+    notes.map { if (it.grace) it.copy(startTick = it.soundStartTick, durationTicks = it.soundEndTick - it.soundStartTick, grace = false) else it }
 
 /** Rango del piano: de La0 (MIDI 21) a Do8 (MIDI 108). */
 val PIANO_RANGE = 21..108
@@ -72,6 +76,9 @@ val PIANO_RANGE = 21..108
  */
 fun Score.validate(): List<String> {
     val errors = mutableListOf<String>()
+    val graceNotes = notes.filter { it.grace }
+    // Las notas de adorno no llenan el compás ni se pisan con nada: se revisan aparte, más abajo.
+    val notes = notes.filter { !it.grace }
 
     fun checkOrder(name: String, ticks: List<Int>) {
         if (ticks.firstOrNull() != 0) errors += "$name: el primero tiene que estar en el tick 0."
@@ -116,6 +123,18 @@ fun Score.validate(): List<String> {
         ) {
             errors += "${describe(note)} está ligada, pero no hay una nota igual que empiece justo después."
         }
+    }
+
+    for (grace in graceNotes) {
+        val where = "El adorno ${grace.pitch} (${grace.hand.label}, tick ${grace.startTick})"
+        if (grace.pitch.midi !in PIANO_RANGE) errors += "$where está fuera del rango del piano (de A0 a C8)."
+        if (notes.none { it.hand == grace.hand && it.startTick == grace.startTick }) {
+            errors += "$where no tiene una nota principal de la misma mano que empiece en ese tick: " +
+                "el adorno va en el mismo tick que la nota a la que lleva."
+        }
+    }
+    graceNotes.groupBy { Triple(it.hand, it.pitch.midi, it.startTick) }.filterValues { it.size > 1 }.keys.forEach { (hand, _, tick) ->
+        errors += "Hay dos adornos iguales de la ${hand.label} en el tick $tick."
     }
 
     for (rest in rests) {

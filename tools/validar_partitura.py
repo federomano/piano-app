@@ -18,6 +18,7 @@ HANDS = ("right", "left")
 HAND_LABEL = {"right": "mano derecha", "left": "mano izquierda"}
 PIANO_MIDI = range(21, 109)  # A0..C8
 MAX_VOICES = 4
+GRACE_MAX = TICKS_PER_QUARTER // 4  # lo más largo que puede ser un adorno: una semicorchea
 
 # Duraciones permitidas: base * (1, 1.5, 1.75) con hasta dos puntillos.
 BASES = {"redonda": 1920, "blanca": 960, "negra": 480, "corchea": 240, "semicorchea": 120}
@@ -30,7 +31,7 @@ for _name, _base in BASES.items():
 
 SCORE_KEYS = {"formatVersion", "title", "composer", "level", "goal",
               "timeSignatures", "keySignatures", "tempos", "pickupTicks", "notes", "rests"}
-NOTE_KEYS = {"hand", "pitch", "startTick", "durationTicks", "tiedToNext", "finger", "tuplet", "voice"}
+NOTE_KEYS = {"hand", "pitch", "startTick", "durationTicks", "tiedToNext", "finger", "tuplet", "voice", "grace"}
 REST_KEYS = {"hand", "startTick", "durationTicks", "tuplet", "voice"}
 TS_KEYS = {"startTick", "numerator", "denominator"}
 KS_KEYS = {"startTick", "fifths"}
@@ -183,7 +184,7 @@ def validate(data):
     raw_rests = load_list(data, "rests", REST_KEYS, errors)
     notes, rests = [], []
 
-    def basic(item, where, kind):
+    def basic(item, where, kind, grace=False):
         ok = True
         if item.get("hand") not in HANDS:
             errors.append(f"{where}: \"hand\" tiene que ser \"right\" o \"left\" (es {item.get('hand')!r}).")
@@ -205,6 +206,16 @@ def validate(data):
             errors.append(f"{where}: \"voice\" tiene que ser un entero de 1 a {MAX_VOICES} (es {voice!r}).")
             return False
         item["_voice"] = voice
+        if grace:
+            # Un adorno dura "un instante" (hasta una semicorchea) y suena antes de su tick; no es una figura del compás.
+            if item.get("tuplet") is not None:
+                errors.append(f"{where}: un adorno (\"grace\": true) no puede llevar \"tuplet\".")
+                return False
+            if item["durationTicks"] > GRACE_MAX:
+                errors.append(f"{where}: un adorno dura como mucho {GRACE_MAX} ticks (es {item['durationTicks']}); lo normal es 60.")
+                return False
+            item["_tuplet"] = None
+            return True
         tuplet = None
         if item.get("tuplet") is not None:
             tuplet = parse_tuplet(item["tuplet"])
@@ -226,16 +237,21 @@ def validate(data):
                               "tendría que ser redonda, blanca, negra, corchea o semicorchea (con hasta dos puntillos).")
         return True
 
+    graces = []
     for i, n in enumerate(raw_notes, 1):
         where = f"Nota #{i}"
+        grace = n.get("grace", False)
+        if not isinstance(grace, bool):
+            errors.append(f"{where}: \"grace\" tiene que ser true o false.")
+            grace = False
         pitch = parse_pitch(n.get("pitch"))
         if pitch is None:
             errors.append(f"{where}: altura inválida {n.get('pitch')!r}. Se escribe como C4, F#4, Bb3 "
                           "(letra A-G, alteración opcional y octava).")
-            basic(n, where, "nota")
+            basic(n, where, "nota", grace)
             continue
         where = f"Nota {n['pitch']} #{i}"
-        if not basic(n, where, "nota"):
+        if not basic(n, where, "nota", grace):
             continue
         if pitch not in PIANO_MIDI:
             errors.append(f"{where}: fuera del rango del piano (de A0 a C8). Revisá la octava: el Do central es C4.")
@@ -246,6 +262,11 @@ def validate(data):
         finger = n.get("finger")
         if finger is not None and (not is_int(finger) or not 1 <= finger <= 5):
             errors.append(f"{where}: \"finger\" tiene que ser un entero de 1 (pulgar) a 5 (meñique).")
+        if grace:
+            if tied:
+                errors.append(f"{where}: un adorno (\"grace\": true) no puede estar ligado.")
+            graces.append({**n, "midi": pitch, "i": i})
+            continue
         notes.append({**n, "midi": pitch, "tied": tied, "i": i})
     for i, r in enumerate(raw_rests, 1):
         if basic(r, f"Silencio #{i}", "silencio"):
@@ -253,6 +274,17 @@ def validate(data):
 
     if not notes:
         errors.append("La partitura no tiene notas.")
+
+    # Adornos: cada uno lleva a una nota de la misma mano que empieza en su mismo tick; no llenan el compás.
+    seen_graces = set()
+    for g in graces:
+        if not any(n["hand"] == g["hand"] and n["startTick"] == g["startTick"] for n in notes):
+            errors.append(f"El adorno {g['pitch']} ({HAND_LABEL[g['hand']]}, tick {g['startTick']}) no tiene una nota principal de la "
+                          "misma mano que empiece en ese tick: el adorno va en el mismo tick que la nota a la que lleva.")
+        key = (g["hand"], g["midi"], g["startTick"])
+        if key in seen_graces:
+            errors.append(f"Hay dos adornos {g['pitch']} iguales de la {HAND_LABEL[g['hand']]} en el tick {g['startTick']}.")
+        seen_graces.add(key)
 
     fingered = [n for n in notes if n.get("finger") is not None]
     if fingered and len(fingered) != len(notes):

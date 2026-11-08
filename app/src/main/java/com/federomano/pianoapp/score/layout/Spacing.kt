@@ -19,8 +19,18 @@ object Spacing {
     private const val ACCIDENTAL = 1.3f
     private const val DOTS = 0.9f
 
+    /** Lugar a la izquierda de una nota para su adorno chiquito (cabeza, plica y un respiro), y un poco más si lleva alteración. */
+    private const val GRACE = 1.9f
+    private const val GRACE_ACCIDENTAL = 0.8f
+
     /** Puntos de anclaje de un compás: instantes y su distancia (sp) al comienzo del tiempo del compás. */
-    class Anchors(val ticks: List<Int>, val offsets: List<Float>, val noteTicks: Set<Int> = emptySet()) {
+    class Anchors(
+        val ticks: List<Int>,
+        val offsets: List<Float>,
+        val noteTicks: Set<Int> = emptySet(),
+        /** Lugar extra que hay que dejar antes de la primera nota del compás (para el adorno de esa nota). */
+        val leadExtra: Float = 0f,
+    ) {
         /** Posición (relativa al comienzo del tiempo del compás) de un instante; entre dos puntos se interpola. */
         fun offsetOf(tick: Float, perTick: Float): Float {
             if (ticks.isEmpty()) return 0f
@@ -56,7 +66,7 @@ object Spacing {
 
         // Alteraciones: se lleva la cuenta de lo que ya valía en el compás, por mano y octava.
         val state = mutableMapOf<Triple<Hand, Step, Int>, Int>()
-        for (note in score.notes.filter { inside(it.startTick) }.sortedBy { it.startTick }) {
+        for (note in score.notes.filter { !it.grace && inside(it.startTick) }.sortedBy { it.startTick }) {
             val figure = NoteLayout.figureOf(note.durationTicks, note.tuplet)
             val head = if (figure.base == Ticks.WHOLE) Smufl.NOTEHEAD_WHOLE_WIDTH else Smufl.NOTEHEAD_WIDTH
             right.merge(note.startTick, head + if (figure.dots > 0) DOTS else 0f, ::maxOf)
@@ -65,6 +75,13 @@ object Spacing {
             if (note.pitch.alter != current) left.merge(note.startTick, ACCIDENTAL, ::maxOf)
             state[key] = note.pitch.alter
         }
+        // Adornos: lugar extra a la izquierda de la nota a la que llevan (después de su propia alteración).
+        val graceSpace = mutableMapOf<Int, Float>()
+        for (grace in score.notes.filter { it.grace && inside(it.startTick) }) {
+            val need = GRACE + if (grace.pitch.alter != NoteLayout.keyAlter(m.keyFifths, grace.pitch.step)) GRACE_ACCIDENTAL else 0f
+            graceSpace.merge(grace.startTick, need, ::maxOf)
+        }
+        for ((tick, extra) in graceSpace) left[tick] = (left[tick] ?: 0f) + extra
         for (rest in score.rests.filter { inside(it.startTick) }) {
             val figure = NoteLayout.figureOf(rest.durationTicks, rest.tuplet)
             right.merge(rest.startTick, restWidth(figure.base) + if (figure.dots > 0) DOTS else 0f, ::maxOf)
@@ -81,6 +98,6 @@ object Spacing {
             }
             offsets += offsets.last() + maxOf(natural, if (right.containsKey(ticks[i - 1]) || toEnd) needed else 0f)
         }
-        return Anchors(ticks, offsets, score.notes.filter { inside(it.startTick) }.map { it.startTick }.toSet())
+        return Anchors(ticks, offsets, score.notes.filter { !it.grace && inside(it.startTick) }.map { it.startTick }.toSet(), graceSpace[m.startTick] ?: 0f)
     }
 }

@@ -224,6 +224,34 @@ class Validador(unittest.TestCase):
         d = con(lambda d: d.update(pickupTicks=-5))
         self.assertProblema(d, "pickupTicks")
 
+    def test_adorno_bien(self):
+        d = con(lambda d: d["notes"].append(
+            {"hand": "right", "pitch": "B3", "startTick": 960, "durationTicks": 60, "grace": True}))
+        self.assertEqual(v.validate(d), [])
+
+    def test_adorno_sin_nota_principal(self):
+        d = con(lambda d: d["notes"].append(
+            {"hand": "right", "pitch": "B3", "startTick": 480, "durationTicks": 60, "grace": True}))
+        self.assertProblema(d, "no tiene una nota principal")
+
+    def test_adorno_demasiado_largo(self):
+        d = con(lambda d: d["notes"].append(
+            {"hand": "right", "pitch": "B3", "startTick": 960, "durationTicks": 480, "grace": True}))
+        self.assertProblema(d, "como mucho")
+
+    def test_adorno_ligado_o_con_tuplet(self):
+        d = con(lambda d: d["notes"].append(
+            {"hand": "right", "pitch": "B3", "startTick": 960, "durationTicks": 60, "grace": True, "tiedToNext": True}))
+        self.assertProblema(d, "ligado")
+        d = con(lambda d: d["notes"].append(
+            {"hand": "right", "pitch": "B3", "startTick": 960, "durationTicks": 60, "grace": True, "tuplet": "3:2"}))
+        self.assertProblema(d, "tuplet")
+
+    def test_adorno_no_tiene_que_ser_true_o_false(self):
+        d = con(lambda d: d["notes"].append(
+            {"hand": "right", "pitch": "B3", "startTick": 960, "durationTicks": 60, "grace": "si"}))
+        self.assertProblema(d, "true o false")
+
     def test_json_roto(self):
         import tempfile
         with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False) as f:

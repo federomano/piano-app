@@ -11,6 +11,7 @@ object ExampleScores {
         ExampleScore("voces", "Ejercicio: dos voces en una mano", "Una melodía larga arriba y otra línea que corre abajo, con el bajo sostenido bajo acordes.") { voices() },
         ExampleScore("tresillos", "Ejercicio: tresillos", "Tresillos de corchea y de negra, swing y un grupo de cuatro en el tiempo de tres.") { triplets() },
         ExampleScore("anacrusa", "Ejercicio: anacrusa", "Empieza con un compás corto (tres corcheas): el compás 0. Después, los compases enteros desde el 1.") { pickup() },
+        ExampleScore("adornos", "Ejercicio: notas de adorno", "Notas chiquitas que se tocan justo antes del tiempo: con alteración, con línea adicional, en acorde y en la mano izquierda.") { graceNotes() },
         ExampleScore("ejercicio", "Ejercicio: todo lo que dibuja la app", "Alteraciones, silencios, acordes, ligaduras y cambios de armadura, compás y tempo.") { DemoScore.create() },
     )
 
@@ -21,6 +22,7 @@ object ExampleScores {
      * al final liga la figura con la siguiente (`C3/h~`).
      * Varias voces en una mano: `right(texto, voice = 2, from = tick)` escribe otra línea que suena a la vez; cada voz lleva su propio
      * ritmo y empieza en `from` (por defecto, el principio).
+     * Un adorno es `D4/g`: una nota de adorno que se toca justo antes de la nota que escribas a continuación (no avanza el tiempo).
      * Un grupo irregular se marca con `*` después de la duración: `e*3` es una corchea de tresillo (3 en el tiempo de 2),
      * `q*4:3` es una negra de un grupo de 4 en el tiempo de 3. La duración es la de la figura escrita, ajustada al grupo.
      */
@@ -36,6 +38,12 @@ object ExampleScores {
                 val tied = body.endsWith("~")
                 if (tied) body = body.dropLast(1)
                 val (what, code) = body.split("/").also { require(it.size == 2) { "Figura inválida: \"$token\"" } }
+                if (code == "g") {
+                    // Adorno: va en el tick de la nota que sigue, sin avanzar el cursor.
+                    val at = cursor.getOrPut(hand to voice) { 0 }
+                    what.split("+").forEach { notes += Note(hand, Pitch.parse(it), at, Ticks.GRACE, grace = true, voice = voice) }
+                    continue
+                }
                 val figureCode = code.substringBefore("*")
                 val tuplet = code.substringAfter("*", "").takeIf { it.isNotEmpty() }
                     ?.let { Tuplet.parse(if (":" in it) it else "$it:${if (it == "3") 2 else if (it == "5") 4 else 3}") }
@@ -94,6 +102,21 @@ object ExampleScores {
             level = "intermedio",
             goal = "Tocar dos líneas a la vez con la misma mano: una larga arriba y otra que corre abajo, o un bajo sostenido bajo acordes.",
             tempos = listOf(TempoChange(0, 80.0)),
+            notes = b.notes,
+            rests = b.rests,
+        )
+    }
+
+    private fun graceNotes(): Score {
+        val b = Builder()
+        // Cada adorno va en el tick de la nota que le sigue: suena un instante antes y no corre el ritmo.
+        b.right("D4/g E4/q  C4/g E4/q  F#4/g G4/h  G4+B4/g C5/h  E5/g D5/q  C5/q  C5/w")
+        b.left("B2/g C3/h  C3/h  Bb2/g A2/h  F2/h  C3/w")
+        return Score(
+            title = "Ejercicio: notas de adorno",
+            level = "intermedio",
+            goal = "Tocar la notita de adorno rápido y justo antes del tiempo, sin correr el pulso de la nota que sigue.",
+            tempos = listOf(TempoChange(0, 70.0)),
             notes = b.notes,
             rests = b.rests,
         )

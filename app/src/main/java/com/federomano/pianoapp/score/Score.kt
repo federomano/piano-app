@@ -36,6 +36,12 @@ object Ticks {
     const val EIGHTH = TICKS_PER_QUARTER / 2
     const val SIXTEENTH = TICKS_PER_QUARTER / 4
 
+    /** Cuánto antes del tiempo suena una nota de adorno (si no se dice otra cosa): 60 ticks, una fusa. */
+    const val GRACE = TICKS_PER_QUARTER / 8
+
+    /** Lo más largo que puede ser una nota de adorno: una semicorchea. */
+    const val GRACE_MAX = SIXTEENTH
+
     /** Figura con puntillo: dura una vez y media la figura original. */
     fun dotted(ticks: Int): Int = ticks * 3 / 2
 
@@ -154,15 +160,33 @@ data class Note(
     val tuplet: Tuplet? = null,
     /** Voz dentro de la mano, de 1 a [MAX_VOICES]. Cada voz tiene su propio ritmo; la voz 1 es la principal. */
     val voice: Int = 1,
+    /**
+     * Nota de adorno (acciaccatura): se toca justo antes de la nota principal y no cuenta para llenar el compás.
+     * [startTick] es el de la nota principal (la que cae en el tiempo, de la misma mano) y [durationTicks] cuánto dura el adorno,
+     * que suena *antes* de ese tick (por defecto [Ticks.GRACE]), sin correr el resto del ritmo.
+     */
+    val grace: Boolean = false,
 ) {
     init {
         require(voice in 1..MAX_VOICES) { "La voz tiene que ser de 1 a $MAX_VOICES (era $voice)." }
         require(startTick >= 0) { "El inicio de una nota no puede ser negativo (era $startTick)." }
         require(durationTicks > 0) { "La duración de una nota tiene que ser mayor que 0 (era $durationTicks)." }
+        if (grace) {
+            require(durationTicks <= Ticks.GRACE_MAX) {
+                "Una nota de adorno dura como mucho ${Ticks.GRACE_MAX} ticks (era $durationTicks); lo normal es ${Ticks.GRACE}."
+            }
+            require(!tiedToNext && tuplet == null) { "Una nota de adorno no puede estar ligada ni llevar grupo irregular." }
+        }
         require(finger == null || finger in 1..5) { "El dedo tiene que ser de 1 a 5 (era $finger)." }
     }
 
     val endTick: Int get() = startTick + durationTicks
+
+    /** Cuándo empieza a sonar: una nota común, en [startTick]; un adorno, [durationTicks] antes. */
+    val soundStartTick: Int get() = if (grace) maxOf(0, startTick - durationTicks) else startTick
+
+    /** Cuándo deja de sonar: un adorno termina donde empieza la nota principal. */
+    val soundEndTick: Int get() = if (grace) startTick else endTick
 }
 
 @Serializable
@@ -245,5 +269,5 @@ data class Score(
 
     /** Fin de la partitura: donde termina la última nota o silencio. */
     val lengthTicks: Int
-        get() = maxOf(notes.maxOfOrNull { it.endTick } ?: 0, rests.maxOfOrNull { it.endTick } ?: 0)
+        get() = maxOf(notes.filter { !it.grace }.maxOfOrNull { it.endTick } ?: 0, rests.maxOfOrNull { it.endTick } ?: 0)
 }
