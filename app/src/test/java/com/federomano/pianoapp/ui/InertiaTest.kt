@@ -21,8 +21,9 @@ class InertiaTest {
         assertEquals(70f, v.first(), 0.001f)
         assertTrue("siempre frena", v.zipWithNext().all { (a, b) -> b <= a })
         assertTrue("al final casi quieta", v.last() < 0.4f)
-        // El frenado es largo: a los dos segundos todavía se mueve bien.
-        assertTrue(v[120] > 2f)
+        // El frenado es largo: al segundo todavía se mueve bien, y no dura más de unos tres segundos.
+        assertTrue(v[60] > 3f)
+        assertTrue(v[180] < 0.4f)
     }
 
     @Test
@@ -48,5 +49,24 @@ class InertiaTest {
         val v = simulate(70f, 7f)
         assertTrue(v.zipWithNext().all { (a, b) -> b <= a })
         assertEquals(7f, v.last(), 0.1f)
+    }
+
+    @Test
+    fun soundsOnlyWhenGoingForwardAtAboutNormalSpeed() {
+        assertTrue(Inertia.soundsAt(7f, 7f))
+        assertTrue(Inertia.soundsAt(9f, 7f))
+        assertTrue(!Inertia.soundsAt(30f, 7f))
+        assertTrue(!Inertia.soundsAt(2f, 7f))
+        assertTrue(!Inertia.soundsAt(-20f, 7f))
+        assertTrue(!Inertia.soundsAt(0f, 0f))
+        assertTrue(!Inertia.soundsAt(5f, 0f))
+    }
+
+    @Test
+    fun comingBackFromARewindStartsSoundingBeforeTheBrakingEnds() {
+        val v = simulate(-60f, 7f)
+        val sounding = v.indexOfFirst { Inertia.soundsAt(it, 7f) }
+        val done = v.indexOfFirst { kotlin.math.abs(it - 7f) < 0.4f }
+        assertTrue(sounding in 1 until done)
     }
 }

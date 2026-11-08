@@ -57,7 +57,7 @@ private const val SOUND_START_TOLERANCE_TICKS = 24f
 private const val MIN_FLING_SPEED = 1.5f
 
 /** Qué tan rápido se acerca la inercia a la velocidad de reproducción (por segundo): más chico, frena más despacio. */
-internal const val FLING_RATE = 1.5f
+internal const val FLING_RATE = 2.6f
 
 /** La inercia termina cuando la velocidad ya está así de cerca de la de reproducción (espacios por segundo). */
 private const val FLING_END_SPEED = 0.4f
@@ -115,6 +115,8 @@ fun ScoreView(score: Score, modifier: Modifier = Modifier, maxStaffSpaceDp: Floa
         var holding by remember { mutableStateOf(false) }
         var flingJob by remember { mutableStateOf<Job?>(null) }
         var stoppedFling by remember { mutableStateOf(false) }
+        // Verdadero si la inercia ya venía tocando las notas y la reproducción sigue sin repetirlas.
+        val sound = remember { object { var armed = false } }
 
         fun stopFling(): Boolean {
             val job = flingJob
@@ -147,7 +149,7 @@ fun ScoreView(score: Score, modifier: Modifier = Modifier, maxStaffSpaceDp: Floa
             var tick = layout.tickAtScroll(from, currentPlayhead).coerceAtLeast(0f)
             if (tick >= end - 1f) tick = 0f
             // Un poco antes, para no perder la nota que justo está en la línea al retomar o saltar.
-            trigger.reset(tick - SOUND_START_TOLERANCE_TICKS)
+            if (sound.armed) sound.armed = false else trigger.reset(tick - SOUND_START_TOLERANCE_TICKS)
             var last = withFrameNanos { it }
             try {
                 while (true) {
@@ -214,6 +216,8 @@ fun ScoreView(score: Score, modifier: Modifier = Modifier, maxStaffSpaceDp: Floa
                                 var position = if (scrollSp.isNaN()) minScroll else scrollSp
                                 var v = velocity
                                 var last = withFrameNanos { it }
+                                var handOff = false
+                                try {
                                 while (true) {
                                     val now = withFrameNanos { it }
                                     val seconds = ((now - last) / 1_000_000_000f).coerceAtMost(0.05f)
@@ -235,7 +239,30 @@ fun ScoreView(score: Score, modifier: Modifier = Modifier, maxStaffSpaceDp: Floa
                                         playing = false
                                         break
                                     }
-                                    if (kotlin.math.abs(v - target) < FLING_END_SPEED) break
+                                    // Cuando ya va cerca del ritmo normal, hacia adelante, las notas empiezan a sonar
+                                    // sin esperar a que termine el frenado.
+                                    if (Inertia.soundsAt(v, target)) {
+                                        val clock = layout.tickAtScroll(position, currentPlayhead)
+                                        if (!sound.armed) {
+                                            trigger.reset(clock - SOUND_START_TOLERANCE_TICKS)
+                                            sound.armed = true
+                                        }
+                                        trigger.advance(clock, { player.noteOn(it.pitch.midi) }, player::noteOff)
+                                    } else if (sound.armed) {
+                                        trigger.releaseAll(player::noteOff)
+                                        sound.armed = false
+                                    }
+                                    if (kotlin.math.abs(v - target) < FLING_END_SPEED) {
+                                        handOff = playing && sound.armed
+                                        break
+                                    }
+                                }
+                                } finally {
+                                    // Si la reproducción sigue sola, ya tiene las notas en marcha; si no, se apaga todo.
+                                    if (!handOff) {
+                                        trigger.releaseAll(player::noteOff)
+                                        sound.armed = false
+                                    }
                                 }
                                 holding = false
                             }
