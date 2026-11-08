@@ -21,9 +21,9 @@ class InertiaTest {
         assertEquals(70f, v.first(), 0.001f)
         assertTrue("siempre frena", v.zipWithNext().all { (a, b) -> b <= a })
         assertTrue("al final casi quieta", v.last() < 0.4f)
-        // El frenado es largo: al segundo todavía se mueve bien, y no dura más de unos tres segundos.
-        assertTrue(v[60] > 3f)
-        assertTrue(v[180] < 0.4f)
+        // Frena rápido pero no de golpe: a medio segundo todavía se mueve bien, y a los dos ya terminó.
+        assertTrue(v[30] > 5f)
+        assertTrue(v[120] < 0.4f)
     }
 
     @Test

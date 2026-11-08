@@ -57,7 +57,7 @@ private const val SOUND_START_TOLERANCE_TICKS = 24f
 private const val MIN_FLING_SPEED = 1.5f
 
 /** Qué tan rápido se acerca la inercia a la velocidad de reproducción (por segundo): más chico, frena más despacio. */
-internal const val FLING_RATE = 2.6f
+internal const val FLING_RATE = 3.8f
 
 /** La inercia termina cuando la velocidad ya está así de cerca de la de reproducción (espacios por segundo). */
 private const val FLING_END_SPEED = 0.4f
