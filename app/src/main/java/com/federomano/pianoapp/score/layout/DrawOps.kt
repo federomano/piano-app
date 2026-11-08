@@ -81,6 +81,17 @@ object Smufl {
     const val REST_8TH_WIDTH = 0.988f
     const val REST_16TH_WIDTH = 1.28f
 
+    /** Números de los grupos irregulares (tresillos, etc.): 0xE880 + dígito; los dos puntos son 0xE88A. */
+    fun tupletDigit(digit: Int): Int = 0xE880 + digit
+    const val TUPLET_COLON = 0xE88A
+    const val TUPLET_COLON_ADVANCE = 0.444f
+    /** Alto de los números de grupo irregular, en espacios de pentagrama (la línea de base está abajo). */
+    const val TUPLET_DIGIT_HEIGHT = 1.5f
+
+    private val tupletAdvances = floatArrayOf(1.276f, 0.984f, 1.276f, 1.184f, 1.212f, 1.268f, 1.216f, 1.212f, 1.252f, 1.216f)
+
+    fun tupletDigitAdvance(digit: Int): Float = tupletAdvances[digit]
+
     /** Dígitos de las firmas de compás: centrados verticalmente sobre su línea de base. */
     fun timeDigit(digit: Int): Int = 0xE080 + digit
 

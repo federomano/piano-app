@@ -90,6 +90,6 @@ El JSON es estricto: una clave mal escrita, una altura inválida o una versión 
 ## Lo que todavía no cubre
 
 - **Anacrusa** (un primer compás incompleto): por ahora el primer compás tiene que ser entero; se completa con un silencio.
-- Del grupo irregular todavía no se dibuja el corchete con el número (PIA-69); el sonido ya es exacto.
+- El grupo irregular se dibuja con su número (y con corchete si las figuras no están unidas por una barra).
 - **Dinámicas, articulaciones, pedal, repeticiones y ornamentos:** no se representan.
 - **Una nota ligada a varias seguidas:** se encadenan ligaduras, una por una.

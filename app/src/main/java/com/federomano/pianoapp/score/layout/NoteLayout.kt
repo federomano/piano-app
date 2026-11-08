@@ -227,7 +227,124 @@ object NoteLayout {
             val index = measureIndexAt(rest.startTick)
             drawRest(ops, rest.hand, rest.startTick, rest.durationTicks, rest.tuplet, measures[index], xOfTick(rest.startTick))
         }
+
+        // 6) Corchetes y números de los grupos irregulares.
+        drawTuplets(ops, score, plans, ::measureIndexAt, xOfTick)
         return ops
+    }
+
+    // --- Grupos irregulares (tresillos, etc.) ---
+
+    /** Una figura (acorde o silencio) de un grupo irregular, con el ancho que ocupa en el dibujo. */
+    private class TupletItem(val startTick: Int, val durationTicks: Int, val tuplet: Tuplet, val plan: Plan?, val left: Float, val right: Float)
+
+    private const val TUPLET_LINE_THICKNESS = 0.1f
+    private const val TUPLET_GAP = 1.1f
+    private const val TUPLET_HOOK = 0.7f
+    private const val TUPLET_NUMBER_PADDING = 0.3f
+
+    /**
+     * Cada grupo irregular completo lleva su número. Si todas sus figuras están unidas por una misma barra, el número va
+     * solo junto a la barra; si no (negras de tresillo, silencios, mezclas), lleva además un corchete con el número en el medio.
+     * Va del lado de las plicas (arriba si las plicas suben).
+     */
+    private fun drawTuplets(ops: MutableList<DrawOp>, score: Score, plans: List<Plan>, measureIndexAt: (Int) -> Int, xOfTick: (Int) -> Float) {
+        val lines = (score.notes.filter { it.tuplet != null }.map { it.hand to it.voice } +
+            score.rests.filter { it.tuplet != null }.map { it.hand to it.voice }).distinct()
+        for ((hand, voice) in lines) {
+            val items = (plans.filter { it.hand == hand && it.voice == voice && it.chord.tuplet != null }
+                .map { TupletItem(it.chord.startTick, it.chord.durationTicks, it.chord.tuplet!!, it, it.leftEdge, it.rightEdge) } +
+                score.rests.filter { it.hand == hand && it.voice == voice && it.tuplet != null }.map { rest ->
+                    val x = xOfTick(rest.startTick)
+                    val base = figureOf(rest.durationTicks, rest.tuplet).base
+                    TupletItem(rest.startTick, rest.durationTicks, rest.tuplet!!, null, x, x + restWidthOf(base))
+                }).sortedBy { it.startTick }
+
+            // Figuras seguidas del mismo grupo, dentro de un compás.
+            val runs = mutableListOf<MutableList<TupletItem>>()
+            for (item in items) {
+                val run = runs.lastOrNull()
+                val last = run?.last()
+                if (last != null && last.tuplet == item.tuplet && last.startTick + last.durationTicks == item.startTick &&
+                    measureIndexAt(last.startTick) == measureIndexAt(item.startTick)
+                ) run += item else runs += mutableListOf(item)
+            }
+            for (run in runs) {
+                val tuplet = run.first().tuplet
+                val span = tuplet.normal * run.minOf { tuplet.written(it.durationTicks) ?: it.durationTicks }
+                val origin = run.first().startTick
+                for (group in run.groupBy { (it.startTick - origin) / span }.values) {
+                    if (group.sumOf { it.durationTicks } != span) continue // grupo incompleto: no se dibuja
+                    drawTuplet(ops, hand, voice, tuplet, group)
+                }
+            }
+        }
+    }
+
+    private fun restWidthOf(base: Int) = when (base) {
+        Ticks.WHOLE -> Smufl.REST_WHOLE_WIDTH
+        Ticks.HALF -> Smufl.REST_HALF_WIDTH
+        Ticks.QUARTER -> Smufl.REST_QUARTER_WIDTH
+        Ticks.EIGHTH -> Smufl.REST_8TH_WIDTH
+        else -> Smufl.REST_16TH_WIDTH
+    }
+
+    private fun tupletLabel(tuplet: Tuplet): List<Int> =
+        if (tuplet.actual == 3 && tuplet.normal == 2) listOf(Smufl.tupletDigit(3))
+        else listOf(Smufl.tupletDigit(tuplet.actual), Smufl.TUPLET_COLON, Smufl.tupletDigit(tuplet.normal))
+
+    private fun labelWidth(label: List<Int>) = label.sumOf {
+        (if (it == Smufl.TUPLET_COLON) Smufl.TUPLET_COLON_ADVANCE else Smufl.tupletDigitAdvance(it - 0xE880)).toDouble()
+    }.toFloat()
+
+    private fun drawTuplet(ops: MutableList<DrawOp>, hand: Hand, voice: Int, tuplet: Tuplet, group: List<TupletItem>) {
+        val plans = group.mapNotNull { it.plan }
+        // Del lado de las plicas; un grupo de solo silencios va arriba en la voz 1 y abajo en las otras.
+        val above = if (plans.isEmpty()) voice == 1 else plans.count { !it.stemDown } >= plans.count { it.stemDown }
+        val beamGroup = plans.firstOrNull()?.group
+        val fullyBeamed = beamGroup != null && plans.size == group.size && plans.all { it.group === beamGroup } &&
+            beamGroup.plans.size == plans.size
+        val top = staffTop(hand)
+
+        // Lo más alejado que llega el grupo hacia ese lado (y crece hacia abajo).
+        fun planExtreme(plan: Plan): Float {
+            val tip = if (plan.whole) null else if (plan.group != null) plan.group!!.beamY(plan.stemX) else plan.idealTip()
+            return if (above) minOf(plan.yOf(plan.highest) - 0.5f, tip ?: Float.MAX_VALUE)
+            else maxOf(plan.yOf(plan.lowest) + 0.5f, (tip ?: -Float.MAX_VALUE) + if (plan.group != null) BEAM_THICKNESS else 0f)
+        }
+        val extreme = if (above) minOf(top - 0.5f, plans.minOfOrNull(::planExtreme) ?: Float.MAX_VALUE)
+        else maxOf(top + 4.5f, plans.maxOfOrNull(::planExtreme) ?: -Float.MAX_VALUE)
+
+        val label = tupletLabel(tuplet)
+        val width = labelWidth(label)
+        val left = group.first().left
+        val right = group.last().right
+        val mid = if (fullyBeamed) (beamGroup!!.plans.first().stemX + beamGroup.plans.last().stemX) / 2f else (left + right) / 2f
+
+        fun drawLabel(cx: Float, baseline: Float) {
+            var x = cx - width / 2f
+            for (code in label) {
+                ops += GlyphOp(code, x, baseline)
+                x += if (code == Smufl.TUPLET_COLON) Smufl.TUPLET_COLON_ADVANCE else Smufl.tupletDigitAdvance(code - 0xE880)
+            }
+        }
+
+        if (fullyBeamed) {
+            // Solo el número, pegado a la barra.
+            val baseline = if (above) extreme - 0.4f else extreme + 0.4f + Smufl.TUPLET_DIGIT_HEIGHT
+            drawLabel(mid, baseline)
+            return
+        }
+        // Corchete: línea con un hueco para el número y ganchos hacia las figuras.
+        val y = if (above) extreme - TUPLET_GAP else extreme + TUPLET_GAP
+        val gapLeft = mid - width / 2f - TUPLET_NUMBER_PADDING
+        val gapRight = mid + width / 2f + TUPLET_NUMBER_PADDING
+        ops += RectOp(left, y - TUPLET_LINE_THICKNESS / 2, gapLeft - left, TUPLET_LINE_THICKNESS)
+        ops += RectOp(gapRight, y - TUPLET_LINE_THICKNESS / 2, right - gapRight, TUPLET_LINE_THICKNESS)
+        val hookTop = if (above) y - TUPLET_LINE_THICKNESS / 2 else y + TUPLET_LINE_THICKNESS / 2 - TUPLET_HOOK
+        ops += RectOp(left, hookTop, TUPLET_LINE_THICKNESS, TUPLET_HOOK)
+        ops += RectOp(right - TUPLET_LINE_THICKNESS, hookTop, TUPLET_LINE_THICKNESS, TUPLET_HOOK)
+        drawLabel(mid, y + Smufl.TUPLET_DIGIT_HEIGHT / 2f)
     }
 
     // --- Barras ---
