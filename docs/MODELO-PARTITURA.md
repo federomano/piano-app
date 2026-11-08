@@ -2,6 +2,8 @@
 
 Toda partitura de la app se representa de una sola forma: la que vino de un archivo MIDI, la que vino de MusicXML y la que arma Claude. El dibujo, el sonido y el modo escucha leen los mismos datos.
 
+Qué le pedimos a Claude que genere (reglas y errores comunes): [`CONTRATO-ARCHIVOS.md`](CONTRATO-ARCHIVOS.md).
+
 El código está en `app/src/main/java/com/federomano/pianoapp/score/`. Un ejemplo completo y válido está en [`ejemplos/partitura-ejemplo.json`](ejemplos/partitura-ejemplo.json); los tests lo leen, así que la documentación no se puede desactualizar sin que falle algo.
 
 ## Cómo se mide el tiempo
