@@ -29,8 +29,8 @@ for _name, _base in BASES.items():
 
 SCORE_KEYS = {"formatVersion", "title", "composer", "level", "goal",
               "timeSignatures", "keySignatures", "tempos", "notes", "rests"}
-NOTE_KEYS = {"hand", "pitch", "startTick", "durationTicks", "tiedToNext", "finger"}
-REST_KEYS = {"hand", "startTick", "durationTicks"}
+NOTE_KEYS = {"hand", "pitch", "startTick", "durationTicks", "tiedToNext", "finger", "tuplet"}
+REST_KEYS = {"hand", "startTick", "durationTicks", "tuplet"}
 TS_KEYS = {"startTick", "numerator", "denominator"}
 KS_KEYS = {"startTick", "fifths"}
 TEMPO_KEYS = {"startTick", "bpm"}
@@ -50,6 +50,28 @@ def parse_pitch(text):
 
 def is_int(v):
     return isinstance(v, int) and not isinstance(v, bool)
+
+
+TUPLET_RE = re.compile(r"^(\d):(\d)$")
+
+
+def parse_tuplet(text):
+    """"3:2" -> (3, 2): 3 figuras en el tiempo de 2. Devuelve None si no es válido."""
+    m = TUPLET_RE.match(text.strip()) if isinstance(text, str) else None
+    if not m:
+        return None
+    actual, normal = int(m.group(1)), int(m.group(2))
+    if not (2 <= actual <= 9 and 1 <= normal <= 8 and actual != normal):
+        return None
+    return actual, normal
+
+
+def written_ticks(duration, tuplet):
+    """Duración de la figura tal como se escribe (None si el grupo no da una figura entera)."""
+    if tuplet is None:
+        return duration
+    actual, normal = tuplet
+    return duration * actual // normal if (duration * actual) % normal == 0 else None
 
 
 def duration_name(ticks):
@@ -81,7 +103,7 @@ def load_list(data, key, keys, errors):
             errors.append(f"{key} #{i}: tiene que ser un objeto con llaves {{ }}.")
             continue
         check_fields(item, keys, f"{key} #{i}", errors)
-        items.append(item)
+        items.append(dict(item))  # copia: el validador anota datos auxiliares sin tocar la entrada
     return items
 
 
@@ -177,10 +199,25 @@ def validate(data):
         if item["durationTicks"] <= 0:
             errors.append(f"{where}: la duración tiene que ser mayor que 0.")
             return False
-        if item["durationTicks"] not in ALLOWED:
-            errors.append(f"{where}: la duración {item['durationTicks']} no es una figura que la app sepa dibujar "
-                          f"(tresillos y similares no se pueden; aproximá a una figura de la tabla). "
-                          f"Duraciones válidas: {allowed_list()}.")
+        tuplet = None
+        if item.get("tuplet") is not None:
+            tuplet = parse_tuplet(item["tuplet"])
+            if tuplet is None:
+                errors.append(f"{where}: \"tuplet\" tiene que escribirse como \"3:2\" (3 figuras en el tiempo de 2), "
+                              f"no {item['tuplet']!r}.")
+                return False
+        item["_tuplet"] = tuplet
+        d = item["durationTicks"]
+        if tuplet is None:
+            if d not in ALLOWED:
+                errors.append(f"{where}: la duración {d} no es una figura que la app sepa dibujar. Si es un tresillo o "
+                              f"similar, agregá \"tuplet\": \"3:2\" (3 en el tiempo de 2) y dejá la duración real en ticks. "
+                              f"Duraciones comunes válidas: {allowed_list()}.")
+        else:
+            w = written_ticks(d, tuplet)
+            if w is None or w not in ALLOWED:
+                errors.append(f"{where}: con el grupo {item['tuplet']} no puede durar {d} ticks: la figura escrita "
+                              "tendría que ser redonda, blanca, negra, corchea o semicorchea (con hasta dos puntillos).")
         return True
 
     for i, n in enumerate(raw_notes, 1):
@@ -259,6 +296,43 @@ def validate(data):
             if not any(o["hand"] == n["hand"] and o["midi"] == n["midi"] and o["startTick"] == end_tick for o in notes):
                 errors.append(f"{where_note(n)} está ligada, pero no hay una nota igual (misma mano y altura) "
                               "que empiece justo donde termina.")
+
+    # --- Grupos irregulares: acordes coherentes y grupos completos ---
+    chord_tuplets = {}
+    for n in notes:
+        chord_tuplets.setdefault((n["hand"], n["startTick"], n["durationTicks"]), set()).add(n.get("_tuplet"))
+    for (hand, start, _), group in chord_tuplets.items():
+        if len(group) > 1:
+            errors.append(f"Las notas del acorde de la {HAND_LABEL[hand]} del compás {measure_of(start)[0]} "
+                          "tienen que tener el mismo grupo irregular (\"tuplet\").")
+    for hand in HANDS:
+        figs = {}
+        for n in notes:
+            if n["hand"] == hand:
+                figs[(n["startTick"], n["durationTicks"])] = n.get("_tuplet")
+        for r in rests:
+            if r["hand"] == hand:
+                figs.setdefault((r["startTick"], r["durationTicks"]), r.get("_tuplet"))
+        run = []
+
+        def close_run():
+            if run and run[0][2] is not None:
+                actual, normal = run[0][2]
+                smallest = min(written_ticks(d, run[0][2]) or d for _, d, _ in run)
+                total = sum(d for _, d, _ in run)
+                if total % (normal * smallest) != 0:
+                    errors.append(f"Un grupo irregular {actual}:{normal} de la {HAND_LABEL[hand]} en el compás "
+                                  f"{measure_of(run[0][0])[0]} está incompleto: las figuras suman {total} ticks y tendrían "
+                                  f"que formar grupos enteros (de {normal * smallest} ticks).")
+            run.clear()
+
+        for (start, dur) in sorted(figs):
+            t = figs[(start, dur)]
+            if not (run and run[-1][2] is not None and run[-1][2] == t
+                    and run[-1][0] + run[-1][1] == start and start not in starts):
+                close_run()
+            run.append((start, dur, t))
+        close_run()
 
     # --- Cada mano: una figura por vez, llenando cada compás ---
     for hand in HANDS:

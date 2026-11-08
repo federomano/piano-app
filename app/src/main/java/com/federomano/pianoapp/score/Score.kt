@@ -35,6 +35,47 @@ object Ticks {
 
     /** Figura con puntillo: dura una vez y media la figura original. */
     fun dotted(ticks: Int): Int = ticks * 3 / 2
+
+    /** Las duraciones que la app sabe dibujar sin grupo irregular: redonda a semicorchea, con hasta dos puntillos. */
+    val STANDARD: Set<Int> = buildSet {
+        add(WHOLE)
+        for (base in listOf(HALF, QUARTER, EIGHTH, SIXTEENTH)) {
+            add(base); add(base * 3 / 2); add(base * 7 / 4)
+        }
+    }
+}
+
+/**
+ * Grupo irregular: [actual] figuras en el tiempo de [normal] (tresillo = 3:2, cuatro en el tiempo de tres = 4:3).
+ * En el archivo se escribe como texto: `"3:2"`. La duración de la nota (`durationTicks`) es siempre la real, la que suena;
+ * la figura escrita sale de multiplicarla por actual/normal (un tresillo de corchea dura 160 y se escribe como corchea: 240).
+ */
+@Serializable(with = TupletSerializer::class)
+data class Tuplet(val actual: Int, val normal: Int) {
+    init {
+        require(actual in 2..9 && normal in 1..8 && actual != normal) {
+            "Grupo irregular inválido: $actual:$normal (se escribe como \"3:2\": 3 figuras en el tiempo de 2)."
+        }
+    }
+
+    /** Duración de la figura tal como se escribe, dada la duración real; null si no da un número entero. */
+    fun written(realTicks: Int): Int? = if ((realTicks * actual) % normal == 0) realTicks * actual / normal else null
+
+    override fun toString() = "$actual:$normal"
+
+    companion object {
+        fun parse(text: String): Tuplet {
+            val m = Regex("^(\\d):(\\d)$").matchEntire(text.trim())
+                ?: throw IllegalArgumentException("Grupo irregular inválido: \"$text\". Se escribe como \"3:2\" (3 figuras en el tiempo de 2).")
+            return Tuplet(m.groupValues[1].toInt(), m.groupValues[2].toInt())
+        }
+    }
+}
+
+object TupletSerializer : KSerializer<Tuplet> {
+    override val descriptor: SerialDescriptor = PrimitiveSerialDescriptor("Tuplet", PrimitiveKind.STRING)
+    override fun serialize(encoder: Encoder, value: Tuplet) = encoder.encodeString(value.toString())
+    override fun deserialize(decoder: Decoder): Tuplet = Tuplet.parse(decoder.decodeString())
 }
 
 @Serializable
@@ -106,6 +147,8 @@ data class Note(
     val tiedToNext: Boolean = false,
     /** Dedo sugerido, de 1 (pulgar) a 5 (meñique). */
     val finger: Int? = null,
+    /** Grupo irregular al que pertenece (por ejemplo `3:2` para un tresillo). Null = figura común. */
+    val tuplet: Tuplet? = null,
 ) {
     init {
         require(startTick >= 0) { "El inicio de una nota no puede ser negativo (era $startTick)." }
@@ -121,6 +164,7 @@ data class Rest(
     val hand: Hand,
     val startTick: Int,
     val durationTicks: Int,
+    val tuplet: Tuplet? = null,
 ) {
     init {
         require(startTick >= 0) { "El inicio de un silencio no puede ser negativo (era $startTick)." }

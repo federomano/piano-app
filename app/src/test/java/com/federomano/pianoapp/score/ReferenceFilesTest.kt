@@ -18,6 +18,7 @@ class ReferenceFilesTest {
         "escala-do-mayor.json" to "escala",
         "himno-a-la-alegria.json" to "himno",
         "ejercicio-todo-lo-que-dibuja.json" to "ejercicio",
+        "ejercicio-tresillos.json" to "tresillos",
     )
 
     @Test
@@ -78,11 +79,11 @@ class ReferenceFilesTest {
             block("keySignatures", score.keySignatures) { "{ \"startTick\": ${it.startTick}, \"fifths\": ${it.fifths} }" },
             block("tempos", score.tempos) { "{ \"startTick\": ${it.startTick}, \"bpm\": ${it.bpm} }" },
             block("notes", score.notes.sortedWith(compareBy({ it.hand }, { it.startTick }, { it.pitch.midi })), { it.hand }) {
-                val extra = (if (it.tiedToNext) ", \"tiedToNext\": true" else "") + (it.finger?.let { f -> ", \"finger\": $f" } ?: "")
+                val extra = (if (it.tiedToNext) ", \"tiedToNext\": true" else "") + (it.finger?.let { f -> ", \"finger\": $f" } ?: "") + (it.tuplet?.let { t -> ", \"tuplet\": \"$t\"" } ?: "")
                 "{ \"hand\": \"${if (it.hand == Hand.RIGHT) "right" else "left"}\", \"pitch\": \"${it.pitch}\", \"startTick\": ${it.startTick}, \"durationTicks\": ${it.durationTicks}$extra }"
             },
             block("rests", score.rests.sortedWith(compareBy({ it.hand }, { it.startTick })), { it.hand }) {
-                "{ \"hand\": \"${if (it.hand == Hand.RIGHT) "right" else "left"}\", \"startTick\": ${it.startTick}, \"durationTicks\": ${it.durationTicks} }"
+                "{ \"hand\": \"${if (it.hand == Hand.RIGHT) "right" else "left"}\", \"startTick\": ${it.startTick}, \"durationTicks\": ${it.durationTicks}${it.tuplet?.let { t -> ", \"tuplet\": \"$t\"" } ?: ""} }"
             },
         )
         return "{\n" + parts.joinToString(",\n") + "\n}\n"

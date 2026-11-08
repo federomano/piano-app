@@ -45,6 +45,7 @@ Un compás de 4/4 dura 1920 ticks, uno de 3/4 o 6/8 dura 1440. La posición de c
 | `durationTicks` | Cuánto dura. |
 | `tiedToNext` | `true` si está ligada con la nota igual que empieza justo después. Opcional. |
 | `finger` | Dedo sugerido, de 1 (pulgar) a 5 (meñique). Opcional. |
+| `tuplet` | Grupo irregular, como texto: `"3:2"` = tresillo (3 figuras en el tiempo de 2), `"4:3"` = cuatro en el tiempo de tres. Opcional. `durationTicks` es la duración real; la figura escrita sale de multiplicarla por actual/normal (160 ticks con `"3:2"` se escribe como corchea). Los silencios también lo llevan. |
 
 `F#4` y `Gb4` suenan igual pero se escriben distinto en la partitura. Por eso la altura guarda cómo se escribe, no solo qué número MIDI es.
 
@@ -88,6 +89,7 @@ El JSON es estricto: una clave mal escrita, una altura inválida o una versión 
 ## Lo que todavía no cubre
 
 - **Anacrusa** (un primer compás incompleto): por ahora el primer compás tiene que ser entero; se completa con un silencio.
-- **Voces separadas** dentro de una misma mano, y tresillos u otros grupos irregulares: se agregan cuando haga falta.
+- **Voces separadas** dentro de una misma mano: se agregan cuando haga falta.
+- Del grupo irregular todavía no se dibuja el corchete con el número (PIA-69); el sonido ya es exacto.
 - **Dinámicas, articulaciones, pedal, repeticiones y ornamentos:** no se representan.
 - **Una nota ligada a varias seguidas:** se encadenan ligaduras, una por una.

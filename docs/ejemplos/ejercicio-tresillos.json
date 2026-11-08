@@ -1,0 +1,64 @@
+{
+  "formatVersion": 1,
+  "title": "Ejercicio: tresillos",
+  "level": "intermedio",
+  "goal": "Sentir el tresillo: tres notas en el tiempo de dos, el swing y un grupo de cuatro en el tiempo de tres.",
+  "timeSignatures": [
+    { "startTick": 0, "numerator": 4, "denominator": 4 },
+    { "startTick": 5760, "numerator": 3, "denominator": 4 }
+  ],
+  "keySignatures": [
+    { "startTick": 0, "fifths": 0 }
+  ],
+  "tempos": [
+    { "startTick": 0, "bpm": 90.0 }
+  ],
+  "notes": [
+    { "hand": "right", "pitch": "C4", "startTick": 0, "durationTicks": 160, "tuplet": "3:2" },
+    { "hand": "right", "pitch": "E4", "startTick": 160, "durationTicks": 160, "tuplet": "3:2" },
+    { "hand": "right", "pitch": "G4", "startTick": 320, "durationTicks": 160, "tuplet": "3:2" },
+    { "hand": "right", "pitch": "C5", "startTick": 480, "durationTicks": 160, "tuplet": "3:2" },
+    { "hand": "right", "pitch": "G4", "startTick": 640, "durationTicks": 160, "tuplet": "3:2" },
+    { "hand": "right", "pitch": "E4", "startTick": 800, "durationTicks": 160, "tuplet": "3:2" },
+    { "hand": "right", "pitch": "C4", "startTick": 960, "durationTicks": 160, "tuplet": "3:2" },
+    { "hand": "right", "pitch": "E4", "startTick": 1120, "durationTicks": 160, "tuplet": "3:2" },
+    { "hand": "right", "pitch": "G4", "startTick": 1280, "durationTicks": 160, "tuplet": "3:2" },
+    { "hand": "right", "pitch": "C5", "startTick": 1440, "durationTicks": 160, "tuplet": "3:2" },
+    { "hand": "right", "pitch": "G4", "startTick": 1600, "durationTicks": 160, "tuplet": "3:2" },
+    { "hand": "right", "pitch": "E4", "startTick": 1760, "durationTicks": 160, "tuplet": "3:2" },
+    { "hand": "right", "pitch": "E4", "startTick": 1920, "durationTicks": 320, "tuplet": "3:2" },
+    { "hand": "right", "pitch": "G4", "startTick": 2240, "durationTicks": 160, "tuplet": "3:2" },
+    { "hand": "right", "pitch": "E4", "startTick": 2400, "durationTicks": 320, "tuplet": "3:2" },
+    { "hand": "right", "pitch": "G4", "startTick": 2720, "durationTicks": 160, "tuplet": "3:2" },
+    { "hand": "right", "pitch": "E4", "startTick": 2880, "durationTicks": 320, "tuplet": "3:2" },
+    { "hand": "right", "pitch": "G4", "startTick": 3200, "durationTicks": 160, "tuplet": "3:2" },
+    { "hand": "right", "pitch": "E4", "startTick": 3360, "durationTicks": 320, "tuplet": "3:2" },
+    { "hand": "right", "pitch": "G4", "startTick": 3680, "durationTicks": 160, "tuplet": "3:2" },
+    { "hand": "right", "pitch": "C5", "startTick": 3840, "durationTicks": 320, "tuplet": "3:2" },
+    { "hand": "right", "pitch": "B4", "startTick": 4160, "durationTicks": 320, "tuplet": "3:2" },
+    { "hand": "right", "pitch": "A4", "startTick": 4480, "durationTicks": 320, "tuplet": "3:2" },
+    { "hand": "right", "pitch": "G4", "startTick": 4800, "durationTicks": 960 },
+    { "hand": "right", "pitch": "E4", "startTick": 5760, "durationTicks": 360, "tuplet": "4:3" },
+    { "hand": "right", "pitch": "G4", "startTick": 6120, "durationTicks": 360, "tuplet": "4:3" },
+    { "hand": "right", "pitch": "C5", "startTick": 6480, "durationTicks": 360, "tuplet": "4:3" },
+    { "hand": "right", "pitch": "G4", "startTick": 6840, "durationTicks": 360, "tuplet": "4:3" },
+    { "hand": "right", "pitch": "C4", "startTick": 7360, "durationTicks": 160, "tuplet": "3:2" },
+    { "hand": "right", "pitch": "E4", "startTick": 7520, "durationTicks": 160, "tuplet": "3:2" },
+    { "hand": "right", "pitch": "G4", "startTick": 7680, "durationTicks": 960 },
+
+    { "hand": "left", "pitch": "C3", "startTick": 0, "durationTicks": 1920 },
+    { "hand": "left", "pitch": "G3", "startTick": 0, "durationTicks": 1920 },
+    { "hand": "left", "pitch": "G2", "startTick": 1920, "durationTicks": 960 },
+    { "hand": "left", "pitch": "D3", "startTick": 1920, "durationTicks": 960 },
+    { "hand": "left", "pitch": "G2", "startTick": 2880, "durationTicks": 960 },
+    { "hand": "left", "pitch": "D3", "startTick": 2880, "durationTicks": 960 },
+    { "hand": "left", "pitch": "C3", "startTick": 3840, "durationTicks": 1920 },
+    { "hand": "left", "pitch": "G3", "startTick": 3840, "durationTicks": 1920 },
+    { "hand": "left", "pitch": "C3", "startTick": 5760, "durationTicks": 1440 },
+    { "hand": "left", "pitch": "G3", "startTick": 5760, "durationTicks": 1440 },
+    { "hand": "left", "pitch": "C3", "startTick": 7200, "durationTicks": 1440 }
+  ],
+  "rests": [
+    { "hand": "right", "startTick": 7200, "durationTicks": 160, "tuplet": "3:2" }
+  ]
+}

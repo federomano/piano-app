@@ -104,6 +104,47 @@ class Validador(unittest.TestCase):
         self.assertProblema(con(lambda d: d["timeSignatures"].append({"startTick": 960, "numerator": 3, "denominator": 4})),
                             "no cae al inicio de un compás")
 
+    # --- Grupos irregulares ---
+    def tresillos(self, cantidad=3, tuplet="3:2", dur=160):
+        """Compás con `cantidad` figuras de tresillo en la derecha y el resto lleno con una figura común."""
+        def c(d):
+            d["notes"] = [{"hand": "left", "pitch": "C3", "startTick": 0, "durationTicks": 1920}]
+            for i in range(cantidad):
+                n = {"hand": "right", "pitch": "C4", "startTick": i * dur, "durationTicks": dur}
+                if tuplet:
+                    n["tuplet"] = tuplet
+                d["notes"].append(n)
+            resto = 1920 - cantidad * dur
+            if resto:
+                d["rests"] = [{"hand": "right", "startTick": cantidad * dur, "durationTicks": resto}]
+        return con(c)
+
+    def test_tresillo_con_tuplet_esta_bien(self):
+        d = self.tresillos(3)
+        d["rests"] = [{"hand": "right", "startTick": 480, "durationTicks": 960},
+                      {"hand": "right", "startTick": 1440, "durationTicks": 480}]
+        self.assertEqual(v.validate(d), [])
+
+    def test_tresillo_sin_tuplet(self):
+        self.assertProblema(self.tresillos(3, tuplet=None), "agregá \"tuplet\"")
+
+    def test_tuplet_mal_escrito(self):
+        self.assertProblema(self.tresillos(3, tuplet="tres"), "tiene que escribirse como \"3:2\"")
+
+    def test_tuplet_con_duracion_que_no_da_figura(self):
+        self.assertProblema(self.tresillos(3, dur=200), "no puede durar 200 ticks")
+
+    def test_grupo_incompleto(self):
+        d = self.tresillos(2)
+        d["rests"] = [{"hand": "right", "startTick": 320, "durationTicks": 1600}]
+        self.assertProblema(d, "incompleto")
+
+    def test_cuatro_en_el_tiempo_de_tres(self):
+        d = {**BASE, "timeSignatures": [{"startTick": 0, "numerator": 3, "denominator": 4}],
+             "notes": [{"hand": "right", "pitch": "C4", "startTick": i * 360, "durationTicks": 360, "tuplet": "4:3"} for i in range(4)]
+             + [{"hand": "left", "pitch": "C3", "startTick": 0, "durationTicks": 1440}], "rests": []}
+        self.assertEqual(v.validate(d), [])
+
     def test_json_roto(self):
         import tempfile
         with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False) as f:

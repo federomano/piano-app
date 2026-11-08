@@ -8,6 +8,7 @@ import com.federomano.pianoapp.score.Pitch
 import com.federomano.pianoapp.score.Score
 import com.federomano.pianoapp.score.Step
 import com.federomano.pianoapp.score.Ticks
+import com.federomano.pianoapp.score.Tuplet
 import com.federomano.pianoapp.score.chords
 import kotlin.math.max
 import kotlin.math.min
@@ -44,7 +45,9 @@ object NoteLayout {
     /** Figura rítmica: la duración base más los puntillos. */
     data class Figure(val base: Int, val dots: Int)
 
-    fun figureOf(ticks: Int): Figure {
+    /** [tuplet]: si la figura es de un grupo irregular, se dibuja la figura escrita (un tresillo de 160 ticks es una corchea). */
+    fun figureOf(realTicks: Int, tuplet: Tuplet? = null): Figure {
+        val ticks = tuplet?.written(realTicks) ?: realTicks
         val bases = listOf(Ticks.WHOLE, Ticks.HALF, Ticks.QUARTER, Ticks.EIGHTH, Ticks.SIXTEENTH)
         for (base in bases) {
             if (ticks == base) return Figure(base, 0)
@@ -90,7 +93,7 @@ object NoteLayout {
     /** Todo lo que hace falta saber de un acorde (o nota suelta) para dibujarlo. */
     private class Plan(val chord: Chord, val measureIndex: Int, val measure: Measure, val noteX: Float) {
         val hand = chord.hand
-        val figure = figureOf(chord.durationTicks)
+        val figure = figureOf(chord.durationTicks, chord.tuplet)
         val whole = figure.base == Ticks.WHOLE
         val headWidth = if (whole) Smufl.NOTEHEAD_WHOLE_WIDTH else Smufl.NOTEHEAD_WIDTH
         val heads = chord.notes.map { Head(it, staffPosition(it.pitch, hand)) }.sortedBy { it.position }
@@ -213,7 +216,7 @@ object NoteLayout {
         // 5) Silencios.
         for (rest in score.rests) {
             val index = measureIndexAt(rest.startTick)
-            drawRest(ops, rest.hand, rest.startTick, rest.durationTicks, measures[index], xOfTick(rest.startTick))
+            drawRest(ops, rest.hand, rest.startTick, rest.durationTicks, rest.tuplet, measures[index], xOfTick(rest.startTick))
         }
         return ops
     }
@@ -405,10 +408,10 @@ object NoteLayout {
 
     // --- Silencios ---
 
-    private fun drawRest(ops: MutableList<DrawOp>, hand: Hand, start: Int, duration: Int, measure: MeasureLayout, x: Float) {
+    private fun drawRest(ops: MutableList<DrawOp>, hand: Hand, start: Int, duration: Int, tuplet: Tuplet?, measure: MeasureLayout, x: Float) {
         val top = staffTop(hand)
         val wholeMeasure = start == measure.measure.startTick && start + duration == measure.measure.endTick
-        val figure = if (wholeMeasure) Figure(Ticks.WHOLE, 0) else figureOf(duration)
+        val figure = if (wholeMeasure) Figure(Ticks.WHOLE, 0) else figureOf(duration, tuplet)
         val (code, width) = when (figure.base) {
             Ticks.WHOLE -> Smufl.REST_WHOLE to Smufl.REST_WHOLE_WIDTH
             Ticks.HALF -> Smufl.REST_HALF to Smufl.REST_HALF_WIDTH

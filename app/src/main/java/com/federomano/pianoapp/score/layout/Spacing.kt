@@ -57,7 +57,7 @@ object Spacing {
         // Alteraciones: se lleva la cuenta de lo que ya valía en el compás, por mano y octava.
         val state = mutableMapOf<Triple<Hand, Step, Int>, Int>()
         for (note in score.notes.filter { inside(it.startTick) }.sortedBy { it.startTick }) {
-            val figure = NoteLayout.figureOf(note.durationTicks)
+            val figure = NoteLayout.figureOf(note.durationTicks, note.tuplet)
             val head = if (figure.base == Ticks.WHOLE) Smufl.NOTEHEAD_WHOLE_WIDTH else Smufl.NOTEHEAD_WIDTH
             right.merge(note.startTick, head + if (figure.dots > 0) DOTS else 0f, ::maxOf)
             val key = Triple(note.hand, note.pitch.step, note.pitch.octave)
@@ -66,7 +66,7 @@ object Spacing {
             state[key] = note.pitch.alter
         }
         for (rest in score.rests.filter { inside(it.startTick) }) {
-            val figure = NoteLayout.figureOf(rest.durationTicks)
+            val figure = NoteLayout.figureOf(rest.durationTicks, rest.tuplet)
             right.merge(rest.startTick, restWidth(figure.base) + if (figure.dots > 0) DOTS else 0f, ::maxOf)
         }
 
