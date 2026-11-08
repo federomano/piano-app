@@ -91,5 +91,5 @@ El JSON es estricto: una clave mal escrita, una altura inválida o una versión 
 
 ## Lo que todavía no cubre
 
-- **Dinámicas, articulaciones, pedal, repeticiones y ornamentos:** no se representan.
+- **Dinámicas, articulaciones, pedal, repeticiones, trinos y mordentes, indicaciones de texto, fusas, cambios de clave y el signo de 8va:** no se representan (las notas de adorno cortas sí, con `grace`).
 - **Una nota ligada a varias seguidas:** se encadenan ligaduras, una por una.

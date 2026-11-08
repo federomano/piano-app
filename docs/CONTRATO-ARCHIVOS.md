@@ -46,17 +46,17 @@ La app lee **un solo formato**: el JSON propio de la partitura, descrito en [`MO
 8. **La altura se escribe tal como suena en ese lugar.** `"F#4"` es Fa sostenido, `"Bb3"` es Si bemol, `"F4"` es Fa natural. La app mira la armadura y decide sola si dibuja la alteración: en Re mayor (dos sostenidos) un Fa sostenido se escribe `"F#4"` y no lleva signo en la partitura, y un Fa natural se escribe `"F4"` y la app le pone el becuadro. Usá la ortografía correcta de la tonalidad (Fa sostenido o Sol bemol según corresponda). Rango permitido: de `A0` a `C8`.
 9. **Armadura y compás.** `keySignatures` usa `fifths`: positivo = sostenidos, negativo = bemoles (`-3` es Mi bemol mayor, `0` es Do mayor o La menor). Los cambios de armadura y de compás empiezan justo al principio de un compás. Si no cambian, una sola entrada en el tick 0.
 10. **Tempo en negras por minuto, siempre.** Un 6/8 "a negra con puntillo = 60" se escribe `"bpm": 90.0` (60 × 1,5). El primer tempo está en el tick 0.
-10. **Datos de la partitura.**
+11. **Datos de la partitura.**
     - `title`: obligatorio, corto y en español.
     - `level`: `"principiante"`, `"intermedio"` o `"avanzado"`.
     - `goal`: una frase de qué se practica (por ejemplo "Pasar el pulgar por debajo en la escala de Sol mayor").
     - `composer`: si se conoce.
     - `finger` en las notas: opcional, de 1 (pulgar) a 5 (meñique). Si se escribe, que sea para todas las notas de la pasada.
-11. **Repeticiones, da capo y codas se escriben desplegadas**, compás por compás, como si se tocara de corrido: la app no tiene signos de repetición.
+12. **Repeticiones, da capo y codas se escriben desplegadas**, compás por compás, como si se tocara de corrido: la app no tiene signos de repetición.
 
 ## Lo que la app todavía no representa
 
-Dinámicas (p, f, crescendo), articulaciones (staccato, acentos), pedal, ornamentos (trinos, mordentes), letras, fusas y cambio de clave. Si algo de eso está en el original, se deja afuera y se le avisa a Fede en la respuesta.
+Dinámicas (p, f, crescendo), articulaciones (staccato, acentos), pedal, ornamentos (trinos, mordentes), indicaciones de texto ("swing feel"), fusas, cambios de clave (una nota que el original escribe en clave de sol dentro de la mano izquierda se escribe igual en clave de fa, con líneas adicionales) y el signo de 8va (se escriben las alturas reales, tal como suenan). Si algo de eso está en el original, se deja afuera y se le avisa a Fede en la respuesta, diciendo en qué compases.
 
 ## Errores comunes
 
@@ -67,9 +67,9 @@ Dinámicas (p, f, crescendo), articulaciones (staccato, acentos), pedal, ornamen
 | Un compás se ve vacío o corrido | Falta el silencio de una mano, o las duraciones no suman el compás | Completar con silencios (regla 3) |
 | Aviso "no es una figura que la app sepa dibujar" | Duración que no está en la tabla y no lleva `"tuplet"` | Si es un tresillo, agregar `"tuplet": "3:2"`; si no, aproximar a una figura de la tabla (regla 2) |
 | Aviso "grupo irregular incompleto" | Faltan figuras del tresillo, o el grupo cruza una barra | Completar el grupo con notas o silencios con el mismo `"tuplet"` (regla 2) |
-| Sale un signo de alteración de más o de menos | La altura se escribió según el dibujo y no según el sonido | Escribir la altura real (regla 7) |
+| Sale un signo de alteración de más o de menos | La altura se escribió según el dibujo y no según el sonido | Escribir la altura real (regla 8) |
 | Aviso "Fuera del rango del piano" | Octava mal escrita (por ejemplo `C9`) | Revisar la octava: el Do central es `C4` |
-| La pieza suena al doble o a la mitad de velocidad | `bpm` en otra figura que no sea negras | Pasar el tempo a negras por minuto (regla 9) |
+| La pieza suena al doble o a la mitad de velocidad | `bpm` en otra figura que no sea negras | Pasar el tempo a negras por minuto (regla 10) |
 
 ## Si la pieza viene de otra fuente
 
@@ -82,8 +82,8 @@ Dinámicas (p, f, crescendo), articulaciones (staccato, acentos), pedal, ornamen
 1. ¿Cada mano suma exactamente la duración de cada compás? (regla 3)
 2. ¿Nada cruza una barra, y toda ligadura tiene su segunda nota? ¿Cada voz va sola, sin figuras superpuestas? (regla 4)
 3. ¿Solo hay duraciones de la tabla, o grupos irregulares con su `"tuplet"` y grupos completos? (regla 2)
-4. ¿Las alturas están dentro de `A0`–`C8` y escritas según el sonido? (regla 7)
-5. ¿El tempo está en negras por minuto? (regla 9)
+4. ¿Las alturas están dentro de `A0`–`C8` y escritas según el sonido? (regla 8)
+5. ¿El tempo está en negras por minuto? (regla 10)
 6. ¿Están `title`, `level` y `goal`?
 7. ¿Se avisó qué se simplificó o no se pudo representar?
 
@@ -92,10 +92,11 @@ Dinámicas (p, f, crescendo), articulaciones (staccato, acentos), pedal, ornamen
 Antes de entregar un archivo, Claude corre el validador (necesita solo Python 3):
 
 ```
-python3 tools/validar_partitura.py archivo.json
+python3 /mnt/project/piano/validar_partitura.py archivo.json   # en el Proyecto de Claude
+python3 tools/validar_partitura.py archivo.json                # en el repo
 ```
 
-Revisa las reglas 2 a 10: duraciones permitidas, que cada mano llene cada compás, barras de compás, ligaduras, voces y superposiciones, la misma tecla dos veces a la vez, rango del piano, claves que no existen, tempo, armadura y datos de la partitura. Si encuentra algo, dice qué compás y cómo arreglarlo. Hay que corregir hasta que diga `✓ cumple el contrato`.
+Revisa las reglas 2 a 11: duraciones permitidas, grupos irregulares, anacrusa, notas de adorno, que cada mano llene cada compás, barras de compás, ligaduras, voces y superposiciones, la misma tecla dos veces a la vez, rango del piano, claves que no existen, tempo, armadura y datos de la partitura. Si encuentra algo, dice qué compás y cómo arreglarlo. Hay que corregir hasta que diga `✓ cumple el contrato`.
 
 Qué **no** puede revisar: que la ortografía de las alturas sea la correcta para la tonalidad (`F#4` y no `Gb4` en Re mayor), que la música sea fiel al original, ni que la dificultad sea la que corresponde. Eso sigue siendo responsabilidad de quien arma el archivo.
 
@@ -103,7 +104,7 @@ La app también detecta varios errores al abrir un archivo (`validate()` devuelv
 
 ## Texto para pegar en las instrucciones del Proyecto "Profesor de piano"
 
-> Cuando te pida una partitura o un ejercicio, entregame un archivo `.json` en el formato de la app de piano: el modelo está en MODELO-PARTITURA.md y las reglas en CONTRATO-ARCHIVOS.md. Los puntos que más importan: mano derecha = clave de sol (`"right"`), mano izquierda = clave de fa (`"left"`); 480 ticks por negra; solo redonda, blanca, negra, corchea y semicorchea (con hasta dos puntillos), tresillos y similares con `"tuplet"` (por ejemplo `"3:2"`, corchea de tresillo = 160 ticks); cada mano llena cada compás completo con notas y silencios; ninguna nota ni silencio cruza una barra de compás (se parte y se liga con `tiedToNext`); dos líneas a la vez en una misma mano con `"voice"` (1 la principal, 2 la otra; cada voz sin superponerse); si empieza con compás incompleto, `"pickupTicks"` (ese compás es el 0); notitas de adorno con `"grace": true` (mismo `startTick` que la nota principal, `durationTicks` 60); repeticiones desplegadas; alturas escritas como suenan (`F#4`, `Bb3`, `F4` si es natural) dentro de `A0`–`C8`; tempo en negras por minuto; con `title`, `level` y `goal`. Antes de entregar, corré `python3 tools/validar_partitura.py archivo.json` hasta que diga que cumple el contrato, y decime qué simplificaste o no pudiste representar. Usá como modelo los archivos de `docs/ejemplos`.
+> Cuando te pida una partitura o un ejercicio, entregame un archivo `.json` en el formato de la app de piano: el modelo está en MODELO-PARTITURA.md y las reglas en CONTRATO-ARCHIVOS.md. Los puntos que más importan: mano derecha = clave de sol (`"right"`), mano izquierda = clave de fa (`"left"`); 480 ticks por negra; solo redonda, blanca, negra, corchea y semicorchea (con hasta dos puntillos), tresillos y similares con `"tuplet"` (por ejemplo `"3:2"`, corchea de tresillo = 160 ticks); cada mano llena cada compás completo con notas y silencios; ninguna nota ni silencio cruza una barra de compás (se parte y se liga con `tiedToNext`); dos líneas a la vez en una misma mano con `"voice"` (1 la principal, 2 la otra; cada voz sin superponerse); si empieza con compás incompleto, `"pickupTicks"` (ese compás es el 0); notitas de adorno con `"grace": true` (mismo `startTick` que la nota principal, `durationTicks` 60); repeticiones desplegadas; alturas escritas como suenan (`F#4`, `Bb3`, `F4` si es natural) dentro de `A0`–`C8`; tempo en negras por minuto; con `title`, `level` y `goal`. Antes de entregar, corré `python3 /mnt/project/piano/validar_partitura.py archivo.json` hasta que diga que cumple el contrato, y decime qué simplificaste o no pudiste representar. Usá como modelo los archivos de `piano/ejemplos`.
 
 ## Ejemplos de referencia
 
@@ -117,5 +118,7 @@ Todos abren sin avisos y los tests lo verifican en cada cambio.
 | [`partitura-ejemplo.json`](ejemplos/partitura-ejemplo.json) | Cómo se escribe la digitación (`finger`) |
 | [`ejercicio-dos-voces.json`](ejemplos/ejercicio-dos-voces.json) | Dos voces en una mano: melodía larga arriba y línea que corre abajo, y un bajo sostenido bajo acordes |
 | [`ejercicio-tresillos.json`](ejemplos/ejercicio-tresillos.json) | Tresillos de corchea y de negra, swing, silencio de tresillo y cuatro en el tiempo de tres |
+| [`ejercicio-anacrusa.json`](ejemplos/ejercicio-anacrusa.json) | Anacrusa: compás 0 de tres corcheas (`pickupTicks`) |
+| [`ejercicio-adornos.json`](ejemplos/ejercicio-adornos.json) | Notas de adorno (`grace`): con alteración, en acorde y en la izquierda |
 
 Este contrato se actualiza cada vez que la app gane o pierda soporte de algo.

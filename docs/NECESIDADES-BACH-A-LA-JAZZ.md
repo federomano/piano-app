@@ -1,3 +1,5 @@
+> **Nota:** documento de trabajo histórico. Muchas de estas necesidades ya están resueltas (tresillos, voces, anacrusa, adornos). Lo vigente para transcribir la pieza está en `GUIA-TRANSCRIPCION-BACH-A-LA-JAZZ.md`; lo que falta (dinámicas, articulaciones, pedal, cambios de clave, 8va, fusas) está en PIA-58.
+
 # Qué le falta a la app para reproducir "Bach à la Jazz" tal cual está escrita
 
 Pieza: *Bach à la Jazz*, arr. Matt Herskowitz (PDF de 5 páginas, 59 compases, 3/4, Do menor, negra = 140). Se revisó contra `CONTRATO-ARCHIVOS.md` y `MODELO-PARTITURA.md`. Hoy el contrato solo permite figuras binarias (redonda a semicorchea con hasta dos puntillos), una figura por vez en cada mano, compás completo y sin anacrusa. La partitura rompe esas reglas en varios lugares.

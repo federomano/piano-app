@@ -1,0 +1,35 @@
+# Guía: transcribir «Bach à la Jazz» a la app
+
+Para el profesor de piano. La meta es **un solo archivo `bach-a-la-jazz.json`** con la pieza entera (59 compases), lo más completa posible con lo que la app representa hoy. Todo lo demás se deja afuera y se informa. Reglas generales: `CONTRATO-ARCHIVOS.md`; modelo: `MODELO-PARTITURA.md`.
+
+## Datos de la pieza
+
+- Compás 3/4 (`numerator: 3, denominator: 4`), Do menor (`"fifths": -3`), negra = 140 (`"bpm": 140.0`).
+- `level`: `"avanzado"`. `title`: «Bach à la Jazz». `goal`: una frase.
+- Un compás de 3/4 son 1440 ticks.
+
+## Cómo se escribe cada cosa que tiene la pieza
+
+| En la partitura | En el archivo |
+|---|---|
+| Anacrusa de un pulso (compás 0) | `"pickupTicks": 480`. Las notas arrancan en el tick 0; el primer compás entero empieza en el tick 480 y es el 1. Llenar el compás 0 con notas/silencios en las dos manos. |
+| Tresillos (casi toda la pieza) | `"tuplet": "3:2"`: corchea de tresillo = 160 ticks, negra de tresillo = 320. Grupos completos dentro del compás; silencios de tresillo también llevan `"tuplet"`. |
+| Cuatro en el tiempo de tres (compases 54–55) | `"tuplet": "4:3"`, negra = 360 ticks. |
+| Notas de adorno (compases 16, 22, 23, 24 y 31, mano izquierda) | `"grace": true`, mismo `startTick` que la nota principal, `durationTicks` 60. Una sola por nota. |
+| Dos líneas a la vez en una mano (derecha 11–16, izquierda 31) | `"voice"`: 1 la principal, 2 la otra. Cada voz sin superponerse y llenando sus compases. |
+| Ligaduras de duración | Partir en la barra de compás con `tiedToNext`. |
+| Cambios de clave (compases 54–58: la izquierda pasa a clave de sol; la derecha a clave de fa en el 57) | **No existen.** Cada nota va en la mano que la toca, con su altura real; la app la dibuja con líneas adicionales. Avisar en qué compases pasa. |
+| Signo 8va (compases 55–56) | **No existe.** Escribir las alturas reales, como suenan. Avisar. |
+| Compás 58, posibles fusas | **No se pueden.** Revisar el original: si hay fusas, aproximar a semicorcheas (o agrupar) y avisar qué cambió y por qué. |
+| Repeticiones | Desplegadas, compás por compás. |
+
+## Lo que se deja afuera (y hay que avisar)
+
+Dinámicas (mf en el 0, mp en el 7, f en el 51, ff en el 55, crescendo 47–48, regulador 54), staccato (introducción de la izquierda y compases 17–30), acentos (7 y 56–58), pedal (24 y 58–59) y los textos «light, staccato» / «swing feel». Decir qué se omitió y dónde.
+
+## Cómo trabajar
+
+1. Leer la partitura (PDF) compás por compás. Si algo no se lee bien, **no adivinar**: anotarlo en el aviso final con el número de compás.
+2. Escribir el JSON y correr `python3 /mnt/project/piano/validar_partitura.py bach-a-la-jazz.json` hasta que diga «cumple el contrato».
+3. Revisar a mano lo que el validador no mira: ortografía de las alturas en Do menor (Mi bemol, La bemol, Si bemol; Si natural como `B`), y que la música sea fiel.
+4. Entregar un solo archivo y, después, una lista corta: qué se simplificó, qué se omitió (con compases) y qué dudas quedan.
