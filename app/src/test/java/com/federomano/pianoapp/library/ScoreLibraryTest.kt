@@ -124,4 +124,21 @@ class ScoreLibraryTest {
         File(tmp.root, "library/roto.json").writeText("{ no es una partitura")
         assertEquals(1, lib.list().size)
     }
+
+    @Test
+    fun theTestFileWithSeveralErrorsReportsAllOfThem() {
+        val text = """
+            { "formatVersion": 1, "title": "Ejemplo con errores", "level": "principiante",
+              "notes": [
+                { "hand": "right", "pitch": "C4", "startTick": 1440, "durationTicks": 960 },
+                { "hand": "right", "pitch": "D4", "startTick": 0, "durationTicks": 480, "tiedToNext": true },
+                { "hand": "left", "pitch": "C0", "startTick": 0, "durationTicks": 480 }
+              ] }
+        """
+        val problems = (library().import(text) as ImportResult.Failed).problems
+        assertEquals(3, problems.size)
+        assertTrue(problems.any { "cruza la barra de compás" in it })
+        assertTrue(problems.any { "está ligada" in it })
+        assertTrue(problems.any { "fuera del rango del piano" in it })
+    }
 }
