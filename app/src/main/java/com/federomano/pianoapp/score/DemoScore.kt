@@ -1,10 +1,9 @@
 package com.federomano.pianoapp.score
 
 /**
- * Partitura de demostración, provisoria: sirve para ver el dibujo mientras no se puedan importar
- * archivos ni haya partituras de ejemplo (PIA-15). Son 12 compases con cambios de armadura y de
- * compás, y con todas las figuras, silencios, ligaduras, alteraciones y casos de plicas y barras que
- * tiene que dibujar la app.
+ * Ejercicio de práctica y de pruebas: 12 compases con cambios de armadura y de compás, y con todas las
+ * figuras, silencios, ligaduras, alteraciones y casos de plicas y barras que tiene que dibujar la app.
+ * Es una de las partituras de ejemplo del menú (ver [ExampleScores]) y la que usan los tests del dibujo.
  */
 object DemoScore {
     private val notes = mutableListOf<Note>()
@@ -85,7 +84,9 @@ object DemoScore {
             Triple(3, TimeSignatureChange(14400, 4, 4), 0),
         )
         return Score(
-            title = "Demostración del dibujo",
+            title = "Ejercicio: todo lo que dibuja la app",
+            level = "avanzado",
+            goal = "Ver y escuchar alteraciones, silencios, acordes, ligaduras y cambios de armadura, compás y tempo.",
             timeSignatures = sections.map { it.second },
             keySignatures = sections.map { KeySignatureChange(it.second.startTick, it.third) },
             // Tempo: arranca a 90, baja a 60 en el 3/4, sube a 80 en el 6/8 y vuelve a 100 en el último 4/4.

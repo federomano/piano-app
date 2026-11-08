@@ -24,7 +24,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.federomano.pianoapp.score.DemoScore
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.layout.height
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import com.federomano.pianoapp.score.ExampleScore
+import com.federomano.pianoapp.ui.HomeMenu
 import com.federomano.pianoapp.ui.InkColor
 import com.federomano.pianoapp.ui.PaperColor
 import com.federomano.pianoapp.ui.ScoreView
@@ -76,14 +84,27 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 private fun HomeScreen(version: String) {
-    val demo = remember { DemoScore.create() }
+    // null = menú de inicio; si no, la partitura abierta. El botón Atrás del celu vuelve al menú.
+    var open by remember { mutableStateOf<ExampleScore?>(null) }
+    BackHandler(enabled = open != null) { open = null }
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(PaperColor)
             .windowInsetsPadding(WindowInsets.displayCutout.only(WindowInsetsSides.Horizontal)),
     ) {
-        ScoreView(score = demo, modifier = Modifier.fillMaxSize())
+        val selected = open
+        if (selected == null) {
+            HomeMenu(onOpen = { open = it })
+        } else {
+            key(selected.id) {
+                val score = remember { selected.create() }
+                ScoreView(score = score, modifier = Modifier.fillMaxSize())
+            }
+            TextButton(onClick = { open = null }, modifier = Modifier.align(Alignment.TopStart).height(32.dp)) {
+                Text("‹ Menú", fontSize = 11.sp, color = InkColor.copy(alpha = 0.65f))
+            }
+        }
         Text(
             text = "Versión $version",
             color = InkColor.copy(alpha = 0.5f),

@@ -100,4 +100,22 @@ class ScorePreviewTest {
             ImageIO.write(render(layout, scroll, width, spPx, music), "png", File(out, "$name.png"))
         }
     }
+
+    @Test
+    fun writeExamplePreviews() {
+        val music = try {
+            Font.createFont(Font.TRUETYPE_FONT, File("src/main/assets/fonts/Bravura.otf"))
+        } catch (e: Throwable) {
+            assumeNoException(e)
+            return
+        }
+        val out = File("build/previews").apply { mkdirs() }
+        for ((id, measures) in listOf("escala" to listOf(0, 2), "himno" to listOf(0, 3, 8, 11))) {
+            val layout = ScoreLayout.build(com.federomano.pianoapp.score.ExampleScores.all.first { it.id == id }.create())
+            for (m in measures) {
+                val scroll = if (m == 0) 0f else layout.measures[m].x0 - layout.headerWidth + 0.1f
+                ImageIO.write(render(layout, scroll, 1900, 26f, music), "png", File(out, "ej-$id-${m + 1}.png"))
+            }
+        }
+    }
 }
