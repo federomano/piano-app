@@ -182,11 +182,14 @@ data class Note(
 
     val endTick: Int get() = startTick + durationTicks
 
-    /** Cuándo empieza a sonar: una nota común, en [startTick]; un adorno, [durationTicks] antes. */
-    val soundStartTick: Int get() = if (grace) maxOf(0, startTick - durationTicks) else startTick
+    /**
+     * Cuándo empieza a sonar: una nota común, en [startTick]; un adorno, [durationTicks] antes. Si no hay lugar antes
+     * (la pieza arranca ahí), el adorno suena sobre el tiempo, junto con la nota principal.
+     */
+    val soundStartTick: Int get() = if (grace && startTick >= durationTicks) startTick - durationTicks else startTick
 
-    /** Cuándo deja de sonar: un adorno termina donde empieza la nota principal. */
-    val soundEndTick: Int get() = if (grace) startTick else endTick
+    /** Cuándo deja de sonar: un adorno termina donde empieza la nota principal (o, si suena sobre el tiempo, [durationTicks] después). */
+    val soundEndTick: Int get() = if (!grace) endTick else if (startTick >= durationTicks) startTick else startTick + durationTicks
 }
 
 @Serializable

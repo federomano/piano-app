@@ -51,10 +51,22 @@ class GraceTest {
     }
 
     @Test
-    fun graceAtTickZeroIsClamped() {
+    fun graceAtTheVeryStartSoundsOnTheBeat() {
+        // No hay lugar antes del tick 0: el adorno suena sobre el tiempo y nunca queda con duración 0.
         val g = note("B3", 0, Ticks.GRACE, grace = true)
         assertEquals(0, g.soundStartTick)
-        assertEquals(0, g.soundEndTick)
+        assertEquals(Ticks.GRACE, g.soundEndTick)
+        val s = score(g, note("C4", 0, 1920))
+        assertTrue(s.playedNotes().all { it.durationTicks > 0 })
+    }
+
+    @Test
+    fun everyExampleCanBePlayedAndLaidOut() {
+        for (example in ExampleScores.all) {
+            val s = example.create()
+            assertTrue(example.id, s.playedNotes().all { it.durationTicks > 0 })
+            com.federomano.pianoapp.score.layout.ScoreLayout.build(s)
+        }
     }
 
     @Test
