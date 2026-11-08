@@ -3,6 +3,7 @@ package com.federomano.pianoapp.library
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
+import org.junit.Assert.assertNull
 import org.junit.Test
 
 class ImportReportTest {
@@ -27,5 +28,22 @@ class ImportReportTest {
         assertFalse(line.ok)
         assertEquals(listOf("uno", "dos"), line.problems)
         assertTrue(line.summary.startsWith("No se pudo importar"))
+    }
+
+    private fun entry(id: String) = LibraryEntry(id, com.federomano.pianoapp.score.ExampleScores.all.first().create(), 0L)
+
+    @Test
+    fun oneImportedFileOpensDirectly() {
+        val e = entry("a")
+        assertEquals(e, directOpenEntry(listOf(ImportLine("a.json", ImportResult.Added(e)))))
+        assertEquals(e, directOpenEntry(listOf(ImportLine("a.json", ImportResult.AlreadyThere(e)))))
+    }
+
+    @Test
+    fun errorsOrSeveralFilesShowTheReportInstead() {
+        val e = entry("a")
+        assertNull(directOpenEntry(listOf(ImportLine("a.json", ImportResult.Failed(listOf("mal"))))))
+        assertNull(directOpenEntry(listOf(ImportLine("a", ImportResult.Added(e)), ImportLine("b", ImportResult.Added(e)))))
+        assertNull(directOpenEntry(emptyList()))
     }
 }

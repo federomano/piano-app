@@ -11,6 +11,7 @@ import com.federomano.pianoapp.library.ImportLine
 import com.federomano.pianoapp.library.ImportResult
 import com.federomano.pianoapp.library.LibraryEntry
 import com.federomano.pianoapp.library.ScoreLibrary
+import com.federomano.pianoapp.library.directOpenEntry
 import com.federomano.pianoapp.ui.ImportReportDialog
 import com.federomano.pianoapp.ui.OpenScore
 import java.io.ByteArrayOutputStream
@@ -58,6 +59,8 @@ class MainActivity : ComponentActivity() {
     private lateinit var library: ScoreLibrary
     private val entries = mutableStateListOf<LibraryEntry>()
     private val report = mutableStateOf<List<ImportLine>?>(null)
+    // null = menú de inicio; si no, la partitura abierta. Vive acá para poder abrirla al recibir un archivo.
+    private val open = mutableStateOf<OpenScore?>(null)
 
     private val picker = registerForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
         if (uris.isNotEmpty()) importUris(uris)
@@ -90,6 +93,8 @@ class MainActivity : ComponentActivity() {
                 HomeScreen(
                     version = version,
                     entries = entries,
+                    open = open.value,
+                    onOpenChange = { open.value = it },
                     report = report.value,
                     onDismissReport = { report.value = null },
                     onPickFiles = { picker.launch(arrayOf("*/*")) },
@@ -155,7 +160,14 @@ class MainActivity : ComponentActivity() {
 
     private fun finishImport(lines: List<ImportLine>) {
         refreshLibrary()
-        report.value = lines
+        // Un solo archivo que entró bien: se abre directo, listo para tocar. Si no, se muestra el informe.
+        val entry = directOpenEntry(lines)
+        if (entry != null) {
+            report.value = null
+            open.value = OpenScore("mine-" + entry.id + "-" + entry.modified) { entry.score }
+        } else {
+            report.value = lines
+        }
     }
 
     /** Lee el archivo completo, hasta un poco más del tope; si se pasa, la biblioteca lo rechaza por grande. */
@@ -201,15 +213,16 @@ class MainActivity : ComponentActivity() {
 private fun HomeScreen(
     version: String,
     entries: List<LibraryEntry>,
+    open: OpenScore?,
+    onOpenChange: (OpenScore?) -> Unit,
     report: List<ImportLine>?,
     onDismissReport: () -> Unit,
     onPickFiles: () -> Unit,
     onRename: (String, String) -> Unit,
     onDelete: (String) -> Unit,
 ) {
-    // null = menú de inicio; si no, la partitura abierta. El botón Atrás del celu vuelve al menú.
-    var open by remember { mutableStateOf<OpenScore?>(null) }
-    BackHandler(enabled = open != null) { open = null }
+    // El botón Atrás del celu vuelve al menú.
+    BackHandler(enabled = open != null) { onOpenChange(null) }
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -220,8 +233,8 @@ private fun HomeScreen(
         if (selected == null) {
             HomeMenu(
                 entries = entries,
-                onOpenExample = { open = OpenScore("ex-" + it.id, it.create) },
-                onOpenEntry = { entry -> open = OpenScore("mine-" + entry.id + "-" + entry.modified) { entry.score } },
+                onOpenExample = { onOpenChange(OpenScore("ex-" + it.id, it.create)) },
+                onOpenEntry = { entry -> onOpenChange(OpenScore("mine-" + entry.id + "-" + entry.modified) { entry.score }) },
                 onPickFiles = onPickFiles,
                 onRename = onRename,
                 onDelete = onDelete,
@@ -231,7 +244,7 @@ private fun HomeScreen(
                 val score = remember { selected.score() }
                 ScoreView(score = score, modifier = Modifier.fillMaxSize())
             }
-            TextButton(onClick = { open = null }, modifier = Modifier.align(Alignment.TopStart).height(32.dp)) {
+            TextButton(onClick = { onOpenChange(null) }, modifier = Modifier.align(Alignment.TopStart).height(32.dp)) {
                 Text("‹ Menú", fontSize = 11.sp, color = InkColor.copy(alpha = 0.65f))
             }
         }

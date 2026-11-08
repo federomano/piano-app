@@ -26,3 +26,14 @@ fun formatDuration(seconds: Float): String {
 /** Subtítulo de una partitura de la lista: compositor, nivel y duración, los que haya. */
 fun subtitleOf(composer: String?, level: String?, seconds: Float): String =
     listOfNotNull(composer, level, formatDuration(seconds)).joinToString(" · ")
+
+/**
+ * La partitura que se abre directo al recibir archivos: solo si llegó **un** archivo y entró bien
+ * (o ya estaba en la biblioteca). Con varios archivos o con errores se muestra el informe.
+ */
+fun directOpenEntry(lines: List<ImportLine>): LibraryEntry? =
+    when (val r = lines.singleOrNull()?.result) {
+        is ImportResult.Added -> r.entry
+        is ImportResult.AlreadyThere -> r.entry
+        else -> null
+    }
