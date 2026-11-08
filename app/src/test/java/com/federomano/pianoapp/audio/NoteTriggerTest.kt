@@ -12,6 +12,8 @@ class NoteTriggerTest {
         Note(it.hand, it.pitch.copy(octave = 4 + midiStep), start, dur)
     }
 
+    private fun tied(midiStep: Int, start: Int, dur: Int) = note(midiStep, start, dur).copy(tiedToNext = true)
+
     private class Log {
         val on = ArrayList<Pair<Note, Int>>()
         val off = ArrayList<Int>()
@@ -65,6 +67,59 @@ class NoteTriggerTest {
         assertEquals(1, log.on.size); assertEquals(listOf(1), log.off)
     }
 
+    @Test
+    fun aTiedNoteSoundsOnceAndLastsForBothFigures() {
+        val a = tied(0, 0, 480); val b = note(0, 480, 480)
+        val t = NoteTrigger(listOf(a, b)); val log = Log()
+        t.reset(-24f)
+        t.advance(0f, log::noteOn, log.off::add)
+        t.advance(480f, log::noteOn, log.off::add)
+        assertEquals(1, log.on.size)
+        assertTrue("sigue sonando en el cambio", log.off.isEmpty())
+        t.advance(959f, log::noteOn, log.off::add)
+        assertTrue(log.off.isEmpty())
+        t.advance(960f, log::noteOn, log.off::add)
+        assertEquals(listOf(1), log.off)
+    }
+
+    @Test
+    fun aTieSurvivesAJumpOverBothNotes() {
+        val a = tied(0, 0, 480); val b = note(0, 480, 480)
+        val t = NoteTrigger(listOf(a, b)); val log = Log()
+        t.reset(-24f)
+        t.advance(2000f, log::noteOn, log.off::add)
+        assertEquals(1, log.on.size)
+        assertEquals(listOf(1), log.off)
+    }
+
+    @Test
+    fun aRepeatedNoteWithoutATieSoundsTwice() {
+        val a = note(0, 0, 480); val b = note(0, 480, 480)
+        val t = NoteTrigger(listOf(a, b)); val log = Log()
+        t.reset(-24f)
+        t.advance(480f, log::noteOn, log.off::add)
+        assertEquals(2, log.on.size)
+    }
+
+    @Test
+    fun aTieOnlyContinuesTheSamePitch() {
+        val a = tied(0, 0, 480); val b = note(1, 480, 480)
+        val t = NoteTrigger(listOf(a, b)); val log = Log()
+        t.reset(-24f)
+        t.advance(480f, log::noteOn, log.off::add)
+        assertEquals(2, log.on.size)
+        assertEquals(listOf(1), log.off)
+    }
+
+    @Test
+    fun startingRightOnTheSecondNoteOfATieStillPlaysIt() {
+        val a = tied(0, 0, 480); val b = note(0, 480, 480)
+        val t = NoteTrigger(listOf(a, b)); val log = Log()
+        t.reset(470f)
+        t.advance(480f, log::noteOn, log.off::add)
+        assertEquals(listOf(b), log.on.map { it.first })
+    }
+
     /** Reproduce el recorrido cuadro a cuadro con el reloj del tempo: cada nota suena una vez, a tiempo. */
     @Test
     fun everyNoteSoundsOnceOnTheExactMusicalClock() {
@@ -81,12 +136,17 @@ class NoteTriggerTest {
             trigger.advance(tick, log::noteOn, log.off::add)
             for (i in before until log.on.size) firedAt[log.on[i].first] = tick
         }
-        assertEquals(score.notes.size, log.on.size)
-        for (n in score.notes) {
+        // Las notas que continúan una ligadura no vuelven a atacar.
+        val continued = score.notes.filter { n ->
+            score.notes.any { p -> p.tiedToNext && p.hand == n.hand && p.pitch == n.pitch && p.endTick == n.startTick }
+        }
+        assertTrue("la partitura de práctica tiene ligaduras", continued.isNotEmpty())
+        assertEquals(score.notes.size - continued.size, log.on.size)
+        for (n in score.notes - continued.toSet()) {
             val at = firedAt.getValue(n)
             val oneFrame = tempo.ticksPerSecond(at) * frame
             assertTrue("nota en ${n.startTick}: sonó en $at", at >= n.startTick && at - n.startTick <= oneFrame + 0.01f)
         }
-        assertEquals(score.notes.size, log.off.size)
+        assertEquals(log.on.size, log.off.size)
     }
 }
