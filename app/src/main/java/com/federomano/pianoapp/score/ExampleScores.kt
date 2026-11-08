@@ -12,6 +12,7 @@ object ExampleScores {
         ExampleScore("tresillos", "Ejercicio: tresillos", "Tresillos de corchea y de negra, swing y un grupo de cuatro en el tiempo de tres.") { triplets() },
         ExampleScore("anacrusa", "Ejercicio: anacrusa", "Empieza con un compás corto (tres corcheas): el compás 0. Después, los compases enteros desde el 1.") { pickup() },
         ExampleScore("adornos", "Ejercicio: notas de adorno", "Notas chiquitas que se tocan justo antes del tiempo: con alteración, con línea adicional, en acorde y en la mano izquierda.") { graceNotes() },
+        ExampleScore("dinamicas", "Ejercicio: dinámicas", "Del mp al ff con un crescendo, y de vuelta al p con un diminuendo. Se escucha cómo cambia la fuerza.") { dynamics() },
         ExampleScore("ejercicio", "Ejercicio: todo lo que dibuja la app", "Alteraciones, silencios, acordes, ligaduras y cambios de armadura, compás y tempo.") { DemoScore.create() },
     )
 
@@ -102,6 +103,34 @@ object ExampleScores {
             level = "intermedio",
             goal = "Tocar dos líneas a la vez con la misma mano: una larga arriba y otra que corre abajo, o un bajo sostenido bajo acordes.",
             tempos = listOf(TempoChange(0, 80.0)),
+            notes = b.notes,
+            rests = b.rests,
+        )
+    }
+
+    private fun dynamics(): Score {
+        val b = Builder()
+        val bar = Ticks.WHOLE
+        b.right(
+            "C4/q E4/q G4/q E4/q  D4/q F4/q A4/q F4/q  E4/q G4/q C5/q G4/q  F4/q A4/q C5/q A4/q  " +
+                "G4/q B4/q D5/q B4/q  E5/q C5/q G4/q E4/q  D4/q G4/q B4/q G4/q  C4/w",
+        )
+        b.left("C3/w  F2/w  C3/w  F2/w  G2/w  C3/w  G2/w  C3/w")
+        return Score(
+            title = "Ejercicio: dinámicas",
+            level = "principiante",
+            goal = "Tocar con la fuerza que pide cada letra: mp al principio, crescendo hasta f y ff, y diminuendo hasta p.",
+            tempos = listOf(TempoChange(0, 80.0)),
+            dynamics = listOf(
+                DynamicMark(0, DynamicLevel.MP),
+                DynamicMark(3 * bar, DynamicLevel.F),
+                DynamicMark(4 * bar, DynamicLevel.FF),
+                DynamicMark(7 * bar, DynamicLevel.P),
+            ),
+            hairpins = listOf(
+                Hairpin(bar, 3 * bar, HairpinKind.CRESCENDO),
+                Hairpin(5 * bar, 7 * bar, HairpinKind.DIMINUENDO),
+            ),
             notes = b.notes,
             rests = b.rests,
         )

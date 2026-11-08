@@ -67,6 +67,53 @@ fun Score.chords(hand: Hand? = null): List<Chord> =
 fun Score.playedNotes(): List<Note> =
     notes.map { if (it.grace) it.copy(startTick = it.soundStartTick, durationTicks = it.soundEndTick - it.soundStartTick, grace = false) else it }
 
+/** Intensidad con la que suena todo si la partitura no trae dinámicas (la de siempre). */
+const val DEFAULT_VELOCITY = 90
+
+/** Intensidad con la que se arranca si hay reguladores pero ninguna dinámica antes (mf). */
+private const val FALLBACK_VELOCITY = 80
+
+/** Cuánto cambia un regulador si no hay una dinámica que diga adónde llega. */
+private const val HAIRPIN_STEP = 24
+
+/**
+ * Con qué intensidad (1..127) suena una nota que empieza en [tick]. Cada dinámica vale hasta la siguiente; un regulador
+ * va cambiando de a poco, en línea recta, desde lo que había hasta la dinámica que le sigue (o ±24 si no hay), y
+ * al terminar queda en ese valor, sin saltos. Antes de la primera dinámica vale la primera. Las notas no traen
+ * intensidad propia: manda siempre la dinámica.
+ */
+fun Score.velocityAt(tick: Int): Int {
+    if (dynamics.isEmpty() && hairpins.isEmpty()) return DEFAULT_VELOCITY
+    return velocityInside(dynamics.sortedBy { it.startTick }, hairpins.sortedBy { it.startTick }, tick)
+}
+
+private fun hairpinTarget(bar: Hairpin, marks: List<DynamicMark>, settledAt: (Int) -> Int): Int {
+    val from = settledAt(bar.startTick)
+    val next = marks.firstOrNull { it.startTick >= bar.endTick }?.level?.velocity
+    val up = bar.kind == HairpinKind.CRESCENDO
+    val target = if (next != null && (if (up) next >= from else next <= from)) next else from + if (up) HAIRPIN_STEP else -HAIRPIN_STEP
+    return target.coerceIn(1, 127)
+}
+
+private fun settledAt(marks: List<DynamicMark>, bars: List<Hairpin>, at: Int): Int {
+    val mark = marks.lastOrNull { it.startTick <= at }
+    val bar = bars.filter { it.endTick <= at }.maxByOrNull { it.endTick }
+    return when {
+        bar != null && (mark == null || bar.endTick > mark.startTick) -> hairpinTarget(bar, marks) { settledAt(marks, bars, it) }
+        mark != null -> mark.level.velocity
+        else -> marks.firstOrNull()?.level?.velocity ?: FALLBACK_VELOCITY
+    }
+}
+
+private fun velocityInside(marks: List<DynamicMark>, bars: List<Hairpin>, tick: Int): Int {
+    val inside = bars.firstOrNull { tick >= it.startTick && tick < it.endTick }
+        ?: return settledAt(marks, bars, tick)
+    val from = settledAt(marks, bars, inside.startTick)
+    val to = hairpinTarget(inside, marks) { settledAt(marks, bars, it) }
+    val fraction = (tick - inside.startTick).toFloat() / (inside.endTick - inside.startTick)
+    return (from + (to - from) * fraction).toInt().coerceIn(1, 127)
+}
+
 /** Rango del piano: de La0 (MIDI 21) a Do8 (MIDI 108). */
 val PIANO_RANGE = 21..108
 
@@ -136,6 +183,8 @@ fun Score.validate(): List<String> {
     graceNotes.groupBy { Triple(it.hand, it.pitch.midi, it.startTick) }.filterValues { it.size > 1 }.keys.forEach { (hand, _, tick) ->
         errors += "Hay dos adornos iguales de la ${hand.label} en el tick $tick."
     }
+
+    checkDynamics(this, errors)
 
     for (rest in rests) {
         val measure = measureAt(rest.startTick)
@@ -222,4 +271,25 @@ fun Score.validate(): List<String> {
     }
 
     return errors
+}
+
+/** Revisa dinámicas y reguladores: en orden, dentro de la pieza y sin pisarse. */
+private fun checkDynamics(score: Score, errors: MutableList<String>) {
+    val end = score.lengthTicks
+    val marks = score.dynamics
+    if (marks.zipWithNext().any { (a, b) -> b.startTick <= a.startTick }) {
+        errors += "Dinámicas: tienen que estar ordenadas y sin repetir posición."
+    }
+    marks.filter { it.startTick >= end }.forEach { errors += "La dinámica del tick ${it.startTick} cae después del final de la pieza." }
+    val bars = score.hairpins.sortedBy { it.startTick }
+    bars.filter { it.startTick >= end }.forEach { errors += "El regulador del tick ${it.startTick} empieza después del final de la pieza." }
+    bars.zipWithNext().filter { (a, b) -> b.startTick < a.endTick }.forEach { (_, b) ->
+        errors += "El regulador que empieza en el tick ${b.startTick} se pisa con el anterior."
+    }
+    for (bar in bars) {
+        marks.filter { it.startTick > bar.startTick && it.startTick < bar.endTick }.forEach {
+            errors += "La dinámica del tick ${it.startTick} cae en el medio de un regulador (${bar.startTick}-${bar.endTick}): " +
+                "una dinámica va al principio o al final del regulador."
+        }
+    }
 }

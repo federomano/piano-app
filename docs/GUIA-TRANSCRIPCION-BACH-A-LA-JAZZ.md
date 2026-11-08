@@ -21,11 +21,15 @@ Para el profesor de piano. La meta es **un solo archivo `bach-a-la-jazz.json`** 
 | Cambios de clave (compases 54–58: la izquierda pasa a clave de sol; la derecha a clave de fa en el 57) | **No existen.** Cada nota va en la mano que la toca, con su altura real; la app la dibuja con líneas adicionales. Avisar en qué compases pasa. |
 | Signo 8va (compases 55–56) | **No existe.** Escribir las alturas reales, como suenan. Avisar. |
 | Compás 58, posibles fusas | **No se pueden.** Revisar el original: si hay fusas, aproximar a semicorcheas (o agrupar) y avisar qué cambió y por qué. |
+| Dinámicas (mf en el compás 0, mp en el 7, f en el 51, ff en el 55) | `"dynamics"`: `{ "startTick": …, "level": "mf" }` en el tick donde empieza ese compás. Cuenta de ticks: el compás 0 empieza en 0; el compás N (de 1 en adelante) empieza en `480 + (N − 1) × 1440`. |
+| Crescendo de los compases 47–48 y regulador del 54 | `"hairpins"`: `{ "startTick": …, "endTick": …, "kind": "crescendo" }` (o `"diminuendo"`; mirar en el PDF para qué lado abre). Si termina en una dinámica (por ejemplo el f del 51), esa dinámica va en el `endTick`. Sin superponerse. |
 | Repeticiones | Desplegadas, compás por compás. |
 
 ## Lo que se deja afuera (y hay que avisar)
 
-Dinámicas (mf en el 0, mp en el 7, f en el 51, ff en el 55, crescendo 47–48, regulador 54), staccato (introducción de la izquierda y compases 17–30), acentos (7 y 56–58), pedal (24 y 58–59) y los textos «light, staccato» / «swing feel». Decir qué se omitió y dónde.
+(Las dinámicas y los reguladores **sí** se escriben, ver arriba.)
+
+Staccato (introducción de la izquierda y compases 17–30), acentos (7 y 56–58), pedal (24 y 58–59) y los textos «light, staccato» / «swing feel». Decir qué se omitió y dónde.
 
 ## Cómo trabajar
 

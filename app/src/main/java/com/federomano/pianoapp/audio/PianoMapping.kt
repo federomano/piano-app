@@ -26,7 +26,8 @@ object PianoMapping {
         val v = velocity.coerceIn(1, 127)
         val sample = LOWEST + ((note - LOWEST + 1) / STEP) * STEP
         val loud = v >= LOUD_FROM
-        val gain = if (loud) 0.6f + 0.4f * (v - LOUD_FROM) / (127 - LOUD_FROM) else 0.25f + 0.75f * v / LOUD_FROM
+        // Una sola curva para las dos muestras: así, al cruzar de suave a fuerte (un crescendo) no hay salto de volumen.
+        val gain = (0.1 + 0.9 * (v / 127.0).pow(1.3)).toFloat()
         return Pick(sample, loud, 2.0.pow((note - sample) / 12.0).toFloat(), gain)
     }
 }

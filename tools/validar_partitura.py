@@ -30,12 +30,16 @@ for _name, _base in BASES.items():
         ALLOWED[_base * 7 // 4] = _name + " con dos puntillos"
 
 SCORE_KEYS = {"formatVersion", "title", "composer", "level", "goal",
-              "timeSignatures", "keySignatures", "tempos", "pickupTicks", "notes", "rests"}
+              "timeSignatures", "keySignatures", "tempos", "pickupTicks", "dynamics", "hairpins", "notes", "rests"}
 NOTE_KEYS = {"hand", "pitch", "startTick", "durationTicks", "tiedToNext", "finger", "tuplet", "voice", "grace"}
 REST_KEYS = {"hand", "startTick", "durationTicks", "tuplet", "voice"}
 TS_KEYS = {"startTick", "numerator", "denominator"}
 KS_KEYS = {"startTick", "fifths"}
 TEMPO_KEYS = {"startTick", "bpm"}
+DYNAMIC_KEYS = {"startTick", "level"}
+HAIRPIN_KEYS = {"startTick", "endTick", "kind"}
+DYNAMIC_LEVELS = ["ppp", "pp", "p", "mp", "mf", "f", "ff", "fff"]
+HAIRPIN_KINDS = ["crescendo", "diminuendo"]
 
 PITCH_RE = re.compile(r"^([A-G])(#{1,2}|b{1,2})?(-?[0-9])$")
 SEMITONE = {"C": 0, "D": 2, "E": 4, "F": 5, "G": 7, "A": 9, "B": 11}
@@ -109,6 +113,53 @@ def load_list(data, key, keys, errors):
     return items
 
 
+def check_dynamics(dynamics, hairpins, end, errors):
+    """Dinámicas (p, mf, f...) y reguladores: valores válidos, en orden, dentro de la pieza y sin pisarse."""
+    marks = []
+    for i, d in enumerate(dynamics, 1):
+        where = f"dynamics #{i}"
+        ok = True
+        if not is_int(d.get("startTick")) or d["startTick"] < 0:
+            errors.append(f"{where}: \"startTick\" tiene que ser un entero de 0 o más.")
+            ok = False
+        if d.get("level") not in DYNAMIC_LEVELS:
+            errors.append(f"{where}: \"level\" tiene que ser uno de {', '.join(DYNAMIC_LEVELS)} (es {d.get('level')!r}).")
+            ok = False
+        if ok:
+            marks.append(d["startTick"])
+            if d["startTick"] >= end:
+                errors.append(f"{where}: cae después del final de la pieza (tick {d['startTick']}).")
+    if any(b <= a for a, b in zip(marks, marks[1:])):
+        errors.append("Dinámicas: tienen que estar ordenadas por \"startTick\" y sin repetir posición.")
+    bars = []
+    for i, h in enumerate(hairpins, 1):
+        where = f"hairpins #{i}"
+        ok = True
+        for key in ("startTick", "endTick"):
+            if not is_int(h.get(key)) or h[key] < 0:
+                errors.append(f"{where}: \"{key}\" tiene que ser un entero de 0 o más.")
+                ok = False
+        if h.get("kind") not in HAIRPIN_KINDS:
+            errors.append(f"{where}: \"kind\" tiene que ser \"crescendo\" o \"diminuendo\" (es {h.get('kind')!r}).")
+            ok = False
+        if ok and h["endTick"] <= h["startTick"]:
+            errors.append(f"{where}: \"endTick\" tiene que ser mayor que \"startTick\".")
+            ok = False
+        if ok:
+            bars.append((h["startTick"], h["endTick"]))
+            if h["startTick"] >= end:
+                errors.append(f"{where}: empieza después del final de la pieza (tick {h['startTick']}).")
+    bars.sort()
+    for (a0, a1), (b0, _b1) in zip(bars, bars[1:]):
+        if b0 < a1:
+            errors.append(f"El regulador que empieza en el tick {b0} se pisa con el anterior ({a0}-{a1}).")
+    for start, stop in bars:
+        for m in marks:
+            if start < m < stop:
+                errors.append(f"La dinámica del tick {m} cae en el medio de un regulador ({start}-{stop}): "
+                              "una dinámica va al principio o al final del regulador.")
+
+
 def validate(data):
     """Devuelve la lista de problemas (vacía = el archivo cumple el contrato)."""
     errors = []
@@ -135,6 +186,8 @@ def validate(data):
     sigs = load_list(data, "timeSignatures", TS_KEYS, errors)
     keys = load_list(data, "keySignatures", KS_KEYS, errors)
     tempos = load_list(data, "tempos", TEMPO_KEYS, errors)
+    dynamics = load_list(data, "dynamics", DYNAMIC_KEYS, errors)
+    hairpins = load_list(data, "hairpins", HAIRPIN_KEYS, errors)
     if not sigs:
         sigs = [{"startTick": 0, "numerator": 4, "denominator": 4}]
     if not keys:
@@ -322,6 +375,8 @@ def validate(data):
         for it in items:
             if it["startTick"] < end and it["startTick"] not in starts:
                 errors.append(f"El {what} del tick {it['startTick']} no cae al inicio de un compás.")
+
+    check_dynamics(dynamics, hairpins, end, errors)
 
     def measure_of(t):
         return next(m for m in measures if m[1] <= t < m[2])

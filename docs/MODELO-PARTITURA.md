@@ -33,6 +33,8 @@ Un compás de 4/4 dura 1920 ticks, uno de 3/4 o 6/8 dura 1440. La posición de c
 | `keySignatures` | Armaduras. La primera en el tick 0. Si no se indica, sin alteraciones. |
 | `tempos` | Cambios de tempo. El primero en el tick 0. Si no se indica, 100. |
 | `pickupTicks` | Anacrusa: duración en ticks del primer compás cuando es más corto que los demás (480 = una negra en 4/4). Ese compás es el 0 y el primer compás entero es el 1. Si no se indica, 0 (no hay anacrusa). |
+| `dynamics` | Dinámicas (`ppp` a `fff`): cada una vale desde su `startTick` hasta la siguiente, para las dos manos. Opcional. |
+| `hairpins` | Reguladores: `startTick`, `endTick` y `kind` (`"crescendo"` o `"diminuendo"`). Opcional. |
 | `notes` | Las notas de las dos manos. |
 | `rests` | Los silencios de las dos manos. |
 
@@ -58,6 +60,12 @@ Un compás de 4/4 dura 1920 ticks, uno de 3/4 o 6/8 dura 1440. La posición de c
 
 `hand`, `startTick` y `durationTicks`. Una mano que no toca durante un tramo lleva su silencio.
 
+### Dinámicas y reguladores
+
+- **Dinámica:** `{ "startTick": 0, "level": "mf" }`. Niveles: `ppp`, `pp`, `p`, `mp`, `mf`, `f`, `ff`, `fff`. Cada una suena con una intensidad fija (de 20 a 124 sobre 127) hasta la siguiente. Antes de la primera vale la primera.
+- **Regulador:** `{ "startTick": 1920, "endTick": 5760, "kind": "crescendo" }`. La intensidad va cambiando en línea recta hasta la dinámica que sigue (si no hay, ±24) y al terminar queda ahí.
+- Las listas van en orden, los reguladores no se pisan y una dinámica no cae en el medio de un regulador. Las notas no traen intensidad propia, así que no hay conflicto: manda la dinámica. Si la partitura no tiene ninguna, todo suena con intensidad 90.
+
 ### Firma de compás, armadura y tempo
 
 - **Firma de compás:** `{ "startTick": 0, "numerator": 3, "denominator": 4 }` es un compás de 3/4. El denominador puede ser 1, 2, 4, 8, 16 o 32.
@@ -76,6 +84,7 @@ La función `validate()` devuelve la lista de problemas en español; vacía sign
 - Una ligadura (`tiedToNext`) tiene a continuación una nota igual, de la misma mano, que empieza justo donde termina la primera.
 - Dos notas iguales de la misma mano no se pisan.
 - Las notas están dentro del rango del piano, de `A0` a `C8`.
+- Las dinámicas van ordenadas y dentro de la pieza, los reguladores no se pisan y ninguna dinámica cae en el medio de un regulador.
 
 ## Cómo se usa en el código
 
@@ -91,5 +100,5 @@ El JSON es estricto: una clave mal escrita, una altura inválida o una versión 
 
 ## Lo que todavía no cubre
 
-- **Dinámicas, articulaciones, pedal, repeticiones, trinos y mordentes, indicaciones de texto, fusas, cambios de clave y el signo de 8va:** no se representan (las notas de adorno cortas sí, con `grace`).
+- **Articulaciones, pedal, repeticiones, trinos y mordentes, indicaciones de texto, fusas, cambios de clave y el signo de 8va:** no se representan (las notas de adorno cortas sí, con `grace`).
 - **Una nota ligada a varias seguidas:** se encadenan ligaduras, una por una.

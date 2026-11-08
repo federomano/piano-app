@@ -110,7 +110,7 @@ class ScorePreviewTest {
             return
         }
         val out = File("build/previews").apply { mkdirs() }
-        for ((id, measures) in listOf("escala" to listOf(0, 2), "himno" to listOf(0, 3, 8, 11), "tresillos" to listOf(0, 1, 2, 3, 4), "voces" to listOf(0, 2, 3, 4), "anacrusa" to listOf(0, 1), "adornos" to listOf(0, 1))) {
+        for ((id, measures) in listOf("escala" to listOf(0, 2), "himno" to listOf(0, 3, 8, 11), "tresillos" to listOf(0, 1, 2, 3, 4), "voces" to listOf(0, 2, 3, 4), "anacrusa" to listOf(0, 1), "adornos" to listOf(0, 1), "dinamicas" to listOf(0, 1, 2, 3, 4, 5, 6, 7))) {
             val layout = ScoreLayout.build(com.federomano.pianoapp.score.ExampleScores.all.first { it.id == id }.create())
             for (m in measures) {
                 val scroll = if (m == 0) 0f else layout.measures[m].x0 - layout.headerWidth + 0.1f

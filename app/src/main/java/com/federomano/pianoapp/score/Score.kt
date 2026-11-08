@@ -242,6 +242,42 @@ data class TempoChange(val startTick: Int, val bpm: Double) {
     }
 }
 
+/** Fuerza escrita en la partitura (de muy suave a muy fuerte). [velocity] es con qué intensidad (1..127) suena. */
+@Serializable
+enum class DynamicLevel(val velocity: Int) {
+    @SerialName("ppp") PPP(20),
+    @SerialName("pp") PP(33),
+    @SerialName("p") P(49),
+    @SerialName("mp") MP(64),
+    @SerialName("mf") MF(80),
+    @SerialName("f") F(96),
+    @SerialName("ff") FF(112),
+    @SerialName("fff") FFF(124),
+}
+
+/** Dinámica puntual (p, mf, ff...): vale desde [startTick] hasta la siguiente. Afecta a las dos manos. */
+@Serializable
+data class DynamicMark(val startTick: Int, val level: DynamicLevel) {
+    init {
+        require(startTick >= 0) { "La posición de la dinámica no puede ser negativa." }
+    }
+}
+
+@Serializable
+enum class HairpinKind {
+    @SerialName("crescendo") CRESCENDO,
+    @SerialName("diminuendo") DIMINUENDO,
+}
+
+/** Regulador (crescendo o diminuendo) entre [startTick] y [endTick]: la fuerza cambia de a poco en ese tramo. */
+@Serializable
+data class Hairpin(val startTick: Int, val endTick: Int, val kind: HairpinKind) {
+    init {
+        require(startTick >= 0) { "El inicio del regulador no puede ser negativo." }
+        require(endTick > startTick) { "El regulador tiene que terminar después de donde empieza (endTick $endTick, startTick $startTick)." }
+    }
+}
+
 @Serializable
 data class Score(
     val formatVersion: Int = FORMAT_VERSION,
@@ -259,6 +295,10 @@ data class Score(
      * se numera 0 y el primer compás entero es el 1.
      */
     val pickupTicks: Int = 0,
+    /** Dinámicas (p, mf, f...), en orden. Valen para las dos manos. Si no hay ninguna, todo suena con fuerza media-alta. */
+    val dynamics: List<DynamicMark> = emptyList(),
+    /** Reguladores (crescendo y diminuendo), sin superponerse. */
+    val hairpins: List<Hairpin> = emptyList(),
     val notes: List<Note> = emptyList(),
     val rests: List<Rest> = emptyList(),
 ) {

@@ -53,10 +53,15 @@ La app lee **un solo formato**: el JSON propio de la partitura, descrito en [`MO
     - `composer`: si se conoce.
     - `finger` en las notas: opcional, de 1 (pulgar) a 5 (meñique). Si se escribe, que sea para todas las notas de la pasada.
 12. **Repeticiones, da capo y codas se escriben desplegadas**, compás por compás, como si se tocara de corrido: la app no tiene signos de repetición.
+13. **Dinámicas y reguladores.** La fuerza se escribe aparte de las notas, en dos listas de la partitura que valen para las dos manos:
+    - `"dynamics"`: una letra que vale desde su `startTick` hasta la siguiente. `"level"` es `"ppp"`, `"pp"`, `"p"`, `"mp"`, `"mf"`, `"f"`, `"ff"` o `"fff"`. Ejemplo: `{ "startTick": 0, "level": "mf" }`. Van ordenadas, sin repetir posición y antes del final de la pieza. Antes de la primera letra vale la primera.
+    - `"hairpins"`: crescendo o diminuendo entre dos posiciones. `{ "startTick": 1920, "endTick": 5760, "kind": "crescendo" }` (o `"diminuendo"`). La fuerza cambia de a poco desde lo que había hasta la letra que sigue; si no hay letra después, sube o baja un poco y queda ahí. No se pisan entre sí, y una letra no puede caer en el medio de un regulador (va al principio o al final). Si un regulador termina en una letra, se escribe esa letra en su `endTick`.
+    - Se dibujan debajo del pentagrama de la izquierda. Si la pieza no trae ninguna, todo suena con una fuerza media. Las notas no tienen fuerza propia: manda siempre la dinámica vigente.
+    - Un `sf` o un acento sobre una nota no se puede escribir todavía.
 
 ## Lo que la app todavía no representa
 
-Dinámicas (p, f, crescendo), articulaciones (staccato, acentos), pedal, ornamentos (trinos, mordentes), indicaciones de texto ("swing feel"), fusas, cambios de clave (una nota que el original escribe en clave de sol dentro de la mano izquierda se escribe igual en clave de fa, con líneas adicionales) y el signo de 8va (se escriben las alturas reales, tal como suenan). Si algo de eso está en el original, se deja afuera y se le avisa a Fede en la respuesta, diciendo en qué compases.
+Articulaciones (staccato, acentos), pedal, ornamentos (trinos, mordentes), indicaciones de texto ("swing feel"), fusas, cambios de clave (una nota que el original escribe en clave de sol dentro de la mano izquierda se escribe igual en clave de fa, con líneas adicionales) y el signo de 8va (se escriben las alturas reales, tal como suenan). Si algo de eso está en el original, se deja afuera y se le avisa a Fede en la respuesta, diciendo en qué compases.
 
 ## Errores comunes
 
@@ -96,7 +101,7 @@ python3 /mnt/project/piano/validar_partitura.py archivo.json   # en el Proyecto 
 python3 tools/validar_partitura.py archivo.json                # en el repo
 ```
 
-Revisa las reglas 2 a 11: duraciones permitidas, grupos irregulares, anacrusa, notas de adorno, que cada mano llene cada compás, barras de compás, ligaduras, voces y superposiciones, la misma tecla dos veces a la vez, rango del piano, claves que no existen, tempo, armadura y datos de la partitura. Si encuentra algo, dice qué compás y cómo arreglarlo. Hay que corregir hasta que diga `✓ cumple el contrato`.
+Revisa las reglas 2 a 13: duraciones permitidas, grupos irregulares, anacrusa, notas de adorno, dinámicas y reguladores, que cada mano llene cada compás, barras de compás, ligaduras, voces y superposiciones, la misma tecla dos veces a la vez, rango del piano, claves que no existen, tempo, armadura y datos de la partitura. Si encuentra algo, dice qué compás y cómo arreglarlo. Hay que corregir hasta que diga `✓ cumple el contrato`.
 
 Qué **no** puede revisar: que la ortografía de las alturas sea la correcta para la tonalidad (`F#4` y no `Gb4` en Re mayor), que la música sea fiel al original, ni que la dificultad sea la que corresponde. Eso sigue siendo responsabilidad de quien arma el archivo.
 
@@ -104,7 +109,7 @@ La app también detecta varios errores al abrir un archivo (`validate()` devuelv
 
 ## Texto para pegar en las instrucciones del Proyecto "Profesor de piano"
 
-> Cuando te pida una partitura o un ejercicio, entregame un archivo `.json` en el formato de la app de piano: el modelo está en MODELO-PARTITURA.md y las reglas en CONTRATO-ARCHIVOS.md. Los puntos que más importan: mano derecha = clave de sol (`"right"`), mano izquierda = clave de fa (`"left"`); 480 ticks por negra; solo redonda, blanca, negra, corchea y semicorchea (con hasta dos puntillos), tresillos y similares con `"tuplet"` (por ejemplo `"3:2"`, corchea de tresillo = 160 ticks); cada mano llena cada compás completo con notas y silencios; ninguna nota ni silencio cruza una barra de compás (se parte y se liga con `tiedToNext`); dos líneas a la vez en una misma mano con `"voice"` (1 la principal, 2 la otra; cada voz sin superponerse); si empieza con compás incompleto, `"pickupTicks"` (ese compás es el 0); notitas de adorno con `"grace": true` (mismo `startTick` que la nota principal, `durationTicks` 60); repeticiones desplegadas; alturas escritas como suenan (`F#4`, `Bb3`, `F4` si es natural) dentro de `A0`–`C8`; tempo en negras por minuto; con `title`, `level` y `goal`. Antes de entregar, corré `python3 /mnt/project/piano/validar_partitura.py archivo.json` hasta que diga que cumple el contrato, y decime qué simplificaste o no pudiste representar. Usá como modelo los archivos de `piano/ejemplos`.
+> Cuando te pida una partitura o un ejercicio, entregame un archivo `.json` en el formato de la app de piano: el modelo está en MODELO-PARTITURA.md y las reglas en CONTRATO-ARCHIVOS.md. Los puntos que más importan: mano derecha = clave de sol (`"right"`), mano izquierda = clave de fa (`"left"`); 480 ticks por negra; solo redonda, blanca, negra, corchea y semicorchea (con hasta dos puntillos), tresillos y similares con `"tuplet"` (por ejemplo `"3:2"`, corchea de tresillo = 160 ticks); cada mano llena cada compás completo con notas y silencios; ninguna nota ni silencio cruza una barra de compás (se parte y se liga con `tiedToNext`); dos líneas a la vez en una misma mano con `"voice"` (1 la principal, 2 la otra; cada voz sin superponerse); si empieza con compás incompleto, `"pickupTicks"` (ese compás es el 0); notitas de adorno con `"grace": true` (mismo `startTick` que la nota principal, `durationTicks` 60); dinámicas con `"dynamics"` (`"mf"`, `"f"`...) y reguladores con `"hairpins"` (crescendo/diminuendo entre dos ticks); repeticiones desplegadas; alturas escritas como suenan (`F#4`, `Bb3`, `F4` si es natural) dentro de `A0`–`C8`; tempo en negras por minuto; con `title`, `level` y `goal`. Antes de entregar, corré `python3 /mnt/project/piano/validar_partitura.py archivo.json` hasta que diga que cumple el contrato, y decime qué simplificaste o no pudiste representar. Usá como modelo los archivos de `piano/ejemplos`.
 
 ## Ejemplos de referencia
 
@@ -120,5 +125,6 @@ Todos abren sin avisos y los tests lo verifican en cada cambio.
 | [`ejercicio-tresillos.json`](ejemplos/ejercicio-tresillos.json) | Tresillos de corchea y de negra, swing, silencio de tresillo y cuatro en el tiempo de tres |
 | [`ejercicio-anacrusa.json`](ejemplos/ejercicio-anacrusa.json) | Anacrusa: compás 0 de tres corcheas (`pickupTicks`) |
 | [`ejercicio-adornos.json`](ejemplos/ejercicio-adornos.json) | Notas de adorno (`grace`): con alteración, en acorde y en la izquierda |
+| [`ejercicio-dinamicas.json`](ejemplos/ejercicio-dinamicas.json) | Dinámicas (`mp`, `f`, `ff`, `p`) y reguladores: un crescendo y un diminuendo |
 
 Este contrato se actualiza cada vez que la app gane o pierda soporte de algo.

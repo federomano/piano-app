@@ -294,6 +294,9 @@ class ScoreLayout private constructor(
             marks += NoteLayout.build(score, timed) { tick ->
                 timed[timed.indexOfLast { it.measure.startTick <= tick }.coerceAtLeast(0)].xOfTick(tick)
             }
+            marks += DynamicsLayout.build(score) { tick ->
+                timed[timed.indexOfLast { it.measure.startTick <= tick }.coerceAtLeast(0)].xOfTick(tick)
+            }
             val fixed = mutableListOf<DrawOp>()
             fixed += staffLines(SYSTEM_LEFT, headerWidth)
             fixed += GlyphOp(Smufl.BRACE, LEFT_PAD, Geometry.SYSTEM_BOTTOM, BRACE_SCALE)

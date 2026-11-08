@@ -1,4 +1,4 @@
-> **Nota:** documento de trabajo histórico. Muchas de estas necesidades ya están resueltas (tresillos, voces, anacrusa, adornos). Lo vigente para transcribir la pieza está en `GUIA-TRANSCRIPCION-BACH-A-LA-JAZZ.md`; lo que falta (dinámicas, articulaciones, pedal, cambios de clave, 8va, fusas) está en PIA-58.
+> **Nota:** documento de trabajo histórico. Muchas de estas necesidades ya están resueltas (tresillos, voces, anacrusa, adornos). Lo vigente para transcribir la pieza está en `GUIA-TRANSCRIPCION-BACH-A-LA-JAZZ.md`; lo que falta (articulaciones, pedal, cambios de clave, 8va, fusas) está en PIA-58.
 
 # Qué le falta a la app para reproducir "Bach à la Jazz" tal cual está escrita
 

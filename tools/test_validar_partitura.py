@@ -252,6 +252,43 @@ class Validador(unittest.TestCase):
             {"hand": "right", "pitch": "B3", "startTick": 960, "durationTicks": 60, "grace": "si"}))
         self.assertProblema(d, "true o false")
 
+    def test_dinamicas_bien(self):
+        def cambio(d):
+            d["dynamics"] = [{"startTick": 0, "level": "p"}, {"startTick": 960, "level": "f"}]
+            d["hairpins"] = [{"startTick": 0, "endTick": 960, "kind": "crescendo"}]
+        self.assertEqual(v.validate(con(cambio)), [])
+
+    def test_dinamica_con_nivel_inventado(self):
+        d = con(lambda d: d.__setitem__("dynamics", [{"startTick": 0, "level": "forte"}]))
+        self.assertProblema(d, "\"level\" tiene que ser uno de")
+
+    def test_dinamicas_desordenadas_o_repetidas(self):
+        d = con(lambda d: d.__setitem__("dynamics", [{"startTick": 960, "level": "p"}, {"startTick": 0, "level": "f"}]))
+        self.assertProblema(d, "ordenadas")
+
+    def test_dinamica_despues_del_final(self):
+        d = con(lambda d: d.__setitem__("dynamics", [{"startTick": 9600, "level": "f"}]))
+        self.assertProblema(d, "después del final")
+
+    def test_regulador_mal_armado(self):
+        d = con(lambda d: d.__setitem__("hairpins", [{"startTick": 960, "endTick": 960, "kind": "crescendo"}]))
+        self.assertProblema(d, "mayor que")
+        d = con(lambda d: d.__setitem__("hairpins", [{"startTick": 0, "endTick": 960, "kind": "sube"}]))
+        self.assertProblema(d, "crescendo")
+
+    def test_reguladores_que_se_pisan_y_dinamica_en_el_medio(self):
+        d = con(lambda d: d.__setitem__("hairpins", [
+            {"startTick": 0, "endTick": 1440, "kind": "crescendo"}, {"startTick": 960, "endTick": 1920, "kind": "diminuendo"}]))
+        self.assertProblema(d, "se pisa")
+        def cambio(d):
+            d["hairpins"] = [{"startTick": 0, "endTick": 1920, "kind": "crescendo"}]
+            d["dynamics"] = [{"startTick": 960, "level": "f"}]
+        self.assertProblema(con(cambio), "en el medio de un regulador")
+
+    def test_clave_de_dinamica_desconocida(self):
+        d = con(lambda d: d.__setitem__("dynamics", [{"startTick": 0, "level": "p", "color": "rojo"}]))
+        self.assertProblema(d, "no existe en el modelo")
+
     def test_json_roto(self):
         import tempfile
         with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False) as f:
