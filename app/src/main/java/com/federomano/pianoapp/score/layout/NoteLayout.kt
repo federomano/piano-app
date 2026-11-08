@@ -33,6 +33,7 @@ object NoteLayout {
     private const val LEDGER_OVERHANG = 0.4f
     private const val STEM_LENGTH = 3.5f
     private const val STEM_ANCHOR = 0.168f
+    private const val REST_VOICE_SHIFT = 1f
     private const val DOT_GAP = 0.35f
     private const val DOT_SPACING = 0.45f
     private const val ACCIDENTAL_MARGIN = 0.2f
@@ -107,6 +108,8 @@ object NoteLayout {
         var forcedStemDown: Boolean? = null
         var stemDown = (highest - 4) >= (4 - lowest)
         var group: BeamGroup? = null
+        /** Corrimiento horizontal cuando las cabezas chocan con las de otra voz de la misma mano. */
+        var shiftX = 0f
         var stemX = 0f
         var leftEdge = 0f
         var rightEdge = 0f
@@ -136,12 +139,13 @@ object NoteLayout {
                     heads[i].displaced = below != null && heads[i].position - below.position == 1 && !below.displaced
                 }
             }
-            stemX = if (stemDown) noteX else noteX + headWidth - STEM_THICKNESS
+            val x0 = noteX + shiftX
+            stemX = if (stemDown) x0 else x0 + headWidth - STEM_THICKNESS
             for (head in heads) {
                 head.x = when {
-                    !head.displaced -> noteX
-                    stemDown -> noteX - headWidth + STEM_THICKNESS
-                    else -> noteX + headWidth - STEM_THICKNESS
+                    !head.displaced -> x0
+                    stemDown -> x0 - headWidth + STEM_THICKNESS
+                    else -> x0 + headWidth - STEM_THICKNESS
                 }
             }
             leftEdge = heads.minOf { it.x }
@@ -171,6 +175,14 @@ object NoteLayout {
         for (hand in Hand.entries) {
             if (score.notes.none { it.hand == hand && it.voice > 1 }) continue
             plans.filter { it.hand == hand }.forEach { it.forcedStemDown = it.voice != 1; it.stemDown = it.voice != 1 }
+        }
+
+        // Voces que suenan a la vez con cabezas en el mismo lugar o en lugares contiguos: la de número mayor se corre a la derecha.
+        for (a in plans) for (b in plans) {
+            if (a.hand != b.hand || b.voice <= a.voice) continue
+            if (a.chord.startTick >= b.chord.endTick || b.chord.startTick >= a.chord.endTick) continue
+            val collide = a.heads.any { ha -> b.heads.any { hb -> kotlin.math.abs(ha.position - hb.position) <= 1 } }
+            if (collide) b.shiftX = max(b.shiftX, a.headWidth)
         }
 
         // 1) Grupos de barras, por mano y voz.
@@ -225,7 +237,12 @@ object NoteLayout {
         // 5) Silencios.
         for (rest in score.rests) {
             val index = measureIndexAt(rest.startTick)
-            drawRest(ops, rest.hand, rest.startTick, rest.durationTicks, rest.tuplet, measures[index], xOfTick(rest.startTick))
+            // Con varias voces en la mano durante ese compás, el silencio de la voz 1 sube y el de las demás baja.
+            val m = measures[index].measure
+            val manyVoices = score.notes.any { it.hand == rest.hand && it.voice > 1 && it.startTick < m.endTick && it.endTick > m.startTick } ||
+                score.rests.any { it.hand == rest.hand && it.voice > 1 && it.startTick < m.endTick && it.endTick > m.startTick }
+            val yShift = if (!manyVoices) 0f else if (rest.voice == 1) -REST_VOICE_SHIFT else REST_VOICE_SHIFT
+            drawRest(ops, rest.hand, rest.startTick, rest.durationTicks, rest.tuplet, measures[index], xOfTick(rest.startTick), yShift, manyVoices)
         }
 
         // 6) Corchetes y números de los grupos irregulares.
@@ -534,7 +551,7 @@ object NoteLayout {
 
     // --- Silencios ---
 
-    private fun drawRest(ops: MutableList<DrawOp>, hand: Hand, start: Int, duration: Int, tuplet: Tuplet?, measure: MeasureLayout, x: Float) {
+    private fun drawRest(ops: MutableList<DrawOp>, hand: Hand, start: Int, duration: Int, tuplet: Tuplet?, measure: MeasureLayout, x: Float, yShift: Float = 0f, manyVoices: Boolean = false) {
         val top = staffTop(hand)
         val wholeMeasure = start == measure.measure.startTick && start + duration == measure.measure.endTick
         val figure = if (wholeMeasure) Figure(Ticks.WHOLE, 0) else figureOf(duration, tuplet)
@@ -546,12 +563,12 @@ object NoteLayout {
             else -> Smufl.REST_16TH to Smufl.REST_16TH_WIDTH
         }
         // El silencio de compás completo va centrado en el compás, sea cual sea la firma.
-        val left = if (wholeMeasure) (measure.contentX + measure.x1) / 2 - width / 2 else x
+        val left = if (wholeMeasure && !manyVoices) (measure.contentX + measure.x1) / 2 - width / 2 else x
         // Redonda: cuelga de la 4.ª línea. Blanca: se apoya en la línea central. Los demás, centrados en ella.
-        val baseline = if (figure.base == Ticks.WHOLE) top + 1f else top + 2f
+        val baseline = (if (figure.base == Ticks.WHOLE) top + 1f else top + 2f) + yShift
         ops += GlyphOp(code, left, baseline)
         for (i in 0 until figure.dots) {
-            ops += GlyphOp(Smufl.AUGMENTATION_DOT, left + width + DOT_GAP + i * DOT_SPACING, top + 1.5f)
+            ops += GlyphOp(Smufl.AUGMENTATION_DOT, left + width + DOT_GAP + i * DOT_SPACING, top + 1.5f + yShift)
         }
     }
 

@@ -28,7 +28,8 @@ object ExampleScores {
         val rests = mutableListOf<Rest>()
         private val cursor = mutableMapOf<Pair<Hand, Int>, Int>()
 
-        fun hand(hand: Hand, text: String, voice: Int = 1, from: Int = 0) {
+        fun hand(hand: Hand, text: String, voice: Int = 1, from: Int? = null) {
+            if (from != null) cursor[hand to voice] = from
             for (token in text.trim().split(Regex("\\s+"))) {
                 var body = token
                 val tied = body.endsWith("~")
@@ -48,15 +49,15 @@ object ExampleScores {
                 }
                 val written = if (dotted) Ticks.dotted(base) else base
                 val duration = tuplet?.let { written * it.normal / it.actual } ?: written
-                val start = cursor.getOrPut(hand to voice) { from }
+                val start = cursor.getOrPut(hand to voice) { 0 }
                 if (what == "r") rests += Rest(hand, start, duration, tuplet, voice)
                 else what.split("+").forEach { notes += Note(hand, Pitch.parse(it), start, duration, tiedToNext = tied, tuplet = tuplet, voice = voice) }
                 cursor[hand to voice] = start + duration
             }
         }
 
-        fun right(text: String, voice: Int = 1, from: Int = 0) = hand(Hand.RIGHT, text, voice, from)
-        fun left(text: String, voice: Int = 1, from: Int = 0) = hand(Hand.LEFT, text, voice, from)
+        fun right(text: String, voice: Int = 1, from: Int? = null) = hand(Hand.RIGHT, text, voice, from)
+        fun left(text: String, voice: Int = 1, from: Int? = null) = hand(Hand.LEFT, text, voice, from)
     }
 
     private fun cMajorScale(): Score {
@@ -80,8 +81,11 @@ object ExampleScores {
         b.right("E5/h D5/h  C5/w  G4/w  C5/w")
         b.right("C4/q E4/q G4/q E4/q  C4/e E4/e G4/e E4/e C4/e E4/e G4/e E4/e", voice = 2)
         b.right("C4/h E4/h", voice = 2, from = 3 * bar)
+        // Compás 5: dos voces que chocan (La y Sol a la vez) y silencios en cada voz.
+        b.right("A4/h r/h", voice = 1, from = 4 * bar)
+        b.right("G4/h G4/q r/q", voice = 2, from = 4 * bar)
         // Mano izquierda: acordes que se repiten (voz 1) sobre un bajo que sigue sonando (voz 2).
-        b.left("C3/w  G2/w  E3+G3/q E3+G3/q E3+G3/q E3+G3/q  C3+G3/h r/h")
+        b.left("C3/w  G2/w  E3+G3/q E3+G3/q E3+G3/q E3+G3/q  C3+G3/h r/h  C3+G3/w")
         b.left("C2/w", voice = 2, from = 2 * bar)
         b.left("C2/w", voice = 2, from = 3 * bar)
         return Score(

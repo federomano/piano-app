@@ -18,6 +18,7 @@
     { "hand": "right", "pitch": "C5", "startTick": 1920, "durationTicks": 1920 },
     { "hand": "right", "pitch": "G4", "startTick": 3840, "durationTicks": 1920 },
     { "hand": "right", "pitch": "C5", "startTick": 5760, "durationTicks": 1920 },
+    { "hand": "right", "pitch": "A4", "startTick": 7680, "durationTicks": 960 },
 
     { "hand": "right", "pitch": "C4", "startTick": 0, "durationTicks": 480, "voice": 2 },
     { "hand": "right", "pitch": "E4", "startTick": 480, "durationTicks": 480, "voice": 2 },
@@ -31,8 +32,10 @@
     { "hand": "right", "pitch": "E4", "startTick": 3120, "durationTicks": 240, "voice": 2 },
     { "hand": "right", "pitch": "G4", "startTick": 3360, "durationTicks": 240, "voice": 2 },
     { "hand": "right", "pitch": "E4", "startTick": 3600, "durationTicks": 240, "voice": 2 },
-    { "hand": "right", "pitch": "C4", "startTick": 3840, "durationTicks": 960, "voice": 2 },
-    { "hand": "right", "pitch": "E4", "startTick": 4800, "durationTicks": 960, "voice": 2 },
+    { "hand": "right", "pitch": "C4", "startTick": 5760, "durationTicks": 960, "voice": 2 },
+    { "hand": "right", "pitch": "E4", "startTick": 6720, "durationTicks": 960, "voice": 2 },
+    { "hand": "right", "pitch": "G4", "startTick": 7680, "durationTicks": 960, "voice": 2 },
+    { "hand": "right", "pitch": "G4", "startTick": 8640, "durationTicks": 480, "voice": 2 },
 
     { "hand": "left", "pitch": "C3", "startTick": 0, "durationTicks": 1920 },
     { "hand": "left", "pitch": "G2", "startTick": 1920, "durationTicks": 1920 },
@@ -46,11 +49,17 @@
     { "hand": "left", "pitch": "G3", "startTick": 5280, "durationTicks": 480 },
     { "hand": "left", "pitch": "C3", "startTick": 5760, "durationTicks": 960 },
     { "hand": "left", "pitch": "G3", "startTick": 5760, "durationTicks": 960 },
+    { "hand": "left", "pitch": "C3", "startTick": 7680, "durationTicks": 1920 },
+    { "hand": "left", "pitch": "G3", "startTick": 7680, "durationTicks": 1920 },
 
     { "hand": "left", "pitch": "C2", "startTick": 3840, "durationTicks": 1920, "voice": 2 },
     { "hand": "left", "pitch": "C2", "startTick": 5760, "durationTicks": 1920, "voice": 2 }
   ],
   "rests": [
+    { "hand": "right", "startTick": 8640, "durationTicks": 960 },
+
+    { "hand": "right", "startTick": 9120, "durationTicks": 480, "voice": 2 },
+
     { "hand": "left", "startTick": 6720, "durationTicks": 960 }
   ]
 }
