@@ -64,8 +64,21 @@ fun Score.chords(hand: Hand? = null): List<Chord> =
         .sortedWith(compareBy({ it.startTick }, { it.hand }, { it.voice }))
 
 /** Las notas como suenan: un adorno se toca justo antes de su tiempo, con su duración corta. Es lo que lee el sonido. */
-fun Score.playedNotes(): List<Note> =
-    notes.map { if (it.grace) it.copy(startTick = it.soundStartTick, durationTicks = it.soundEndTick - it.soundStartTick, grace = false) else it }
+fun Score.playedNotes(): List<Note> = notes.map {
+    when {
+        it.grace -> it.copy(startTick = it.soundStartTick, durationTicks = it.soundEndTick - it.soundStartTick, grace = false)
+        // Staccato: suena la mitad; el resto es silencio, y la siguiente nota arranca en su tick de siempre.
+        it.staccato -> it.copy(durationTicks = maxOf(1, it.durationTicks / 2))
+        else -> it
+    }
+}
+
+/** Cuánto más fuerte suena una nota con acento que la dinámica vigente. */
+const val ACCENT_BOOST = 20
+
+/** Con qué intensidad suena [note]: la dinámica vigente en su inicio y, si lleva acento, un empujón más. */
+fun Score.velocityOf(note: Note): Int =
+    (velocityAt(note.startTick) + if (note.accent) ACCENT_BOOST else 0).coerceIn(1, 127)
 
 /** Intensidad con la que suena todo si la partitura no trae dinámicas (la de siempre). */
 const val DEFAULT_VELOCITY = 90
@@ -169,6 +182,14 @@ fun Score.validate(): List<String> {
             }
         ) {
             errors += "${describe(note)} está ligada, pero no hay una nota igual que empiece justo después."
+        }
+    }
+
+    // Las notas de un mismo acorde llevan las mismas articulaciones: se dibuja una sola vez para todo el acorde.
+    chords().filter { it.isChord }.forEach { chord ->
+        if (chord.notes.map { it.staccato }.distinct().size > 1 || chord.notes.map { it.accent }.distinct().size > 1) {
+            errors += "Las notas del acorde de la ${chord.hand.label} del compás ${measureAt(chord.startTick).number} " +
+                "tienen que llevar todas el mismo staccato (\"staccato\") y el mismo acento (\"accent\")."
         }
     }
 

@@ -50,6 +50,8 @@ Un compás de 4/4 dura 1920 ticks, uno de 3/4 o 6/8 dura 1440. La posición de c
 | `finger` | Dedo sugerido, de 1 (pulgar) a 5 (meñique). Opcional. |
 | `voice` | Voz dentro de la mano, de 1 a 4 (si no se escribe, es la 1). Cada voz tiene su propio ritmo; sirve para dos líneas a la vez en una misma mano. Los silencios también lo llevan. Opcional. |
 | `grace` | `true` si es una nota de adorno (acciaccatura): una notita que se toca justo antes de la nota principal de la misma mano que empieza en su mismo `startTick`. Su `durationTicks` es cuánto dura (normalmente 60; hasta 120) y suena antes de ese tick, así que no corre el ritmo ni cuenta para llenar el compás. Si cae en el primerísimo instante de la pieza (antes de los 60 ticks) no hay lugar antes y suena sobre el tiempo. No puede estar ligada ni llevar `tuplet`. Si no se escribe, es una nota común. |
+| `staccato` | `true` para staccato: se dibuja un puntito y la nota suena la mitad de su duración (el ritmo no cambia). No va en notas ligadas ni en adornos. Opcional. |
+| `accent` | `true` para un acento: se dibuja un `>` y la nota suena más fuerte que la dinámica vigente. No va en adornos. Opcional. |
 | `tuplet` | Grupo irregular, como texto: `"3:2"` = tresillo (3 figuras en el tiempo de 2), `"4:3"` = cuatro en el tiempo de tres. Opcional. `durationTicks` es la duración real; la figura escrita sale de multiplicarla por actual/normal (160 ticks con `"3:2"` se escribe como corchea). Los silencios también lo llevan. |
 
 `F#4` y `Gb4` suenan igual pero se escriben distinto en la partitura. Por eso la altura guarda cómo se escribe, no solo qué número MIDI es.
@@ -65,6 +67,12 @@ Un compás de 4/4 dura 1920 ticks, uno de 3/4 o 6/8 dura 1440. La posición de c
 - **Dinámica:** `{ "startTick": 0, "level": "mf" }`. Niveles: `ppp`, `pp`, `p`, `mp`, `mf`, `f`, `ff`, `fff`. Cada una suena con una intensidad fija (de 20 a 124 sobre 127) hasta la siguiente. Antes de la primera vale la primera.
 - **Regulador:** `{ "startTick": 1920, "endTick": 5760, "kind": "crescendo" }`. La intensidad va cambiando en línea recta hasta la dinámica que sigue (si no hay, ±24) y al terminar queda ahí.
 - Las listas van en orden, los reguladores no se pisan y una dinámica no cae en el medio de un regulador. Las notas no traen intensidad propia, así que no hay conflicto: manda la dinámica. Si la partitura no tiene ninguna, todo suena con intensidad 90.
+
+### Staccato y acentos
+
+- `"staccato": true` y `"accent": true` en la nota (se pueden poner los dos). Todas las notas de un acorde llevan lo mismo.
+- Staccato: la nota suena la mitad de su duración y después hay silencio hasta la siguiente. La duración en ticks no cambia.
+- Acento: suena 20 puntos más fuerte (sobre 127) que la dinámica vigente.
 
 ### Firma de compás, armadura y tempo
 
@@ -100,5 +108,5 @@ El JSON es estricto: una clave mal escrita, una altura inválida o una versión 
 
 ## Lo que todavía no cubre
 
-- **Articulaciones, pedal, repeticiones, trinos y mordentes, indicaciones de texto, fusas, cambios de clave y el signo de 8va:** no se representan (las notas de adorno cortas sí, con `grace`).
+- **Pedal, repeticiones, trinos y mordentes, indicaciones de texto, fusas, cambios de clave y el signo de 8va:** no se representan (las notas de adorno cortas sí, con `grace`).
 - **Una nota ligada a varias seguidas:** se encadenan ligaduras, una por una.

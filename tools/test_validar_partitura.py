@@ -289,6 +289,31 @@ class Validador(unittest.TestCase):
         d = con(lambda d: d.__setitem__("dynamics", [{"startTick": 0, "level": "p", "color": "rojo"}]))
         self.assertProblema(d, "no existe en el modelo")
 
+    def test_articulaciones_bien(self):
+        def cambio(d):
+            d["notes"][0]["staccato"] = True
+            d["notes"][1]["accent"] = True
+            d["notes"][1]["staccato"] = True
+        self.assertEqual(v.validate(con(cambio)), [])
+
+    def test_articulacion_no_booleana(self):
+        d = con(lambda d: d["notes"][0].__setitem__("accent", "si"))
+        self.assertProblema(d, "true o false")
+
+    def test_staccato_en_nota_ligada_o_adorno(self):
+        def ligada(d):
+            d["notes"][0].update({"durationTicks": 960, "tiedToNext": True, "staccato": True})
+            d["notes"][1].update({"pitch": "C4"})
+        self.assertProblema(con(ligada), "no puede llevar \"staccato\"")
+        d = con(lambda d: d["notes"].append(
+            {"hand": "right", "pitch": "B3", "startTick": 960, "durationTicks": 60, "grace": True, "accent": True}))
+        self.assertProblema(d, "no puede llevar \"accent\"")
+
+    def test_acorde_con_articulaciones_distintas(self):
+        def cambio(d):
+            d["notes"].append({"hand": "left", "pitch": "G3", "startTick": 0, "durationTicks": 1920, "staccato": True})
+        self.assertProblema(con(cambio), "el mismo \"staccato\"")
+
     def test_json_roto(self):
         import tempfile
         with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False) as f:

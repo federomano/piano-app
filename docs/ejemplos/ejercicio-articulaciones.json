@@ -1,0 +1,59 @@
+{
+  "formatVersion": 1,
+  "title": "Ejercicio: staccato y acentos",
+  "level": "intermedio",
+  "goal": "Soltar rápido las notas con puntito (staccato) y tocar más fuerte las que llevan «>» (acento), sin correr el pulso.",
+  "timeSignatures": [
+    { "startTick": 0, "numerator": 4, "denominator": 4 }
+  ],
+  "keySignatures": [
+    { "startTick": 0, "fifths": 0 }
+  ],
+  "tempos": [
+    { "startTick": 0, "bpm": 80.0 }
+  ],
+  "notes": [
+    { "hand": "right", "pitch": "C5", "startTick": 0, "durationTicks": 240, "staccato": true },
+    { "hand": "right", "pitch": "G4", "startTick": 240, "durationTicks": 240, "staccato": true },
+    { "hand": "right", "pitch": "E5", "startTick": 480, "durationTicks": 240, "staccato": true },
+    { "hand": "right", "pitch": "G4", "startTick": 720, "durationTicks": 240, "staccato": true },
+    { "hand": "right", "pitch": "C5", "startTick": 960, "durationTicks": 240, "staccato": true },
+    { "hand": "right", "pitch": "G4", "startTick": 1200, "durationTicks": 240, "staccato": true },
+    { "hand": "right", "pitch": "E5", "startTick": 1440, "durationTicks": 240, "staccato": true },
+    { "hand": "right", "pitch": "G4", "startTick": 1680, "durationTicks": 240, "staccato": true },
+    { "hand": "right", "pitch": "F5", "startTick": 1920, "durationTicks": 480, "accent": true },
+    { "hand": "right", "pitch": "E5", "startTick": 2400, "durationTicks": 480 },
+    { "hand": "right", "pitch": "D5", "startTick": 2880, "durationTicks": 480 },
+    { "hand": "right", "pitch": "C5", "startTick": 3360, "durationTicks": 480 },
+    { "hand": "right", "pitch": "G4", "startTick": 3840, "durationTicks": 480, "staccato": true, "accent": true },
+    { "hand": "right", "pitch": "B4", "startTick": 4320, "durationTicks": 480, "staccato": true },
+    { "hand": "right", "pitch": "D5", "startTick": 4800, "durationTicks": 480, "staccato": true, "accent": true },
+    { "hand": "right", "pitch": "B4", "startTick": 5280, "durationTicks": 480, "staccato": true },
+    { "hand": "right", "pitch": "C5", "startTick": 5760, "durationTicks": 960 },
+
+    { "hand": "left", "pitch": "C3", "startTick": 0, "durationTicks": 480, "staccato": true },
+    { "hand": "left", "pitch": "G3", "startTick": 0, "durationTicks": 480, "staccato": true },
+    { "hand": "left", "pitch": "C3", "startTick": 960, "durationTicks": 480, "staccato": true },
+    { "hand": "left", "pitch": "G3", "startTick": 960, "durationTicks": 480, "staccato": true },
+    { "hand": "left", "pitch": "F2", "startTick": 1920, "durationTicks": 960, "accent": true },
+    { "hand": "left", "pitch": "C3", "startTick": 1920, "durationTicks": 960, "accent": true },
+    { "hand": "left", "pitch": "F2", "startTick": 2880, "durationTicks": 960 },
+    { "hand": "left", "pitch": "C3", "startTick": 2880, "durationTicks": 960 },
+    { "hand": "left", "pitch": "G2", "startTick": 3840, "durationTicks": 480, "staccato": true },
+    { "hand": "left", "pitch": "D3", "startTick": 3840, "durationTicks": 480, "staccato": true },
+    { "hand": "left", "pitch": "G2", "startTick": 4320, "durationTicks": 480, "staccato": true },
+    { "hand": "left", "pitch": "D3", "startTick": 4320, "durationTicks": 480, "staccato": true },
+    { "hand": "left", "pitch": "G2", "startTick": 4800, "durationTicks": 480, "staccato": true },
+    { "hand": "left", "pitch": "D3", "startTick": 4800, "durationTicks": 480, "staccato": true },
+    { "hand": "left", "pitch": "G2", "startTick": 5280, "durationTicks": 480, "staccato": true },
+    { "hand": "left", "pitch": "D3", "startTick": 5280, "durationTicks": 480, "staccato": true },
+    { "hand": "left", "pitch": "C3", "startTick": 5760, "durationTicks": 1920 },
+    { "hand": "left", "pitch": "G3", "startTick": 5760, "durationTicks": 1920 }
+  ],
+  "rests": [
+    { "hand": "right", "startTick": 6720, "durationTicks": 960 },
+
+    { "hand": "left", "startTick": 480, "durationTicks": 480 },
+    { "hand": "left", "startTick": 1440, "durationTicks": 480 }
+  ]
+}

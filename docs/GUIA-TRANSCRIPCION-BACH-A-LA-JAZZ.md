@@ -23,13 +23,15 @@ Para el profesor de piano. La meta es **un solo archivo `bach-a-la-jazz.json`** 
 | Compás 58, posibles fusas | **No se pueden.** Revisar el original: si hay fusas, aproximar a semicorcheas (o agrupar) y avisar qué cambió y por qué. |
 | Dinámicas (mf en el compás 0, mp en el 7, f en el 51, ff en el 55) | `"dynamics"`: `{ "startTick": …, "level": "mf" }` en el tick donde empieza ese compás. Cuenta de ticks: el compás 0 empieza en 0; el compás N (de 1 en adelante) empieza en `480 + (N − 1) × 1440`. |
 | Crescendo de los compases 47–48 y regulador del 54 | `"hairpins"`: `{ "startTick": …, "endTick": …, "kind": "crescendo" }` (o `"diminuendo"`; mirar en el PDF para qué lado abre). Si termina en una dinámica (por ejemplo el f del 51), esa dinámica va en el `endTick`. Sin superponerse. |
+| Staccato (casi todos los acordes de la izquierda en la introducción y en los compases 17–30) | `"staccato": true` en cada nota del acorde (todas iguales). La duración en ticks es la de la figura escrita; la app se encarga de acortar el sonido. |
+| Acentos (compases 7 y 56–58) | `"accent": true` en la nota (o en todas las del acorde). Se puede combinar con `"staccato": true`. No va en notas ligadas (staccato) ni en adornos. |
 | Repeticiones | Desplegadas, compás por compás. |
 
 ## Lo que se deja afuera (y hay que avisar)
 
-(Las dinámicas y los reguladores **sí** se escriben, ver arriba.)
+(Las dinámicas, los reguladores, el staccato y los acentos **sí** se escriben, ver arriba.)
 
-Staccato (introducción de la izquierda y compases 17–30), acentos (7 y 56–58), pedal (24 y 58–59) y los textos «light, staccato» / «swing feel». Decir qué se omitió y dónde.
+Pedal (24 y 58–59) y los textos «light, staccato» / «swing feel». Decir qué se omitió y dónde.
 
 ## Cómo trabajar
 

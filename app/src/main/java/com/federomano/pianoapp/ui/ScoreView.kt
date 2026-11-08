@@ -37,7 +37,7 @@ import com.federomano.pianoapp.audio.NoteTrigger
 import com.federomano.pianoapp.audio.PianoPlayer
 import com.federomano.pianoapp.score.Score
 import com.federomano.pianoapp.score.playedNotes
-import com.federomano.pianoapp.score.velocityAt
+import com.federomano.pianoapp.score.velocityOf
 import com.federomano.pianoapp.score.Speed
 import com.federomano.pianoapp.score.TempoMap
 import com.federomano.pianoapp.score.layout.DrawOp
@@ -171,12 +171,12 @@ fun ScoreView(score: Score, modifier: Modifier = Modifier, maxStaffSpaceDp: Floa
                     tick = tempoMap.advance(tick, seconds * currentSpeed)
                     if (tick >= end) {
                         scrollSp = layout.scrollForTick(end, currentPlayhead)
-                        trigger.advance(Float.MAX_VALUE, { player.noteOn(it.pitch.midi, score.velocityAt(it.startTick)) }, player::noteOff)
+                        trigger.advance(Float.MAX_VALUE, { player.noteOn(it.pitch.midi, score.velocityOf(it)) }, player::noteOff)
                         playing = false
                         break
                     }
                     scrollSp = layout.scrollForTick(tick, currentPlayhead)
-                    trigger.advance(tick, { player.noteOn(it.pitch.midi, score.velocityAt(it.startTick)) }, player::noteOff)
+                    trigger.advance(tick, { player.noteOn(it.pitch.midi, score.velocityOf(it)) }, player::noteOff)
                 }
             } finally {
                 // Pausa, salto o arrastre: lo que suena se apaga suavemente.
@@ -259,7 +259,7 @@ fun ScoreView(score: Score, modifier: Modifier = Modifier, maxStaffSpaceDp: Floa
                                             trigger.reset(clock - SOUND_START_TOLERANCE_TICKS)
                                             sound.armed = true
                                         }
-                                        trigger.advance(clock, { player.noteOn(it.pitch.midi, score.velocityAt(it.startTick)) }, player::noteOff)
+                                        trigger.advance(clock, { player.noteOn(it.pitch.midi, score.velocityOf(it)) }, player::noteOff)
                                     } else if (sound.armed) {
                                         trigger.releaseAll(player::noteOff)
                                         sound.armed = false

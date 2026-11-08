@@ -57,11 +57,16 @@ La app lee **un solo formato**: el JSON propio de la partitura, descrito en [`MO
     - `"dynamics"`: una letra que vale desde su `startTick` hasta la siguiente. `"level"` es `"ppp"`, `"pp"`, `"p"`, `"mp"`, `"mf"`, `"f"`, `"ff"` o `"fff"`. Ejemplo: `{ "startTick": 0, "level": "mf" }`. Van ordenadas, sin repetir posición y antes del final de la pieza. Antes de la primera letra vale la primera.
     - `"hairpins"`: crescendo o diminuendo entre dos posiciones. `{ "startTick": 1920, "endTick": 5760, "kind": "crescendo" }` (o `"diminuendo"`). La fuerza cambia de a poco desde lo que había hasta la letra que sigue; si no hay letra después, sube o baja un poco y queda ahí. No se pisan entre sí, y una letra no puede caer en el medio de un regulador (va al principio o al final). Si un regulador termina en una letra, se escribe esa letra en su `endTick`.
     - Se dibujan debajo del pentagrama de la izquierda. Si la pieza no trae ninguna, todo suena con una fuerza media. Las notas no tienen fuerza propia: manda siempre la dinámica vigente.
-    - Un `sf` o un acento sobre una nota no se puede escribir todavía.
+    - Un `sf` no se puede escribir todavía (para un acento sobre una nota, ver la regla 14).
+14. **Staccato y acentos.** Son dos marcas de cada nota, `"staccato": true` y `"accent": true` (se pueden combinar; si no se escriben, la nota es normal).
+    - **Staccato:** se dibuja un puntito y la nota suena solo la mitad de su duración. El ritmo no cambia: la duración en ticks es la de la figura escrita (una negra staccato sigue siendo de 480 ticks).
+    - **Acento:** se dibuja un `>` y la nota suena más fuerte que la dinámica vigente.
+    - En un acorde, todas las notas llevan lo mismo (se dibuja una sola marca para el acorde).
+    - No se pueden poner en una nota ligada a la siguiente (`tiedToNext`) ni en un adorno (`grace`).
 
 ## Lo que la app todavía no representa
 
-Articulaciones (staccato, acentos), pedal, ornamentos (trinos, mordentes), indicaciones de texto ("swing feel"), fusas, cambios de clave (una nota que el original escribe en clave de sol dentro de la mano izquierda se escribe igual en clave de fa, con líneas adicionales) y el signo de 8va (se escriben las alturas reales, tal como suenan). Si algo de eso está en el original, se deja afuera y se le avisa a Fede en la respuesta, diciendo en qué compases.
+Pedal, ornamentos (trinos, mordentes), indicaciones de texto ("swing feel"), fusas, cambios de clave (una nota que el original escribe en clave de sol dentro de la mano izquierda se escribe igual en clave de fa, con líneas adicionales) y el signo de 8va (se escriben las alturas reales, tal como suenan). Si algo de eso está en el original, se deja afuera y se le avisa a Fede en la respuesta, diciendo en qué compases.
 
 ## Errores comunes
 
@@ -101,7 +106,7 @@ python3 /mnt/project/piano/validar_partitura.py archivo.json   # en el Proyecto 
 python3 tools/validar_partitura.py archivo.json                # en el repo
 ```
 
-Revisa las reglas 2 a 13: duraciones permitidas, grupos irregulares, anacrusa, notas de adorno, dinámicas y reguladores, que cada mano llene cada compás, barras de compás, ligaduras, voces y superposiciones, la misma tecla dos veces a la vez, rango del piano, claves que no existen, tempo, armadura y datos de la partitura. Si encuentra algo, dice qué compás y cómo arreglarlo. Hay que corregir hasta que diga `✓ cumple el contrato`.
+Revisa las reglas 2 a 14: duraciones permitidas, grupos irregulares, anacrusa, notas de adorno, dinámicas y reguladores, staccato y acentos, que cada mano llene cada compás, barras de compás, ligaduras, voces y superposiciones, la misma tecla dos veces a la vez, rango del piano, claves que no existen, tempo, armadura y datos de la partitura. Si encuentra algo, dice qué compás y cómo arreglarlo. Hay que corregir hasta que diga `✓ cumple el contrato`.
 
 Qué **no** puede revisar: que la ortografía de las alturas sea la correcta para la tonalidad (`F#4` y no `Gb4` en Re mayor), que la música sea fiel al original, ni que la dificultad sea la que corresponde. Eso sigue siendo responsabilidad de quien arma el archivo.
 
@@ -126,5 +131,6 @@ Todos abren sin avisos y los tests lo verifican en cada cambio.
 | [`ejercicio-anacrusa.json`](ejemplos/ejercicio-anacrusa.json) | Anacrusa: compás 0 de tres corcheas (`pickupTicks`) |
 | [`ejercicio-adornos.json`](ejemplos/ejercicio-adornos.json) | Notas de adorno (`grace`): con alteración, en acorde y en la izquierda |
 | [`ejercicio-dinamicas.json`](ejemplos/ejercicio-dinamicas.json) | Dinámicas (`mp`, `f`, `ff`, `p`) y reguladores: un crescendo y un diminuendo |
+| [`ejercicio-articulaciones.json`](ejemplos/ejercicio-articulaciones.json) | Staccato, acentos y las dos marcas juntas, en las dos manos y en acordes |
 
 Este contrato se actualiza cada vez que la app gane o pierda soporte de algo.

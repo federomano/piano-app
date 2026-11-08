@@ -166,6 +166,10 @@ data class Note(
      * que suena *antes* de ese tick (por defecto [Ticks.GRACE]), sin correr el resto del ritmo.
      */
     val grace: Boolean = false,
+    /** Staccato: la nota se suelta a la mitad de su duración, sin correr el ritmo. Se dibuja con un puntito. */
+    val staccato: Boolean = false,
+    /** Acento: la nota suena más fuerte que las de alrededor. Se dibuja con el signo «>». */
+    val accent: Boolean = false,
 ) {
     init {
         require(voice in 1..MAX_VOICES) { "La voz tiene que ser de 1 a $MAX_VOICES (era $voice)." }
@@ -177,6 +181,8 @@ data class Note(
             }
             require(!tiedToNext && tuplet == null) { "Una nota de adorno no puede estar ligada ni llevar grupo irregular." }
         }
+        require(!(grace && (staccato || accent))) { "Una nota de adorno no puede llevar staccato ni acento." }
+        require(!(staccato && tiedToNext)) { "Una nota ligada a la siguiente no puede llevar staccato: tiene que sonar hasta la otra." }
         require(finger == null || finger in 1..5) { "El dedo tiene que ser de 1 a 5 (era $finger)." }
     }
 

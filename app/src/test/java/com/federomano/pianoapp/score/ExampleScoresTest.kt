@@ -10,7 +10,7 @@ class ExampleScoresTest {
     fun thereAreThePracticeScoresWithUniqueIds() {
         val all = ExampleScores.all
         assertEquals(all.size, all.map { it.id }.toSet().size)
-        assertEquals(listOf("escala", "himno", "voces", "tresillos", "anacrusa", "adornos", "dinamicas", "ejercicio"), all.map { it.id })
+        assertEquals(listOf("escala", "himno", "voces", "tresillos", "anacrusa", "adornos", "dinamicas", "articulaciones", "ejercicio"), all.map { it.id })
     }
 
     @Test

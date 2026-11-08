@@ -13,6 +13,7 @@ object ExampleScores {
         ExampleScore("anacrusa", "Ejercicio: anacrusa", "Empieza con un compás corto (tres corcheas): el compás 0. Después, los compases enteros desde el 1.") { pickup() },
         ExampleScore("adornos", "Ejercicio: notas de adorno", "Notas chiquitas que se tocan justo antes del tiempo: con alteración, con línea adicional, en acorde y en la mano izquierda.") { graceNotes() },
         ExampleScore("dinamicas", "Ejercicio: dinámicas", "Del mp al ff con un crescendo, y de vuelta al p con un diminuendo. Se escucha cómo cambia la fuerza.") { dynamics() },
+        ExampleScore("articulaciones", "Ejercicio: staccato y acentos", "Notas cortitas y separadas (puntito) y notas más fuertes (>), con las dos manos.") { articulations() },
         ExampleScore("ejercicio", "Ejercicio: todo lo que dibuja la app", "Alteraciones, silencios, acordes, ligaduras y cambios de armadura, compás y tempo.") { DemoScore.create() },
     )
 
@@ -24,6 +25,7 @@ object ExampleScores {
      * Varias voces en una mano: `right(texto, voice = 2, from = tick)` escribe otra línea que suena a la vez; cada voz lleva su propio
      * ritmo y empieza en `from` (por defecto, el principio).
      * Un adorno es `D4/g`: una nota de adorno que se toca justo antes de la nota que escribas a continuación (no avanza el tiempo).
+     * Staccato: un apóstrofo al final de la duración (`C4/q'`). Acento: un `>` (`C4/q>`). Los dos juntos: `C4/q'>`.
      * Un grupo irregular se marca con `*` después de la duración: `e*3` es una corchea de tresillo (3 en el tiempo de 2),
      * `q*4:3` es una negra de un grupo de 4 en el tiempo de 3. La duración es la de la figura escrita, ajustada al grupo.
      */
@@ -38,6 +40,12 @@ object ExampleScores {
                 var body = token
                 val tied = body.endsWith("~")
                 if (tied) body = body.dropLast(1)
+                var staccato = false
+                var accent = false
+                while (body.endsWith("'") || body.endsWith(">")) {
+                    if (body.endsWith("'")) staccato = true else accent = true
+                    body = body.dropLast(1)
+                }
                 val (what, code) = body.split("/").also { require(it.size == 2) { "Figura inválida: \"$token\"" } }
                 if (code == "g") {
                     // Adorno: va en el tick de la nota que sigue, sin avanzar el cursor.
@@ -61,7 +69,7 @@ object ExampleScores {
                 val duration = tuplet?.let { written * it.normal / it.actual } ?: written
                 val start = cursor.getOrPut(hand to voice) { 0 }
                 if (what == "r") rests += Rest(hand, start, duration, tuplet, voice)
-                else what.split("+").forEach { notes += Note(hand, Pitch.parse(it), start, duration, tiedToNext = tied, tuplet = tuplet, voice = voice) }
+                else what.split("+").forEach { notes += Note(hand, Pitch.parse(it), start, duration, tiedToNext = tied, tuplet = tuplet, voice = voice, staccato = staccato, accent = accent) }
                 cursor[hand to voice] = start + duration
             }
         }
@@ -131,6 +139,25 @@ object ExampleScores {
                 Hairpin(bar, 3 * bar, HairpinKind.CRESCENDO),
                 Hairpin(5 * bar, 7 * bar, HairpinKind.DIMINUENDO),
             ),
+            notes = b.notes,
+            rests = b.rests,
+        )
+    }
+
+    private fun articulations(): Score {
+        val b = Builder()
+        b.right(
+            "C5/e' G4/e' E5/e' G4/e'  C5/e' G4/e' E5/e' G4/e'  " +
+                "F5/q> E5/q D5/q C5/q  " +
+                "G4/q'> B4/q' D5/q'> B4/q'  " +
+                "C5/h r/h",
+        )
+        b.left("C3+G3/q' r/q C3+G3/q' r/q  F2+C3/h> F2+C3/h  G2+D3/q' G2+D3/q' G2+D3/q' G2+D3/q'  C3+G3/w")
+        return Score(
+            title = "Ejercicio: staccato y acentos",
+            level = "intermedio",
+            goal = "Soltar rápido las notas con puntito (staccato) y tocar más fuerte las que llevan «>» (acento), sin correr el pulso.",
+            tempos = listOf(TempoChange(0, 80.0)),
             notes = b.notes,
             rests = b.rests,
         )

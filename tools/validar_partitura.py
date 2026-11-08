@@ -31,7 +31,7 @@ for _name, _base in BASES.items():
 
 SCORE_KEYS = {"formatVersion", "title", "composer", "level", "goal",
               "timeSignatures", "keySignatures", "tempos", "pickupTicks", "dynamics", "hairpins", "notes", "rests"}
-NOTE_KEYS = {"hand", "pitch", "startTick", "durationTicks", "tiedToNext", "finger", "tuplet", "voice", "grace"}
+NOTE_KEYS = {"hand", "pitch", "startTick", "durationTicks", "tiedToNext", "finger", "tuplet", "voice", "grace", "staccato", "accent"}
 REST_KEYS = {"hand", "startTick", "durationTicks", "tuplet", "voice"}
 TS_KEYS = {"startTick", "numerator", "denominator"}
 KS_KEYS = {"startTick", "fifths"}
@@ -315,12 +315,23 @@ def validate(data):
         finger = n.get("finger")
         if finger is not None and (not is_int(finger) or not 1 <= finger <= 5):
             errors.append(f"{where}: \"finger\" tiene que ser un entero de 1 (pulgar) a 5 (meñique).")
+        flags = {}
+        for flag in ("staccato", "accent"):
+            value = n.get(flag, False)
+            if not isinstance(value, bool):
+                errors.append(f"{where}: \"{flag}\" tiene que ser true o false.")
+                value = False
+            flags[flag] = value
+            if value and grace:
+                errors.append(f"{where}: un adorno (\"grace\": true) no puede llevar \"{flag}\".")
+        if flags["staccato"] and tied:
+            errors.append(f"{where}: una nota ligada a la siguiente (\"tiedToNext\") no puede llevar \"staccato\": tiene que sonar hasta la otra.")
         if grace:
             if tied:
                 errors.append(f"{where}: un adorno (\"grace\": true) no puede estar ligado.")
             graces.append({**n, "midi": pitch, "i": i})
             continue
-        notes.append({**n, "midi": pitch, "tied": tied, "i": i})
+        notes.append({**n, "midi": pitch, "tied": tied, "i": i, "_staccato": flags["staccato"], "_accent": flags["accent"]})
     for i, r in enumerate(raw_rests, 1):
         if basic(r, f"Silencio #{i}", "silencio"):
             rests.append(r)
@@ -421,6 +432,13 @@ def validate(data):
         if len(group) > 1:
             errors.append(f"Las notas del acorde de la {HAND_LABEL[hand]} del compás {measure_of(start)[0]} "
                           "tienen que tener el mismo grupo irregular (\"tuplet\").")
+    chord_marks = {}
+    for n in notes:
+        chord_marks.setdefault((n["hand"], n["_voice"], n["startTick"], n["durationTicks"]), []).append((n["_staccato"], n["_accent"]))
+    for (hand, _voice, start, _), group in chord_marks.items():
+        if len(set(group)) > 1:
+            errors.append(f"Las notas del acorde de la {HAND_LABEL[hand]} del compás {measure_of(start)[0]} "
+                          "tienen que llevar todas el mismo \"staccato\" y el mismo \"accent\".")
     lines = sorted({(n["hand"], n["_voice"]) for n in notes} | {(r["hand"], r["_voice"]) for r in rests} | {(h, 1) for h in HANDS},
                    key=lambda k: (HANDS.index(k[0]), k[1]))
 

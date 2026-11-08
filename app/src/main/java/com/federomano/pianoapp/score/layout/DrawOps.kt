@@ -64,6 +64,9 @@ object Smufl {
     const val FLAG_16TH_UP = 0xE242
     const val FLAG_16TH_DOWN = 0xE243
     const val AUGMENTATION_DOT = 0xE1E7
+    const val STACCATO_ABOVE = 0xE4A2
+    const val ACCENT_ABOVE = 0xE4A0
+    const val ACCENT_BELOW = 0xE4A1
     const val DOUBLE_SHARP = 0xE263
     const val DOUBLE_FLAT = 0xE264
     const val DOUBLE_SHARP_ADVANCE = 1.0f

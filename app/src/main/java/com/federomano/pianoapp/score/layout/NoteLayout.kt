@@ -532,8 +532,41 @@ object NoteLayout {
                 }
             }
         }
+        drawArticulations(ops, plan)
         return leftMost
     }
+
+    /**
+     * Staccato (puntito) y acento («>»): del lado de las cabezas, o sea el opuesto a la plica, alejados de la nota
+     * para que no se toquen. Si hay los dos, el puntito queda más cerca y el acento más afuera.
+     */
+    private fun drawArticulations(ops: MutableList<DrawOp>, plan: Plan) {
+        val staccato = plan.heads.any { it.note.staccato }
+        val accent = plan.heads.any { it.note.accent }
+        if (!staccato && !accent) return
+        val above = plan.stemDown
+        val edge = if (above) plan.heads.last() else plan.heads.first()
+        val sign = if (above) 1 else -1
+        // Una nota en una línea necesita un espacio más de distancia que una nota en un espacio.
+        var position = edge.position + sign * (if (edge.position % 2 == 0) 3 else 2)
+        val centerX = edge.x + plan.headWidth / 2
+        if (staccato) {
+            // El puntito se dibuja encima de su línea de base: se la corre para que el centro caiga en [position].
+            ops += GlyphOp(Smufl.STACCATO_ABOVE, centerX - STACCATO_WIDTH / 2, plan.yOf(position) + STACCATO_WIDTH / 2)
+            position += sign * 2
+        }
+        if (accent) {
+            if (staccato) position += sign
+            val y = plan.yOf(position)
+            // El «>» mide casi un espacio de alto: la línea de base se corre medio alto hacia el centro.
+            if (above) ops += GlyphOp(Smufl.ACCENT_ABOVE, centerX - ACCENT_WIDTH / 2, y + ACCENT_HEIGHT / 2)
+            else ops += GlyphOp(Smufl.ACCENT_BELOW, centerX - ACCENT_WIDTH / 2, y - ACCENT_HEIGHT / 2)
+        }
+    }
+
+    private const val STACCATO_WIDTH = 0.336f
+    private const val ACCENT_WIDTH = 1.356f
+    private const val ACCENT_HEIGHT = 0.98f
 
     /**
      * Adorno (acciaccatura): una o más notas chiquitas, pegadas a la izquierda de [leftMost], con plica hacia arriba, banderita y una
