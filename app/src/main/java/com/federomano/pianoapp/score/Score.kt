@@ -25,6 +25,9 @@ const val TICKS_PER_QUARTER = 480
 /** Versión del formato del archivo JSON. */
 const val FORMAT_VERSION = 1
 
+/** Cantidad máxima de voces por mano (líneas que suenan a la vez con ritmos independientes). */
+const val MAX_VOICES = 4
+
 /** Duraciones comunes, en ticks. */
 object Ticks {
     const val WHOLE = 4 * TICKS_PER_QUARTER
@@ -149,8 +152,11 @@ data class Note(
     val finger: Int? = null,
     /** Grupo irregular al que pertenece (por ejemplo `3:2` para un tresillo). Null = figura común. */
     val tuplet: Tuplet? = null,
+    /** Voz dentro de la mano, de 1 a [MAX_VOICES]. Cada voz tiene su propio ritmo; la voz 1 es la principal. */
+    val voice: Int = 1,
 ) {
     init {
+        require(voice in 1..MAX_VOICES) { "La voz tiene que ser de 1 a $MAX_VOICES (era $voice)." }
         require(startTick >= 0) { "El inicio de una nota no puede ser negativo (era $startTick)." }
         require(durationTicks > 0) { "La duración de una nota tiene que ser mayor que 0 (era $durationTicks)." }
         require(finger == null || finger in 1..5) { "El dedo tiene que ser de 1 a 5 (era $finger)." }
@@ -165,8 +171,10 @@ data class Rest(
     val startTick: Int,
     val durationTicks: Int,
     val tuplet: Tuplet? = null,
+    val voice: Int = 1,
 ) {
     init {
+        require(voice in 1..MAX_VOICES) { "La voz tiene que ser de 1 a $MAX_VOICES (era $voice)." }
         require(startTick >= 0) { "El inicio de un silencio no puede ser negativo (era $startTick)." }
         require(durationTicks > 0) { "La duración de un silencio tiene que ser mayor que 0 (era $durationTicks)." }
     }

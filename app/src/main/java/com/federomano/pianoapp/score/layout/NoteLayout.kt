@@ -102,6 +102,9 @@ object NoteLayout {
         val beamable = figure.base <= Ticks.EIGHTH
 
         /** Plica hacia abajo si lo más alejado de la línea central (posición 4) está arriba o a la par. */
+        val voice = chord.voice
+        /** Con varias voces en la mano, la voz 1 lleva las plicas hacia arriba y las demás hacia abajo. */
+        var forcedStemDown: Boolean? = null
         var stemDown = (highest - 4) >= (4 - lowest)
         var group: BeamGroup? = null
         var stemX = 0f
@@ -148,7 +151,7 @@ object NoteLayout {
 
     /** Corcheas y semicorcheas seguidas dentro de un mismo tiempo, unidas por barras. */
     private class BeamGroup(val plans: List<Plan>) {
-        val stemDown = plans.maxOf { it.highest } - 4 >= 4 - plans.minOf { it.lowest }
+        val stemDown = plans.first().forcedStemDown ?: (plans.maxOf { it.highest } - 4 >= 4 - plans.minOf { it.lowest })
         var y0 = 0f
         var slope = 0f
         fun beamY(x: Float) = y0 + slope * (x - plans.first().stemX)
@@ -164,9 +167,15 @@ object NoteLayout {
             Plan(chord, index, measures[index].measure, xOfTick(chord.startTick))
         }
 
-        // 1) Grupos de barras, por mano.
+        // Plicas: con varias voces en una mano, la voz 1 va arriba y las otras abajo.
         for (hand in Hand.entries) {
-            val handPlans = plans.filter { it.hand == hand }.sortedBy { it.chord.startTick }
+            if (score.notes.none { it.hand == hand && it.voice > 1 }) continue
+            plans.filter { it.hand == hand }.forEach { it.forcedStemDown = it.voice != 1; it.stemDown = it.voice != 1 }
+        }
+
+        // 1) Grupos de barras, por mano y voz.
+        for ((hand, voice) in plans.map { it.hand to it.voice }.distinct()) {
+            val handPlans = plans.filter { it.hand == hand && it.voice == voice }.sortedBy { it.chord.startTick }
             var current = mutableListOf<Plan>()
             fun close() {
                 if (current.size >= 2) {

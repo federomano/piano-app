@@ -19,6 +19,7 @@ class ReferenceFilesTest {
         "himno-a-la-alegria.json" to "himno",
         "ejercicio-todo-lo-que-dibuja.json" to "ejercicio",
         "ejercicio-tresillos.json" to "tresillos",
+        "ejercicio-dos-voces.json" to "voces",
     )
 
     @Test
@@ -49,8 +50,8 @@ class ReferenceFilesTest {
 
     /** El orden de las listas no importa: se compara con las notas y silencios ordenados igual que al escribirlos. */
     private fun ordered(score: Score) = score.copy(
-        notes = score.notes.sortedWith(compareBy({ it.hand }, { it.startTick }, { it.pitch.midi })),
-        rests = score.rests.sortedWith(compareBy({ it.hand }, { it.startTick })),
+        notes = score.notes.sortedWith(compareBy({ it.hand }, { it.voice }, { it.startTick }, { it.pitch.midi })),
+        rests = score.rests.sortedWith(compareBy({ it.hand }, { it.voice }, { it.startTick })),
     )
 
     /** Mismo JSON que `ScoreJson.encode`, pero con cada nota y silencio en una línea, como los escribiría una persona. */
@@ -78,12 +79,12 @@ class ReferenceFilesTest {
             block("timeSignatures", score.timeSignatures) { "{ \"startTick\": ${it.startTick}, \"numerator\": ${it.numerator}, \"denominator\": ${it.denominator} }" },
             block("keySignatures", score.keySignatures) { "{ \"startTick\": ${it.startTick}, \"fifths\": ${it.fifths} }" },
             block("tempos", score.tempos) { "{ \"startTick\": ${it.startTick}, \"bpm\": ${it.bpm} }" },
-            block("notes", score.notes.sortedWith(compareBy({ it.hand }, { it.startTick }, { it.pitch.midi })), { it.hand }) {
-                val extra = (if (it.tiedToNext) ", \"tiedToNext\": true" else "") + (it.finger?.let { f -> ", \"finger\": $f" } ?: "") + (it.tuplet?.let { t -> ", \"tuplet\": \"$t\"" } ?: "")
+            block("notes", score.notes.sortedWith(compareBy({ it.hand }, { it.voice }, { it.startTick }, { it.pitch.midi })), { it.hand to it.voice }) {
+                val extra = (if (it.tiedToNext) ", \"tiedToNext\": true" else "") + (it.finger?.let { f -> ", \"finger\": $f" } ?: "") + (it.tuplet?.let { t -> ", \"tuplet\": \"$t\"" } ?: "") + (if (it.voice != 1) ", \"voice\": ${it.voice}" else "")
                 "{ \"hand\": \"${if (it.hand == Hand.RIGHT) "right" else "left"}\", \"pitch\": \"${it.pitch}\", \"startTick\": ${it.startTick}, \"durationTicks\": ${it.durationTicks}$extra }"
             },
-            block("rests", score.rests.sortedWith(compareBy({ it.hand }, { it.startTick })), { it.hand }) {
-                "{ \"hand\": \"${if (it.hand == Hand.RIGHT) "right" else "left"}\", \"startTick\": ${it.startTick}, \"durationTicks\": ${it.durationTicks}${it.tuplet?.let { t -> ", \"tuplet\": \"$t\"" } ?: ""} }"
+            block("rests", score.rests.sortedWith(compareBy({ it.hand }, { it.voice }, { it.startTick })), { it.hand to it.voice }) {
+                "{ \"hand\": \"${if (it.hand == Hand.RIGHT) "right" else "left"}\", \"startTick\": ${it.startTick}, \"durationTicks\": ${it.durationTicks}${it.tuplet?.let { t -> ", \"tuplet\": \"$t\"" } ?: ""}${if (it.voice != 1) ", \"voice\": ${it.voice}" else ""} }"
             },
         )
         return "{\n" + parts.joinToString(",\n") + "\n}\n"

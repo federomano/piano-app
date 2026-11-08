@@ -20,6 +20,8 @@ data class Chord(
     val notes: List<Note>,
     /** Grupo irregular de la figura (tresillo, etc.); null si es una figura común. */
     val tuplet: Tuplet? = null,
+    /** Voz de la mano a la que pertenece (1 = principal). */
+    val voice: Int = 1,
 ) {
     val endTick: Int get() = startTick + durationTicks
     val isChord: Boolean get() = notes.size > 1
@@ -42,12 +44,18 @@ fun Score.measures(): List<Measure> {
     return result
 }
 
-/** Acordes y notas sueltas, ordenados por inicio (y mano derecha antes que izquierda). */
+/**
+ * Acordes y notas sueltas, ordenados por inicio (y mano derecha antes que izquierda, voz 1 antes que 2).
+ * Un acorde son notas de la misma mano y voz que empiezan juntas y duran lo mismo.
+ */
 fun Score.chords(hand: Hand? = null): List<Chord> =
     notes.filter { hand == null || it.hand == hand }
-        .groupBy { Triple(it.hand, it.startTick, it.durationTicks) }
-        .map { (key, group) -> Chord(key.first, key.second, key.third, group.sortedBy { it.pitch.midi }, group.first().tuplet) }
-        .sortedWith(compareBy({ it.startTick }, { it.hand }))
+        .groupBy { listOf(it.hand, it.voice, it.startTick, it.durationTicks) }
+        .map { (_, group) ->
+            val first = group.first()
+            Chord(first.hand, first.startTick, first.durationTicks, group.sortedBy { it.pitch.midi }, first.tuplet, first.voice)
+        }
+        .sortedWith(compareBy({ it.startTick }, { it.hand }, { it.voice }))
 
 /** Rango del piano: de La0 (MIDI 21) a Do8 (MIDI 108). */
 val PIANO_RANGE = 21..108
@@ -140,11 +148,23 @@ fun Score.validate(): List<String> {
     }
 
     // Grupos irregulares completos: figuras seguidas del mismo grupo, dentro de un compás, que sumen grupos enteros.
-    class Figure(val startTick: Int, val durationTicks: Int, val tuplet: Tuplet?)
-    for (hand in Hand.entries) {
-        val figures = (chords(hand).map { Figure(it.startTick, it.durationTicks, it.tuplet) } +
-            rests.filter { it.hand == hand }.map { Figure(it.startTick, it.durationTicks, it.tuplet) })
-            .sortedBy { it.startTick }
+    class Figure(val hand: Hand, val voice: Int, val startTick: Int, val durationTicks: Int, val tuplet: Tuplet?, val pitches: Set<Int> = emptySet())
+    val allFigures = chords().map { Figure(it.hand, it.voice, it.startTick, it.durationTicks, it.tuplet, it.notes.map { n -> n.pitch.midi }.toSet()) } +
+        rests.map { Figure(it.hand, it.voice, it.startTick, it.durationTicks, it.tuplet) }
+
+    // Una figura por vez en cada voz: lo que suena a la vez en una mano tiene que ir en voces distintas.
+    for ((key, line) in allFigures.groupBy { it.hand to it.voice }) {
+        val (hand, voice) = key
+        line.sortedBy { it.startTick }.zipWithNext().forEach { (a, b) ->
+            // Dos notas iguales que se pisan ya se avisaron arriba.
+            if (b.startTick < a.startTick + a.durationTicks && a.pitches.intersect(b.pitches).isEmpty()) {
+                errors += "En la ${hand.label} (voz $voice) hay figuras que se pisan en el compás ${measureAt(b.startTick).number}. " +
+                    "Si tienen que sonar a la vez, una va en otra voz (\"voice\": ${voice + 1})."
+            }
+        }
+    }
+    for ((hand, voice) in allFigures.map { it.hand to it.voice }.distinct()) {
+        val figures = allFigures.filter { it.hand == hand && it.voice == voice }.sortedBy { it.startTick }
         var run = mutableListOf<Figure>()
         fun closeRun() {
             val tuplet = run.firstOrNull()?.tuplet
@@ -152,7 +172,7 @@ fun Score.validate(): List<String> {
                 val smallest = run.minOf { tuplet.written(it.durationTicks) ?: it.durationTicks }
                 val total = run.sumOf { it.durationTicks }
                 if (total % (tuplet.normal * smallest) != 0) {
-                    errors += "Un grupo irregular $tuplet de la ${hand.label} en el compás ${measureAt(run.first().startTick).number} " +
+                    errors += "Un grupo irregular $tuplet de la ${hand.label}${if (voice > 1) " (voz $voice)" else ""} en el compás ${measureAt(run.first().startTick).number} " +
                         "está incompleto: las figuras suman $total ticks y tendrían que formar grupos enteros " +
                         "(de ${tuplet.normal * smallest} ticks)."
                 }

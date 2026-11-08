@@ -145,6 +145,52 @@ class Validador(unittest.TestCase):
              + [{"hand": "left", "pitch": "C3", "startTick": 0, "durationTicks": 1440}], "rests": []}
         self.assertEqual(v.validate(d), [])
 
+    # --- Voces ---
+    def dos_voces(self):
+        d = copy.deepcopy(BASE)
+        d["notes"] = [
+            {"hand": "right", "pitch": "E5", "startTick": 0, "durationTicks": 1920},
+            {"hand": "right", "pitch": "C4", "startTick": 0, "durationTicks": 960, "voice": 2},
+            {"hand": "right", "pitch": "E4", "startTick": 960, "durationTicks": 960, "voice": 2},
+            {"hand": "left", "pitch": "C3", "startTick": 0, "durationTicks": 1920},
+        ]
+        return d
+
+    def test_dos_voces_en_una_mano_estan_bien(self):
+        self.assertEqual(v.validate(self.dos_voces()), [])
+
+    def test_voces_sin_voice_se_marcan_como_superpuestas(self):
+        d = self.dos_voces()
+        for n in d["notes"]:
+            n.pop("voice", None)
+        self.assertProblema(d, "superpuestas")
+
+    def test_una_voz_secundaria_tiene_que_llenar_sus_compases(self):
+        d = self.dos_voces()
+        d["notes"][2]["durationTicks"] = 480
+        self.assertProblema(d, "voz 2")
+
+    def test_voz_secundaria_no_hace_falta_en_todos_los_compases(self):
+        d = self.dos_voces()
+        d["notes"] += [{"hand": "right", "pitch": "G4", "startTick": 1920, "durationTicks": 1920},
+                       {"hand": "left", "pitch": "C3", "startTick": 1920, "durationTicks": 1920}]
+        self.assertEqual(v.validate(d), [])
+
+    def test_voz_fuera_de_rango(self):
+        d = self.dos_voces()
+        d["notes"][1]["voice"] = 5
+        self.assertProblema(d, "\"voice\" tiene que ser un entero de 1 a 4")
+
+    def test_acorde_con_notas_de_distinta_duracion_en_la_misma_voz(self):
+        d = self.dos_voces()
+        d["notes"][1].pop("voice")
+        self.assertProblema(d, "superpuestas")
+
+    def test_la_misma_tecla_dos_veces_a_la_vez(self):
+        d = self.dos_voces()
+        d["notes"].append({"hand": "right", "pitch": "E5", "startTick": 960, "durationTicks": 960, "voice": 3})
+        self.assertProblema(d, "se pisan")
+
     def test_json_roto(self):
         import tempfile
         with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False) as f:

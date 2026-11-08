@@ -8,6 +8,7 @@ object ExampleScores {
     val all: List<ExampleScore> = listOf(
         ExampleScore("escala", "Escala de Do mayor", "Dos manos, solo negras. Subir y bajar un octavo. Para empezar a leer.") { cMajorScale() },
         ExampleScore("himno", "Himno a la alegría", "Beethoven. Melodía en la derecha y acordes sencillos en la izquierda. 16 compases.") { odeToJoy() },
+        ExampleScore("voces", "Ejercicio: dos voces en una mano", "Una melodía larga arriba y otra línea que corre abajo, con el bajo sostenido bajo acordes.") { voices() },
         ExampleScore("tresillos", "Ejercicio: tresillos", "Tresillos de corchea y de negra, swing y un grupo de cuatro en el tiempo de tres.") { triplets() },
         ExampleScore("ejercicio", "Ejercicio: todo lo que dibuja la app", "Alteraciones, silencios, acordes, ligaduras y cambios de armadura, compás y tempo.") { DemoScore.create() },
     )
@@ -17,15 +18,17 @@ object ExampleScores {
      * Duración: w redonda, h blanca, q negra, e corchea, s semicorchea; un punto al final = puntillo.
      * Un acorde une las notas con "+" (`C3+G3/h`), un silencio es `r/q` y una "~" pegada
      * al final liga la figura con la siguiente (`C3/h~`).
+     * Varias voces en una mano: `right(texto, voice = 2, from = tick)` escribe otra línea que suena a la vez; cada voz lleva su propio
+     * ritmo y empieza en `from` (por defecto, el principio).
      * Un grupo irregular se marca con `*` después de la duración: `e*3` es una corchea de tresillo (3 en el tiempo de 2),
      * `q*4:3` es una negra de un grupo de 4 en el tiempo de 3. La duración es la de la figura escrita, ajustada al grupo.
      */
     private class Builder {
         val notes = mutableListOf<Note>()
         val rests = mutableListOf<Rest>()
-        private val cursor = mutableMapOf(Hand.RIGHT to 0, Hand.LEFT to 0)
+        private val cursor = mutableMapOf<Pair<Hand, Int>, Int>()
 
-        fun hand(hand: Hand, text: String) {
+        fun hand(hand: Hand, text: String, voice: Int = 1, from: Int = 0) {
             for (token in text.trim().split(Regex("\\s+"))) {
                 var body = token
                 val tied = body.endsWith("~")
@@ -45,15 +48,15 @@ object ExampleScores {
                 }
                 val written = if (dotted) Ticks.dotted(base) else base
                 val duration = tuplet?.let { written * it.normal / it.actual } ?: written
-                val start = cursor.getValue(hand)
-                if (what == "r") rests += Rest(hand, start, duration, tuplet)
-                else what.split("+").forEach { notes += Note(hand, Pitch.parse(it), start, duration, tiedToNext = tied, tuplet = tuplet) }
-                cursor[hand] = start + duration
+                val start = cursor.getOrPut(hand to voice) { from }
+                if (what == "r") rests += Rest(hand, start, duration, tuplet, voice)
+                else what.split("+").forEach { notes += Note(hand, Pitch.parse(it), start, duration, tiedToNext = tied, tuplet = tuplet, voice = voice) }
+                cursor[hand to voice] = start + duration
             }
         }
 
-        fun right(text: String) = hand(Hand.RIGHT, text)
-        fun left(text: String) = hand(Hand.LEFT, text)
+        fun right(text: String, voice: Int = 1, from: Int = 0) = hand(Hand.RIGHT, text, voice, from)
+        fun left(text: String, voice: Int = 1, from: Int = 0) = hand(Hand.LEFT, text, voice, from)
     }
 
     private fun cMajorScale(): Score {
@@ -64,6 +67,27 @@ object ExampleScores {
             title = "Escala de Do mayor",
             level = "principiante",
             goal = "Leer las notas de Do a Do con las dos manos, subiendo y bajando.",
+            tempos = listOf(TempoChange(0, 80.0)),
+            notes = b.notes,
+            rests = b.rests,
+        )
+    }
+
+    private fun voices(): Score {
+        val b = Builder()
+        val bar = Ticks.WHOLE
+        // Mano derecha: la voz 1 (arriba) es la melodía con notas largas; la voz 2 (abajo) corre con otro ritmo.
+        b.right("E5/h D5/h  C5/w  G4/w  C5/w")
+        b.right("C4/q E4/q G4/q E4/q  C4/e E4/e G4/e E4/e C4/e E4/e G4/e E4/e", voice = 2)
+        b.right("C4/h E4/h", voice = 2, from = 3 * bar)
+        // Mano izquierda: acordes que se repiten (voz 1) sobre un bajo que sigue sonando (voz 2).
+        b.left("C3/w  G2/w  E3+G3/q E3+G3/q E3+G3/q E3+G3/q  C3+G3/h r/h")
+        b.left("C2/w", voice = 2, from = 2 * bar)
+        b.left("C2/w", voice = 2, from = 3 * bar)
+        return Score(
+            title = "Ejercicio: dos voces en una mano",
+            level = "intermedio",
+            goal = "Tocar dos líneas a la vez con la misma mano: una larga arriba y otra que corre abajo, o un bajo sostenido bajo acordes.",
             tempos = listOf(TempoChange(0, 80.0)),
             notes = b.notes,
             rests = b.rests,
