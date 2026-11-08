@@ -36,6 +36,7 @@ import androidx.compose.ui.platform.LocalContext
 import com.federomano.pianoapp.audio.NoteTrigger
 import com.federomano.pianoapp.audio.PianoPlayer
 import com.federomano.pianoapp.score.Score
+import com.federomano.pianoapp.score.Speed
 import com.federomano.pianoapp.score.TempoMap
 import com.federomano.pianoapp.score.layout.DrawOp
 import com.federomano.pianoapp.score.layout.Geometry
@@ -82,11 +83,20 @@ fun ScoreView(score: Score, modifier: Modifier = Modifier, maxStaffSpaceDp: Floa
     // Sube cada vez que la posición cambia por un salto (barra, reiniciar): la reproducción retoma desde ahí.
     var seek by remember { mutableIntStateOf(0) }
     val tempoMap = remember(score) { TempoMap(score.tempos) }
+    // Velocidad de reproducción (1 = tempo de la partitura). Se puede cambiar mientras suena.
+    var speed by remember { mutableFloatStateOf(1f) }
+    val currentSpeed by rememberUpdatedState(speed)
 
     // Sonido: el piano se carga en segundo plano al abrir la partitura. Las notas suenan según el tiempo
     // musical exacto (el reloj del tempo), aunque el dibujo, que se mueve suavizado, llegue a la línea
     // unas milésimas después en los cambios de compás o de armadura.
-    val player = remember { PianoPlayer(context) }
+    val prefs = remember { context.getSharedPreferences("piano", android.content.Context.MODE_PRIVATE) }
+    var muted by remember { mutableStateOf(prefs.getBoolean("muted", false)) }
+    val player = remember { PianoPlayer(context).also { it.muted = muted } }
+    LaunchedEffect(muted) {
+        player.muted = muted
+        prefs.edit().putBoolean("muted", muted).apply()
+    }
     DisposableEffect(player) {
         player.start()
         onDispose { player.stop() }
@@ -131,7 +141,7 @@ fun ScoreView(score: Score, modifier: Modifier = Modifier, maxStaffSpaceDp: Floa
         fun playbackSpeedAt(position: Float): Float {
             val tick = layout.tickAtScroll(position, currentPlayhead)
             val step = 0.02f
-            val next = tempoMap.advance(tick, step)
+            val next = tempoMap.advance(tick, step * currentSpeed)
             return (layout.scrollForTick(next, currentPlayhead) - layout.scrollForTick(tick, currentPlayhead)) / step
         }
 
@@ -156,7 +166,7 @@ fun ScoreView(score: Score, modifier: Modifier = Modifier, maxStaffSpaceDp: Floa
                     val now = withFrameNanos { it }
                     val seconds = ((now - last) / 1_000_000_000f).coerceAtMost(0.1f)
                     last = now
-                    tick = tempoMap.advance(tick, seconds)
+                    tick = tempoMap.advance(tick, seconds * currentSpeed)
                     if (tick >= end) {
                         scrollSp = layout.scrollForTick(end, currentPlayhead)
                         trigger.advance(Float.MAX_VALUE, { player.noteOn(it.pitch.midi) }, player::noteOff)
@@ -356,6 +366,14 @@ fun ScoreView(score: Score, modifier: Modifier = Modifier, maxStaffSpaceDp: Floa
                 scrollSp = minScroll
                 seek++
             },
+            speed = speed,
+            onSpeed = { speed = Speed.snap(it) },
+            bpm = {
+                val tick = layout.tickAtScroll(if (scrollSp.isNaN()) minScroll else scrollSp, playheadSp)
+                Speed.effectiveBpm(tempoMap.bpmAt(tick), speed)
+            },
+            muted = muted,
+            onMuteToggle = { muted = !muted },
         )
     }
 }

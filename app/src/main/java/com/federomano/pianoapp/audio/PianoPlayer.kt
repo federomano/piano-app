@@ -32,6 +32,13 @@ class PianoPlayer(private val context: Context) {
         private set
     val activeVoices: Int get() = mixer.activeVoices
 
+    /** Silenciado: las notas no suenan (y lo que sonaba se apaga), pero todo lo demás sigue igual. */
+    var muted = false
+        set(value) {
+            field = value
+            if (value) mixer.allOff()
+        }
+
     @Volatile private var running = false
     private var worker: Thread? = null
 
@@ -75,6 +82,7 @@ class PianoPlayer(private val context: Context) {
 
     /** Toca una nota (número MIDI, 60 = Do central) con intensidad 1..127. Devuelve un número para soltarla. */
     fun noteOn(midi: Int, velocity: Int = 90): Int {
+        if (muted) return -1
         val pick = PianoMapping.pick(midi, velocity)
         val data = samples[pick.fileName] ?: return -1
         return mixer.noteOn(data, pick.rate * ratio, pick.gain)
