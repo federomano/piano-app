@@ -32,6 +32,7 @@ Un compás de 4/4 dura 1920 ticks, uno de 3/4 o 6/8 dura 1440. La posición de c
 | `timeSignatures` | Firmas de compás. La primera en el tick 0. Si no se indica, 4/4. |
 | `keySignatures` | Armaduras. La primera en el tick 0. Si no se indica, sin alteraciones. |
 | `tempos` | Cambios de tempo. El primero en el tick 0. Si no se indica, 100. |
+| `pickupTicks` | Anacrusa: duración en ticks del primer compás cuando es más corto que los demás (480 = una negra en 4/4). Ese compás es el 0 y el primer compás entero es el 1. Si no se indica, 0 (no hay anacrusa). |
 | `notes` | Las notas de las dos manos. |
 | `rests` | Los silencios de las dos manos. |
 
@@ -89,7 +90,5 @@ El JSON es estricto: una clave mal escrita, una altura inválida o una versión 
 
 ## Lo que todavía no cubre
 
-- **Anacrusa** (un primer compás incompleto): por ahora el primer compás tiene que ser entero; se completa con un silencio.
-- El grupo irregular se dibuja con su número (y con corchete si las figuras no están unidas por una barra).
 - **Dinámicas, articulaciones, pedal, repeticiones y ornamentos:** no se representan.
 - **Una nota ligada a varias seguidas:** se encadenan ligaduras, una por una.

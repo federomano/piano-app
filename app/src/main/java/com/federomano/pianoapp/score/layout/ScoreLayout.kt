@@ -273,7 +273,7 @@ class ScoreLayout private constructor(
                 val x1 = contentX + anchors.offsets.last()
 
                 // Número de compás, arriba del pentagrama de la mano derecha.
-                marks += TextOp((index + 1).toString(), x0 + 0.35f, -3.0f, 1.8f)
+                marks += TextOp(m.number.toString(), x0 + 0.35f, -3.0f, 1.8f)
 
                 // Barra de compás que une los dos pentagramas. La última es doble: fina y gruesa.
                 if (index == measures.lastIndex) {

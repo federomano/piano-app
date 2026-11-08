@@ -354,6 +354,7 @@ fun ScoreView(score: Score, modifier: Modifier = Modifier, maxStaffSpaceDp: Floa
 
         PlaybackControls(
             measureStarts = layout.measures.map { it.measure.startTick },
+            firstMeasureNumber = layout.measures.first().measure.number,
             endTick = layout.endTick,
             currentTick = { layout.tickAtScroll(if (scrollSp.isNaN()) minScroll else scrollSp, playheadSp) },
             onSeek = { tick ->

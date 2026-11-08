@@ -29,7 +29,7 @@ for _name, _base in BASES.items():
         ALLOWED[_base * 7 // 4] = _name + " con dos puntillos"
 
 SCORE_KEYS = {"formatVersion", "title", "composer", "level", "goal",
-              "timeSignatures", "keySignatures", "tempos", "notes", "rests"}
+              "timeSignatures", "keySignatures", "tempos", "pickupTicks", "notes", "rests"}
 NOTE_KEYS = {"hand", "pitch", "startTick", "durationTicks", "tiedToNext", "finger", "tuplet", "voice"}
 REST_KEYS = {"hand", "startTick", "durationTicks", "tuplet", "voice"}
 TS_KEYS = {"startTick", "numerator", "denominator"}
@@ -265,11 +265,23 @@ def validate(data):
     # --- Compases ---
     end = max([n["startTick"] + n["durationTicks"] for n in notes] +
               [r["startTick"] + r["durationTicks"] for r in rests])
+    # Anacrusa: el primer compás es más corto y se numera 0; el primer compás entero es el 1.
+    pickup = data.get("pickupTicks", 0)
+    if not is_int(pickup) or pickup < 0:
+        errors.append(f"\"pickupTicks\" tiene que ser un entero de 0 o más (es {pickup!r}).")
+        pickup = 0
+    first = sigs[0]
+    first_full = first["numerator"] * 4 * TICKS_PER_QUARTER // first["denominator"]
+    if pickup >= first_full > 0:
+        errors.append(f"\"pickupTicks\" ({pickup}) tiene que ser menor que un compás entero ({first_full} ticks).")
+        pickup = 0
     measures = []  # (numero, inicio, fin)
-    tick, number = 0, 1
+    tick, number = 0, (0 if pickup else 1)
     while tick < end:
         sig = [s for s in sigs if s["startTick"] <= tick][-1]
         length = sig["numerator"] * 4 * TICKS_PER_QUARTER // sig["denominator"]
+        if pickup and tick == 0:
+            length = pickup
         measures.append((number, tick, tick + length))
         tick += length
         number += 1

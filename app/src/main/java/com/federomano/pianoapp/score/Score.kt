@@ -227,6 +227,11 @@ data class Score(
     val timeSignatures: List<TimeSignatureChange> = listOf(TimeSignatureChange(0, 4, 4)),
     val keySignatures: List<KeySignatureChange> = listOf(KeySignatureChange(0, 0)),
     val tempos: List<TempoChange> = listOf(TempoChange(0, 100.0)),
+    /**
+     * Anacrusa: duración (en ticks) del primer compás cuando es más corto que los demás. 0 = no hay. El compás de la anacrusa
+     * se numera 0 y el primer compás entero es el 1.
+     */
+    val pickupTicks: Int = 0,
     val notes: List<Note> = emptyList(),
     val rests: List<Rest> = emptyList(),
 ) {
@@ -235,6 +240,7 @@ data class Score(
             "Versión de formato no soportada: $formatVersion (esta app lee la $FORMAT_VERSION)."
         }
         require(title.isNotBlank()) { "La partitura necesita un título." }
+        require(pickupTicks >= 0) { "La anacrusa (pickupTicks) no puede ser negativa (era $pickupTicks)." }
     }
 
     /** Fin de la partitura: donde termina la última nota o silencio. */

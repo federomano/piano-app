@@ -201,7 +201,7 @@ object NoteLayout {
                 val last = current.lastOrNull()
                 val m = plan.measure
                 val beat = beatTicks(m.timeSignature.numerator, m.timeSignature.denominator)
-                fun slot(p: Plan) = (p.chord.startTick - p.measure.startTick) / beat
+                fun slot(p: Plan) = (p.chord.startTick - p.measure.startTick + p.measure.gridOffset) / beat
                 val continues = last != null && last.measureIndex == plan.measureIndex &&
                     last.chord.endTick == plan.chord.startTick && slot(last) == slot(plan)
                 if (!continues) close()
@@ -553,7 +553,7 @@ object NoteLayout {
 
     private fun drawRest(ops: MutableList<DrawOp>, hand: Hand, start: Int, duration: Int, tuplet: Tuplet?, measure: MeasureLayout, x: Float, yShift: Float = 0f, manyVoices: Boolean = false) {
         val top = staffTop(hand)
-        val wholeMeasure = start == measure.measure.startTick && start + duration == measure.measure.endTick
+        val wholeMeasure = start == measure.measure.startTick && start + duration == measure.measure.endTick && measure.measure.number != 0
         val figure = if (wholeMeasure) Figure(Ticks.WHOLE, 0) else figureOf(duration, tuplet)
         val (code, width) = when (figure.base) {
             Ticks.WHOLE -> Smufl.REST_WHOLE to Smufl.REST_WHOLE_WIDTH

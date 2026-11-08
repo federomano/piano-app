@@ -1,0 +1,41 @@
+{
+  "formatVersion": 1,
+  "title": "Ejercicio: anacrusa",
+  "level": "principiante",
+  "goal": "Arrancar en el aire: tres corcheas antes del primer compás (el 0) y caer en el tiempo fuerte del compás 1.",
+  "pickupTicks": 720,
+  "timeSignatures": [
+    { "startTick": 0, "numerator": 4, "denominator": 4 }
+  ],
+  "keySignatures": [
+    { "startTick": 0, "fifths": 1 }
+  ],
+  "tempos": [
+    { "startTick": 0, "bpm": 80.0 }
+  ],
+  "notes": [
+    { "hand": "right", "pitch": "D4", "startTick": 0, "durationTicks": 240 },
+    { "hand": "right", "pitch": "G4", "startTick": 240, "durationTicks": 240 },
+    { "hand": "right", "pitch": "A4", "startTick": 480, "durationTicks": 240 },
+    { "hand": "right", "pitch": "B4", "startTick": 720, "durationTicks": 480 },
+    { "hand": "right", "pitch": "D5", "startTick": 1200, "durationTicks": 480 },
+    { "hand": "right", "pitch": "G4", "startTick": 1680, "durationTicks": 480 },
+    { "hand": "right", "pitch": "B4", "startTick": 2160, "durationTicks": 480 },
+    { "hand": "right", "pitch": "A4", "startTick": 2640, "durationTicks": 480 },
+    { "hand": "right", "pitch": "F#4", "startTick": 3120, "durationTicks": 480 },
+    { "hand": "right", "pitch": "D4", "startTick": 3600, "durationTicks": 960 },
+    { "hand": "right", "pitch": "G4", "startTick": 4560, "durationTicks": 1920 },
+
+    { "hand": "left", "pitch": "G2", "startTick": 720, "durationTicks": 960 },
+    { "hand": "left", "pitch": "D3", "startTick": 720, "durationTicks": 960 },
+    { "hand": "left", "pitch": "G2", "startTick": 1680, "durationTicks": 960 },
+    { "hand": "left", "pitch": "D3", "startTick": 1680, "durationTicks": 960 },
+    { "hand": "left", "pitch": "D3", "startTick": 2640, "durationTicks": 1920 },
+    { "hand": "left", "pitch": "A3", "startTick": 2640, "durationTicks": 1920 },
+    { "hand": "left", "pitch": "G2", "startTick": 4560, "durationTicks": 1920 },
+    { "hand": "left", "pitch": "D3", "startTick": 4560, "durationTicks": 1920 }
+  ],
+  "rests": [
+    { "hand": "left", "startTick": 0, "durationTicks": 720 }
+  ]
+}

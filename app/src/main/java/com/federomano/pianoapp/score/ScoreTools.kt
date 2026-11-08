@@ -2,13 +2,18 @@ package com.federomano.pianoapp.score
 
 /** Un compás calculado a partir de las firmas de compás y armaduras. */
 data class Measure(
-    /** Número de compás, desde 1. */
+    /** Número de compás: desde 1; la anacrusa (si hay) es el 0. */
     val number: Int,
     val startTick: Int,
     val endTick: Int,
     val timeSignature: TimeSignatureChange,
     /** Armadura vigente en este compás (ver [KeySignatureChange.fifths]). */
     val keyFifths: Int,
+    /**
+     * Cuántos ticks antes del inicio del compás "empieza" su grilla de tiempos. Solo la anacrusa lo usa: un compás de un
+     * pulso que cierra un 4/4 tiene sus tiempos alineados con el final, no con el principio.
+     */
+    val gridOffset: Int = 0,
 )
 
 /** Notas de una misma mano que empiezan juntas y duran lo mismo. Con una sola nota no es acorde. */
@@ -27,17 +32,18 @@ data class Chord(
     val isChord: Boolean get() = notes.size > 1
 }
 
-/** Compases de la partitura, de 1 hasta el que contiene el final. Siempre hay al menos uno. */
+/** Compases de la partitura, de 1 (o 0, si hay anacrusa) hasta el que contiene el final. Siempre hay al menos uno. */
 fun Score.measures(): List<Measure> {
     val result = mutableListOf<Measure>()
     val end = lengthTicks
     var tick = 0
-    var number = 1
+    var number = if (pickupTicks > 0) 0 else 1
     do {
         val signature = timeSignatures.lastOrNull { it.startTick <= tick } ?: TimeSignatureChange(0, 4, 4)
         val key = keySignatures.lastOrNull { it.startTick <= tick }?.fifths ?: 0
-        val length = signature.measureTicks
-        result += Measure(number, tick, tick + length, signature, key)
+        val isPickup = pickupTicks > 0 && tick == 0
+        val length = if (isPickup) minOf(pickupTicks, signature.measureTicks) else signature.measureTicks
+        result += Measure(number, tick, tick + length, signature, key, if (isPickup) signature.measureTicks - length else 0)
         tick += length
         number++
     } while (tick < end)
@@ -76,6 +82,13 @@ fun Score.validate(): List<String> {
     checkOrder("Firmas de compás", timeSignatures.map { it.startTick })
     checkOrder("Armaduras", keySignatures.map { it.startTick })
     checkOrder("Cambios de tempo", tempos.map { it.startTick })
+
+    if (pickupTicks > 0) {
+        val full = (timeSignatures.firstOrNull() ?: TimeSignatureChange(0, 4, 4)).measureTicks
+        if (pickupTicks >= full) {
+            errors += "La anacrusa (pickupTicks: $pickupTicks) tiene que ser más corta que un compás entero ($full ticks)."
+        }
+    }
 
     val measures = measures()
     val measureStarts = measures.map { it.startTick }.toSet()

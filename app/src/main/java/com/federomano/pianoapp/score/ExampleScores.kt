@@ -10,6 +10,7 @@ object ExampleScores {
         ExampleScore("himno", "Himno a la alegría", "Beethoven. Melodía en la derecha y acordes sencillos en la izquierda. 16 compases.") { odeToJoy() },
         ExampleScore("voces", "Ejercicio: dos voces en una mano", "Una melodía larga arriba y otra línea que corre abajo, con el bajo sostenido bajo acordes.") { voices() },
         ExampleScore("tresillos", "Ejercicio: tresillos", "Tresillos de corchea y de negra, swing y un grupo de cuatro en el tiempo de tres.") { triplets() },
+        ExampleScore("anacrusa", "Ejercicio: anacrusa", "Empieza con un compás corto (tres corcheas): el compás 0. Después, los compases enteros desde el 1.") { pickup() },
         ExampleScore("ejercicio", "Ejercicio: todo lo que dibuja la app", "Alteraciones, silencios, acordes, ligaduras y cambios de armadura, compás y tempo.") { DemoScore.create() },
     )
 
@@ -93,6 +94,23 @@ object ExampleScores {
             level = "intermedio",
             goal = "Tocar dos líneas a la vez con la misma mano: una larga arriba y otra que corre abajo, o un bajo sostenido bajo acordes.",
             tempos = listOf(TempoChange(0, 80.0)),
+            notes = b.notes,
+            rests = b.rests,
+        )
+    }
+
+    private fun pickup(): Score {
+        val b = Builder()
+        // Compás 0 (anacrusa): tres corcheas, el final de un compás de 4/4. Siguen tres compases enteros.
+        b.right("D4/e G4/e A4/e  B4/q D5/q G4/q B4/q  A4/q F#4/q D4/h  G4/w")
+        b.left("r/q.  G2+D3/h G2+D3/h  D3+A3/w  G2+D3/w")
+        return Score(
+            title = "Ejercicio: anacrusa",
+            level = "principiante",
+            goal = "Arrancar en el aire: tres corcheas antes del primer compás (el 0) y caer en el tiempo fuerte del compás 1.",
+            keySignatures = listOf(KeySignatureChange(0, 1)),
+            tempos = listOf(TempoChange(0, 80.0)),
+            pickupTicks = 3 * Ticks.EIGHTH,
             notes = b.notes,
             rests = b.rests,
         )

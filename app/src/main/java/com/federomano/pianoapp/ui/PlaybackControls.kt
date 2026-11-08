@@ -51,6 +51,8 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun BoxScope.PlaybackControls(
     measureStarts: List<Int>,
+    /** Número del primer compás: 1, o 0 si la pieza empieza con anacrusa. */
+    firstMeasureNumber: Int,
     endTick: Int,
     currentTick: () -> Float,
     onSeek: (Int) -> Unit,
@@ -72,7 +74,7 @@ fun BoxScope.PlaybackControls(
     ) {
         RestartButton(onRestart)
         Spacer(Modifier.width(8.dp))
-        ProgressBar(Modifier.weight(1f), measureStarts, endTick, currentTick, onSeek)
+        ProgressBar(Modifier.weight(1f), measureStarts, firstMeasureNumber, endTick, currentTick, onSeek)
         Spacer(Modifier.width(8.dp))
         SpeedButton(speed, bpm, open = panelOpen) { panelOpen = !panelOpen }
         Spacer(Modifier.width(4.dp))
@@ -232,6 +234,7 @@ private fun RestartButton(onRestart: () -> Unit) {
 private fun ProgressBar(
     modifier: Modifier,
     measureStarts: List<Int>,
+    firstMeasureNumber: Int,
     endTick: Int,
     currentTick: () -> Float,
     onSeek: (Int) -> Unit,
@@ -283,8 +286,9 @@ private fun ProgressBar(
         drawCircle(PlayheadColor, radius = 8.dp.toPx(), center = Offset(xNow, y))
 
         // Compás actual, sobre la barra.
-        val measure = measureStarts.indexOfLast { it <= tick }.coerceAtLeast(0) + 1
+        val measure = measureStarts.indexOfLast { it <= tick }.coerceAtLeast(0) + firstMeasureNumber
+        val lastMeasure = measureStarts.size - 1 + firstMeasureNumber
         textPaint.textSize = 12.dp.toPx()
-        drawContext.canvas.nativeCanvas.drawText("Compás $measure de ${measureStarts.size}", x1, y - 14.dp.toPx(), textPaint)
+        drawContext.canvas.nativeCanvas.drawText("Compás $measure de $lastMeasure", x1, y - 14.dp.toPx(), textPaint)
     }
 }

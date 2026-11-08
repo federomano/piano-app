@@ -191,6 +191,39 @@ class Validador(unittest.TestCase):
         d["notes"].append({"hand": "right", "pitch": "E5", "startTick": 960, "durationTicks": 960, "voice": 3})
         self.assertProblema(d, "se pisan")
 
+    def test_anacrusa_bien(self):
+        # Compás 0 de una negra y después un compás entero.
+        d = con(lambda d: d.update(
+            pickupTicks=480,
+            notes=[{"hand": "right", "pitch": "G4", "startTick": 0, "durationTicks": 480},
+                   {"hand": "right", "pitch": "C5", "startTick": 480, "durationTicks": 1920},
+                   {"hand": "left", "pitch": "C3", "startTick": 480, "durationTicks": 1920}],
+            rests=[{"hand": "left", "startTick": 0, "durationTicks": 480}]))
+        self.assertEqual(v.validate(d), [])
+
+    def test_anacrusa_sin_llenar_la_mano_izquierda(self):
+        d = con(lambda d: d.update(
+            pickupTicks=480,
+            notes=[{"hand": "right", "pitch": "G4", "startTick": 0, "durationTicks": 480},
+                   {"hand": "right", "pitch": "C5", "startTick": 480, "durationTicks": 1920},
+                   {"hand": "left", "pitch": "C3", "startTick": 480, "durationTicks": 1920}]))
+        self.assertProblema(d, "compás 0")
+
+    def test_anacrusa_no_puede_cruzar_su_barra(self):
+        d = con(lambda d: d.update(
+            pickupTicks=480,
+            notes=[{"hand": "right", "pitch": "G4", "startTick": 0, "durationTicks": 960},
+                   {"hand": "left", "pitch": "C3", "startTick": 0, "durationTicks": 960}]))
+        self.assertProblema(d, "cruza la barra")
+
+    def test_anacrusa_demasiado_larga(self):
+        d = con(lambda d: d.update(pickupTicks=1920))
+        self.assertProblema(d, "pickupTicks")
+
+    def test_anacrusa_negativa(self):
+        d = con(lambda d: d.update(pickupTicks=-5))
+        self.assertProblema(d, "pickupTicks")
+
     def test_json_roto(self):
         import tempfile
         with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False) as f:

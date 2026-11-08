@@ -20,6 +20,7 @@ class ReferenceFilesTest {
         "ejercicio-todo-lo-que-dibuja.json" to "ejercicio",
         "ejercicio-tresillos.json" to "tresillos",
         "ejercicio-dos-voces.json" to "voces",
+        "ejercicio-anacrusa.json" to "anacrusa",
     )
 
     @Test
@@ -74,6 +75,7 @@ class ReferenceFilesTest {
             score.composer?.let { add("  \"composer\": ${str(it)}") }
             score.level?.let { add("  \"level\": ${str(it)}") }
             score.goal?.let { add("  \"goal\": ${str(it)}") }
+            if (score.pickupTicks > 0) add("  \"pickupTicks\": ${score.pickupTicks}")
         }
         val parts = head + listOf(
             block("timeSignatures", score.timeSignatures) { "{ \"startTick\": ${it.startTick}, \"numerator\": ${it.numerator}, \"denominator\": ${it.denominator} }" },
