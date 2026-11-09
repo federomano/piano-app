@@ -4,7 +4,7 @@ Para el profesor de piano. La meta es **un solo archivo `bach-a-la-jazz.json`** 
 
 ## Datos de la pieza
 
-- Compás 3/4 (`numerator: 3, denominator: 4`), Do menor (`"fifths": -3`), negra = 140 (`"bpm": 140.0`).
+- Compás 3/4 (`numerator: 3, denominator: 4`), armadura de dos bemoles, Si bemol y Mi bemol (`"fifths": -2`; la que se ve en el PDF), negra = 140 (`"bpm": 140.0`).
 - `level`: `"avanzado"`. `title`: «Bach à la Jazz». `goal`: una frase.
 - Un compás de 3/4 son 1440 ticks.
 
@@ -37,5 +37,5 @@ Pedal (24 y 58–59) y los textos «light, staccato» / «swing feel». Decir qu
 
 1. Leer la partitura (PDF) compás por compás. Si algo no se lee bien, **no adivinar**: anotarlo en el aviso final con el número de compás.
 2. Escribir el JSON y correr `python3 /mnt/project/piano/validar_partitura.py bach-a-la-jazz.json` hasta que diga «cumple el contrato».
-3. Revisar a mano lo que el validador no mira: ortografía de las alturas en Do menor (Mi bemol, La bemol, Si bemol; Si natural como `B`), y que la música sea fiel.
+3. Revisar a mano lo que el validador no mira: ortografía de las alturas según la armadura (Si bemol y Mi bemol vienen de la armadura; Si o Mi natural llevan becuadro y se escriben `B` y `E`; los bemoles y sostenidos de paso se escriben como en el PDF), y que la música sea fiel.
 4. Entregar un solo archivo y, después, una lista corta: qué se simplificó, qué se omitió (con compases) y qué dudas quedan.
