@@ -139,6 +139,23 @@ class ScoreLayout private constructor(
     /** Alto total que hay que mostrar, en espacios de pentagrama. */
     val totalHeight: Float get() = marginTop + Geometry.SYSTEM_BOTTOM + marginBottom
 
+    /** Tamaño de un espacio de pentagrama y dónde cae la línea superior del pentagrama de la derecha, en píxeles de pantalla. */
+    class Fit(val spPx: Float, val topPx: Float)
+
+    /**
+     * Cómo acomodar la partitura en una pantalla de [heightPx] de alto, con espacios de a lo sumo [maxSpPx]. Abajo, [controlsPx] los tapan
+     * los controles de reproducción: si lo dibujado llega hasta ahí (notas muy graves, dinámicas), se achica un poco para que quede arriba.
+     * Las partituras comunes (con el margen de siempre) quedan exactamente como estaban.
+     */
+    fun fit(heightPx: Float, maxSpPx: Float, controlsPx: Float): Fit {
+        fun topFor(sp: Float) = (heightPx - totalHeight * sp) / 2f + marginTop * sp
+        val belowSystem = Geometry.SYSTEM_BOTTOM + marginBottom - EDGE_PAD
+        val plain = minOf(maxSpPx, heightPx / totalHeight)
+        if (marginBottom <= Geometry.MARGIN_BOTTOM || topFor(plain) + belowSystem * plain <= heightPx - controlsPx) return Fit(plain, topFor(plain))
+        val sp = minOf(plain, (heightPx - controlsPx) / (marginTop + belowSystem))
+        return Fit(sp, marginTop * sp)
+    }
+
     /** Todo lo que viaja con la partitura (para pruebas): líneas, marcas y cambios en su lugar dentro del compás. */
     val body: List<DrawOp> = staff + marks + inlineChanges
 

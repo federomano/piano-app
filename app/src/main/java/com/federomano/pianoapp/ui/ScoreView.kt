@@ -59,6 +59,9 @@ private const val SOUND_START_TOLERANCE_TICKS = 24f
 /** En pausa, velocidad mínima (espacios por segundo) con la que soltar el dedo deja a la partitura deslizándose. */
 private const val MIN_FLING_SPEED = 1.5f
 
+/** Alto que ocupan los controles de reproducción abajo (botones, barra y el texto del compás), en dp. */
+private const val CONTROLS_RESERVE_DP = 60f
+
 /** Qué tan rápido se acerca la inercia a la velocidad de reproducción (por segundo): más chico, frena más despacio. */
 internal const val FLING_RATE = 3.8f
 
@@ -110,7 +113,9 @@ fun ScoreView(score: Score, modifier: Modifier = Modifier, maxStaffSpaceDp: Floa
         val widthPx = constraints.maxWidth.toFloat()
         val heightPx = constraints.maxHeight.toFloat()
         // Un espacio de pentagrama: lo que entre en el alto, sin pasarse de un tamaño cómodo de leer.
-        val spPx = minOf(maxStaffSpaceDp * density, heightPx / layout.totalHeight)
+        // Los controles de reproducción tapan el borde de abajo: si la partitura llega hasta ahí, se achica un poco (PIA-72).
+        val fit = layout.fit(heightPx, maxStaffSpaceDp * density, CONTROLS_RESERVE_DP * density)
+        val spPx = fit.spPx
 
         // Línea de reproducción: fija en pantalla. El desplazamiento mínimo deja el comienzo de la pieza
         // sobre la línea; el máximo, el final.
@@ -283,7 +288,7 @@ fun ScoreView(score: Score, modifier: Modifier = Modifier, maxStaffSpaceDp: Floa
                 ),
         ) {
             val scroll = if (scrollSp.isNaN()) minScroll else scrollSp
-            val top = ((heightPx - layout.totalHeight * spPx) / 2f) + layout.marginTop * spPx
+            val top = fit.topPx
             val headerPx = layout.headerWidth * spPx
 
             fun paintOp(op: DrawOp, dx: Float, alpha: Float) {

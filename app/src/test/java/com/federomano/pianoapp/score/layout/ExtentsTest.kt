@@ -53,6 +53,30 @@ class ExtentsTest {
     }
 
     @Test
+    fun controlsNeverCoverTheDrawing() {
+        // Pantalla del Pixel 8 en horizontal: 1080 px de alto, 2,625 px por dp; los controles ocupan unos 60 dp.
+        val height = 1080f
+        val controls = 60f * 2.625f
+        val maxSp = 17f * 2.625f
+        val layout = ScoreLayout.build(extremes())
+        val fit = layout.fit(height, maxSp, controls)
+        val lowest = fit.topPx + (Geometry.SYSTEM_BOTTOM + layout.marginBottom - 0.5f) * fit.spPx
+        assertTrue("lo más bajo (${lowest}px) queda arriba de los controles", lowest <= height - controls + 0.5f)
+        assertTrue("no se achica de más", fit.spPx > 0.8f * minOf(maxSp, height / layout.totalHeight))
+    }
+
+    @Test
+    fun plainScoresAreNotShrunkByTheControls() {
+        for (id in listOf("escala", "himno", "voces", "tresillos")) {
+            val layout = ScoreLayout.build(ExampleScores.all.first { it.id == id }.create())
+            val fit = layout.fit(1080f, 17f * 2.625f, 60f * 2.625f)
+            val before = minOf(17f * 2.625f, 1080f / layout.totalHeight)
+            assertEquals("$id: tamaño", before, fit.spPx, 0.001f)
+            assertEquals("$id: arriba", (1080f - layout.totalHeight * before) / 2f + layout.marginTop * before, fit.topPx, 0.001f)
+        }
+    }
+
+    @Test
     fun dynamicsStayBelowTheLowNotesAndTheirAccents() {
         val ops = ScoreLayout.build(extremes()).body
         val letters = ops.filterIsInstance<GlyphOp>().filter { it.codepoint in 0xE520..0xE53F }
