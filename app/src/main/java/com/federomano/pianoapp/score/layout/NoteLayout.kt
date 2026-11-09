@@ -329,7 +329,7 @@ object NoteLayout {
                 val origin = run.first().startTick
                 for (group in run.groupBy { (it.startTick - origin) / span }.values) {
                     if (group.sumOf { it.durationTicks } != span) continue // grupo incompleto: no se dibuja
-                    drawTuplet(ops, hand, voice, tuplet, group)
+                    drawTuplet(ops, hand, voice, tuplet, group, plans)
                 }
             }
         }
@@ -351,7 +351,7 @@ object NoteLayout {
         (if (it == Smufl.TUPLET_COLON) Smufl.TUPLET_COLON_ADVANCE else Smufl.tupletDigitAdvance(it - 0xE880)).toDouble()
     }.toFloat()
 
-    private fun drawTuplet(ops: MutableList<DrawOp>, hand: Hand, voice: Int, tuplet: Tuplet, group: List<TupletItem>) {
+    private fun drawTuplet(ops: MutableList<DrawOp>, hand: Hand, voice: Int, tuplet: Tuplet, group: List<TupletItem>, allPlans: List<Plan>) {
         val plans = group.mapNotNull { it.plan }
         // Del lado de las plicas; un grupo de solo silencios va arriba en la voz 1 y abajo en las otras.
         val above = if (plans.isEmpty()) voice == 1 else plans.count { !it.stemDown } >= plans.count { it.stemDown }
@@ -366,14 +366,18 @@ object NoteLayout {
             return if (above) minOf(plan.yOf(plan.highest) - 0.5f, tip ?: Float.MAX_VALUE)
             else maxOf(plan.yOf(plan.lowest) + 0.5f, (tip ?: -Float.MAX_VALUE) + if (plan.group != null) BEAM_THICKNESS else 0f)
         }
+        val left = group.first().left
+        val right = group.last().right
+        // Las cabezas de otros grupos o voces de la misma mano que caen debajo del corchete también cuentan (PIA-72).
+        val beside = allPlans.filter { it.hand == hand && it !in plans && it.leftEdge < right + 0.2f && it.rightEdge > left - 0.2f }
         // Los silencios que se corrieron (para no pisar las notas de otra voz) también cuentan.
-        val extreme = if (above) minOf(top - 0.5f, plans.minOfOrNull(::planExtreme) ?: Float.MAX_VALUE, group.minOf { it.restTop })
-        else maxOf(top + 4.5f, plans.maxOfOrNull(::planExtreme) ?: -Float.MAX_VALUE, group.maxOf { it.restBottom })
+        val extreme = if (above) minOf(top - 0.5f, plans.minOfOrNull(::planExtreme) ?: Float.MAX_VALUE, group.minOf { it.restTop },
+            beside.minOfOrNull { it.yOf(it.highest) - 0.5f } ?: Float.MAX_VALUE)
+        else maxOf(top + 4.5f, plans.maxOfOrNull(::planExtreme) ?: -Float.MAX_VALUE, group.maxOf { it.restBottom },
+            beside.maxOfOrNull { it.yOf(it.lowest) + 0.5f } ?: -Float.MAX_VALUE)
 
         val label = tupletLabel(tuplet)
         val width = labelWidth(label)
-        val left = group.first().left
-        val right = group.last().right
         val mid = if (fullyBeamed) (beamGroup!!.plans.first().stemX + beamGroup.plans.last().stemX) / 2f else (left + right) / 2f
 
         fun drawLabel(cx: Float, baseline: Float) {
@@ -708,6 +712,8 @@ object NoteLayout {
             if (!collides(candidate)) yShift = candidate
         }
         val baseline = home + yShift
+        // Un silencio de una voz de abajo que, para esquivar las notas, tendría que salir del pentagrama (y chocaría con la otra mano) se omite.
+        if (voice != 1 && yShift != startShift && baseline + below > top + 4.5f) return Float.MAX_VALUE to -Float.MAX_VALUE
         ops += GlyphOp(code, left, baseline)
         for (i in 0 until figure.dots) {
             ops += GlyphOp(Smufl.AUGMENTATION_DOT, left + width + DOT_GAP + i * DOT_SPACING, top + 1.5f + yShift)

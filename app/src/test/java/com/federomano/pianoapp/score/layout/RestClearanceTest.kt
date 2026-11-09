@@ -42,7 +42,8 @@ class RestClearanceTest {
         val ops = ScoreLayout.build(twoVoices()).body.filterIsInstance<GlyphOp>()
         val rests = ops.filter { it.codepoint in Smufl.REST_WHOLE..Smufl.REST_16TH && it.y < Geometry.BASS_TOP }
         val heads = ops.filter { it.codepoint in Smufl.NOTEHEAD_WHOLE..Smufl.NOTEHEAD_BLACK && it.y < Geometry.BASS_TOP }
-        assertEquals(4, rests.size)
+        // Los dos silencios de la voz 1 se ven; los de la voz 2 se omiten porque tendrían que salir del pentagrama.
+        assertEquals(2, rests.size)
         for (rest in rests) for (head in heads) {
             val touchX = head.x < rest.x + Smufl.REST_QUARTER_WIDTH && head.x + Smufl.NOTEHEAD_WIDTH > rest.x
             // El silencio de negra mide unos 3 espacios de alto y la cabeza 1, ambos centrados en su línea de base.
