@@ -10,6 +10,7 @@ import com.federomano.pianoapp.score.Step
 import com.federomano.pianoapp.score.Ticks
 import com.federomano.pianoapp.score.Tuplet
 import com.federomano.pianoapp.score.chords
+import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
 
@@ -34,6 +35,10 @@ object NoteLayout {
     private const val STEM_LENGTH = 3.5f
     private const val STEM_ANCHOR = 0.168f
     private const val REST_VOICE_SHIFT = 1f
+    /** Separación mínima entre un silencio y las cabezas de otra voz, y cuánto puede correrse en pasos de [REST_STEP] como mucho. */
+    private const val REST_CLEARANCE = 0.2f
+    private const val REST_STEP = 0.5f
+    private const val REST_MAX_MOVE = 5f
     private const val DOT_GAP = 0.35f
     private const val DOT_SPACING = 0.45f
     private const val ACCIDENTAL_MARGIN = 0.2f
@@ -254,7 +259,8 @@ object NoteLayout {
         // 4) Ligaduras de prolongación.
         drawTies(ops, plans)
 
-        // 5) Silencios.
+        // 5) Silencios. Se anota hasta dónde llega cada uno (arriba y abajo) para que los corchetes de grupo lo esquiven.
+        val restSpans = mutableMapOf<com.federomano.pianoapp.score.Rest, Pair<Float, Float>>()
         for (rest in score.rests) {
             val index = measureIndexAt(rest.startTick)
             // Con varias voces en la mano durante ese compás, el silencio de la voz 1 sube y el de las demás baja.
@@ -262,18 +268,24 @@ object NoteLayout {
             val manyVoices = score.notes.any { it.hand == rest.hand && it.voice > 1 && !it.grace && it.startTick < m.endTick && it.endTick > m.startTick } ||
                 score.rests.any { it.hand == rest.hand && it.voice > 1 && it.startTick < m.endTick && it.endTick > m.startTick }
             val yShift = if (!manyVoices) 0f else if (rest.voice == 1) -REST_VOICE_SHIFT else REST_VOICE_SHIFT
-            drawRest(ops, rest.hand, rest.startTick, rest.durationTicks, rest.tuplet, measures[index], xOfTick(rest.startTick), yShift, manyVoices)
+            // Cabezas de las otras voces de la mano: el silencio se aparta de ellas (PIA-72).
+            val others = if (!manyVoices) emptyList() else plans.filter { it.hand == rest.hand && it.voice != rest.voice }
+            restSpans[rest] = drawRest(ops, rest.hand, rest.startTick, rest.durationTicks, rest.tuplet, measures[index], xOfTick(rest.startTick), yShift, manyVoices, rest.voice, others)
         }
 
         // 6) Corchetes y números de los grupos irregulares.
-        drawTuplets(ops, score, plans, ::measureIndexAt, xOfTick)
+        drawTuplets(ops, score, plans, ::measureIndexAt, xOfTick, restSpans)
         return ops
     }
 
     // --- Grupos irregulares (tresillos, etc.) ---
 
     /** Una figura (acorde o silencio) de un grupo irregular, con el ancho que ocupa en el dibujo. */
-    private class TupletItem(val startTick: Int, val durationTicks: Int, val tuplet: Tuplet, val plan: Plan?, val left: Float, val right: Float)
+    private class TupletItem(
+        val startTick: Int, val durationTicks: Int, val tuplet: Tuplet, val plan: Plan?, val left: Float, val right: Float,
+        /** Solo en los silencios: hasta dónde llega el dibujo hacia arriba y hacia abajo (y crece hacia abajo). */
+        val restTop: Float = Float.MAX_VALUE, val restBottom: Float = -Float.MAX_VALUE,
+    )
 
     private const val TUPLET_LINE_THICKNESS = 0.1f
     private const val TUPLET_GAP = 1.1f
@@ -285,7 +297,10 @@ object NoteLayout {
      * solo junto a la barra; si no (negras de tresillo, silencios, mezclas), lleva además un corchete con el número en el medio.
      * Va del lado de las plicas (arriba si las plicas suben).
      */
-    private fun drawTuplets(ops: MutableList<DrawOp>, score: Score, plans: List<Plan>, measureIndexAt: (Int) -> Int, xOfTick: (Int) -> Float) {
+    private fun drawTuplets(
+        ops: MutableList<DrawOp>, score: Score, plans: List<Plan>, measureIndexAt: (Int) -> Int, xOfTick: (Int) -> Float,
+        restSpans: Map<com.federomano.pianoapp.score.Rest, Pair<Float, Float>>,
+    ) {
         val lines = (score.notes.filter { it.tuplet != null }.map { it.hand to it.voice } +
             score.rests.filter { it.tuplet != null }.map { it.hand to it.voice }).distinct()
         for ((hand, voice) in lines) {
@@ -294,7 +309,9 @@ object NoteLayout {
                 score.rests.filter { it.hand == hand && it.voice == voice && it.tuplet != null }.map { rest ->
                     val x = xOfTick(rest.startTick)
                     val base = figureOf(rest.durationTicks, rest.tuplet).base
-                    TupletItem(rest.startTick, rest.durationTicks, rest.tuplet!!, null, x, x + restWidthOf(base))
+                    val span = restSpans[rest]
+                    TupletItem(rest.startTick, rest.durationTicks, rest.tuplet!!, null, x, x + restWidthOf(base),
+                        span?.first ?: Float.MAX_VALUE, span?.second ?: -Float.MAX_VALUE)
                 }).sortedBy { it.startTick }
 
             // Figuras seguidas del mismo grupo, dentro de un compás.
@@ -349,8 +366,9 @@ object NoteLayout {
             return if (above) minOf(plan.yOf(plan.highest) - 0.5f, tip ?: Float.MAX_VALUE)
             else maxOf(plan.yOf(plan.lowest) + 0.5f, (tip ?: -Float.MAX_VALUE) + if (plan.group != null) BEAM_THICKNESS else 0f)
         }
-        val extreme = if (above) minOf(top - 0.5f, plans.minOfOrNull(::planExtreme) ?: Float.MAX_VALUE)
-        else maxOf(top + 4.5f, plans.maxOfOrNull(::planExtreme) ?: -Float.MAX_VALUE)
+        // Los silencios que se corrieron (para no pisar las notas de otra voz) también cuentan.
+        val extreme = if (above) minOf(top - 0.5f, plans.minOfOrNull(::planExtreme) ?: Float.MAX_VALUE, group.minOf { it.restTop })
+        else maxOf(top + 4.5f, plans.maxOfOrNull(::planExtreme) ?: -Float.MAX_VALUE, group.maxOf { it.restBottom })
 
         val label = tupletLabel(tuplet)
         val width = labelWidth(label)
@@ -649,7 +667,10 @@ object NoteLayout {
 
     // --- Silencios ---
 
-    private fun drawRest(ops: MutableList<DrawOp>, hand: Hand, start: Int, duration: Int, tuplet: Tuplet?, measure: MeasureLayout, x: Float, yShift: Float = 0f, manyVoices: Boolean = false) {
+    private fun drawRest(
+        ops: MutableList<DrawOp>, hand: Hand, start: Int, duration: Int, tuplet: Tuplet?, measure: MeasureLayout, x: Float,
+        startShift: Float = 0f, manyVoices: Boolean = false, voice: Int = 1, others: List<Plan> = emptyList(),
+    ): Pair<Float, Float> {
         val top = staffTop(hand)
         val wholeMeasure = start == measure.measure.startTick && start + duration == measure.measure.endTick && measure.measure.number != 0
         val figure = if (wholeMeasure) Figure(Ticks.WHOLE, 0) else figureOf(duration, tuplet)
@@ -663,11 +684,35 @@ object NoteLayout {
         // El silencio de compás completo va centrado en el compás, sea cual sea la firma.
         val left = if (wholeMeasure && !manyVoices) (measure.contentX + measure.x1) / 2 - width / 2 else x
         // Redonda: cuelga de la 4.ª línea. Blanca: se apoya en la línea central. Los demás, centrados en ella.
-        val baseline = (if (figure.base == Ticks.WHOLE) top + 1f else top + 2f) + yShift
+        val home = if (figure.base == Ticks.WHOLE) top + 1f else top + 2f
+        // Cuánto sube y baja el dibujo respecto de su línea de base (aproximado, en espacios).
+        val (above, below) = when (figure.base) {
+            Ticks.WHOLE -> 0f to 0.5f
+            Ticks.HALF -> 0.5f to 0f
+            Ticks.EIGHTH -> 1.0f to 1.0f
+            else -> 1.5f to 1.5f
+        }
+        // La voz 1 sube y las demás bajan hasta quedar libres de las cabezas de las otras voces; si no se logra, queda donde estaba.
+        val direction = if (voice == 1) -1f else 1f
+        fun collides(shift: Float) = others.any { other ->
+            other.heads.any { head ->
+                val y = other.yOf(head.position)
+                head.x < left + width + REST_CLEARANCE && head.x + other.headWidth > left - REST_CLEARANCE &&
+                    y - 0.5f < home + shift + below + REST_CLEARANCE && y + 0.5f > home + shift - above - REST_CLEARANCE
+            }
+        }
+        var yShift = startShift
+        if (collides(yShift)) {
+            var candidate = yShift
+            while (abs(candidate - startShift) < REST_MAX_MOVE && collides(candidate)) candidate += direction * REST_STEP
+            if (!collides(candidate)) yShift = candidate
+        }
+        val baseline = home + yShift
         ops += GlyphOp(code, left, baseline)
         for (i in 0 until figure.dots) {
             ops += GlyphOp(Smufl.AUGMENTATION_DOT, left + width + DOT_GAP + i * DOT_SPACING, top + 1.5f + yShift)
         }
+        return (baseline - above) to (baseline + below)
     }
 
     private fun flagFor(base: Int, down: Boolean): Int? = when (base) {
