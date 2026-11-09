@@ -62,7 +62,8 @@ La app lee **un solo formato**: el JSON propio de la partitura, descrito en [`MO
     - **Staccato:** se dibuja un puntito y la nota suena solo la mitad de su duración. El ritmo no cambia: la duración en ticks es la de la figura escrita (una negra staccato sigue siendo de 480 ticks).
     - **Acento:** se dibuja un `>` y la nota suena más fuerte que la dinámica vigente.
     - En un acorde, todas las notas llevan lo mismo (se dibuja una sola marca para el acorde).
-    - No se pueden poner en una nota ligada a la siguiente (`tiedToNext`) ni en un adorno (`grace`).
+    - **Ninguna de las dos** va en un adorno (`grace`).
+    - El **staccato** no se puede poner en una nota ligada a la siguiente (`tiedToNext`): tiene que sonar hasta la otra. El **acento** sí: va en la primera nota de la ligadura, que es donde se ataca.
 
 ## Lo que la app todavía no representa
 
