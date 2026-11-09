@@ -110,7 +110,7 @@ fun ScoreView(score: Score, modifier: Modifier = Modifier, maxStaffSpaceDp: Floa
         val widthPx = constraints.maxWidth.toFloat()
         val heightPx = constraints.maxHeight.toFloat()
         // Un espacio de pentagrama: lo que entre en el alto, sin pasarse de un tamaño cómodo de leer.
-        val spPx = minOf(maxStaffSpaceDp * density, heightPx / Geometry.TOTAL_HEIGHT)
+        val spPx = minOf(maxStaffSpaceDp * density, heightPx / layout.totalHeight)
 
         // Línea de reproducción: fija en pantalla. El desplazamiento mínimo deja el comienzo de la pieza
         // sobre la línea; el máximo, el final.
@@ -283,7 +283,7 @@ fun ScoreView(score: Score, modifier: Modifier = Modifier, maxStaffSpaceDp: Floa
                 ),
         ) {
             val scroll = if (scrollSp.isNaN()) minScroll else scrollSp
-            val top = ((heightPx - Geometry.TOTAL_HEIGHT * spPx) / 2f) + Geometry.MARGIN_TOP * spPx
+            val top = ((heightPx - layout.totalHeight * spPx) / 2f) + layout.marginTop * spPx
             val headerPx = layout.headerWidth * spPx
 
             fun paintOp(op: DrawOp, dx: Float, alpha: Float) {

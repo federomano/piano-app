@@ -23,7 +23,7 @@ class ScorePreviewTest {
     private val ink = Color(0x1A, 0x1A, 0x1A)
 
     private fun render(layout: ScoreLayout, scrollSp: Float, widthPx: Int, spPx: Float, music: Font): BufferedImage {
-        val heightPx = (Geometry.TOTAL_HEIGHT * spPx).toInt()
+        val heightPx = (layout.totalHeight * spPx).toInt()
         val image = BufferedImage(widthPx, heightPx, BufferedImage.TYPE_INT_RGB)
         val g = image.createGraphics()
         g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
@@ -57,7 +57,7 @@ class ScorePreviewTest {
             }
         }
 
-        val dy = Geometry.MARGIN_TOP * spPx
+        val dy = layout.marginTop * spPx
         val headerPx = (layout.headerWidth * spPx).toInt()
         fun draw(ops: List<DrawOp>, dx: Float, alpha: Float) {
             g.composite = java.awt.AlphaComposite.getInstance(java.awt.AlphaComposite.SRC_OVER, alpha.coerceIn(0f, 1f))

@@ -132,7 +132,13 @@ class ScoreLayout private constructor(
     private val quarterWidth: Float,
     /** Recorrido suave tiempo → posición, solo para mover la vista en la reproducción (ver [SmoothPath]). */
     private val smooth: SmoothPath,
+    /** Espacio libre arriba del pentagrama de la derecha y abajo del de la izquierda (alcanza para todo lo dibujado). */
+    val marginTop: Float = Geometry.MARGIN_TOP,
+    val marginBottom: Float = Geometry.MARGIN_BOTTOM,
 ) {
+    /** Alto total que hay que mostrar, en espacios de pentagrama. */
+    val totalHeight: Float get() = marginTop + Geometry.SYSTEM_BOTTOM + marginBottom
+
     /** Todo lo que viaja con la partitura (para pruebas): líneas, marcas y cambios en su lugar dentro del compás. */
     val body: List<DrawOp> = staff + marks + inlineChanges
 
@@ -221,6 +227,8 @@ class ScoreLayout private constructor(
         ): ScoreLayout {
             val measures = score.measures()
             val marks = mutableListOf<DrawOp>()
+            // Números de compás: (número, x). Se ubican al final, esquivando lo que tengan arriba.
+            val labelAt = mutableListOf<Pair<Int, Float>>()
             val inline = mutableListOf<DrawOp>()
             val changes = mutableListOf<SignatureChange>()
             val laidOut = mutableListOf<MeasureLayout>()
@@ -272,8 +280,7 @@ class ScoreLayout private constructor(
                 val contentX = cursor + anchors.leadExtra
                 val x1 = contentX + anchors.offsets.last()
 
-                // Número de compás, arriba del pentagrama de la mano derecha.
-                marks += TextOp(m.number.toString(), x0 + 0.35f, -3.0f, 1.8f)
+                labelAt += m.number to (x0 + 0.35f)
 
                 // Barra de compás que une los dos pentagramas. La última es doble: fina y gruesa.
                 if (index == measures.lastIndex) {
@@ -294,9 +301,22 @@ class ScoreLayout private constructor(
             marks += NoteLayout.build(score, timed) { tick ->
                 timed[timed.indexOfLast { it.measure.startTick <= tick }.coerceAtLeast(0)].xOfTick(tick)
             }
-            marks += DynamicsLayout.build(score) { tick ->
+            // Las letras de dinámica esquivan lo que haya abajo (notas graves, acentos); los números de compás, lo que haya arriba.
+            val noteBoxes = Extents.boxes(marks)
+            marks += DynamicsLayout.build(score, { tick ->
                 timed[timed.indexOfLast { it.measure.startTick <= tick }.coerceAtLeast(0)].xOfTick(tick)
+            }) { from, to -> Extents.lowest(noteBoxes, from, to, Geometry.SYSTEM_BOTTOM) }
+            val aboveBoxes = Extents.boxes(marks)
+            for ((number, labelX) in labelAt) {
+                val text = number.toString()
+                val width = BAR_LABEL_SIZE * 0.6f * text.length
+                val clearTop = Extents.highest(aboveBoxes, labelX - 0.3f, labelX + width + 0.3f, 0f)
+                marks += TextOp(text, labelX, minOf(BAR_LABEL_BASELINE, clearTop - 0.4f), BAR_LABEL_SIZE)
             }
+            // Margen arriba y abajo según lo que de verdad se dibujó: nada queda cortado ni tapado por los controles.
+            val all = Extents.boxes(marks)
+            val marginTop = max(Geometry.MARGIN_TOP, -all.minOf { it.top } + EDGE_PAD)
+            val marginBottom = max(Geometry.MARGIN_BOTTOM, all.maxOf { it.bottom } - Geometry.SYSTEM_BOTTOM + EDGE_PAD)
             val fixed = mutableListOf<DrawOp>()
             fixed += staffLines(SYSTEM_LEFT, headerWidth)
             fixed += GlyphOp(Smufl.BRACE, LEFT_PAD, Geometry.SYSTEM_BOTTOM, BRACE_SCALE)
@@ -316,11 +336,15 @@ class ScoreLayout private constructor(
             val initial = piece(first.keyFifths, first.timeSignature.numerator, first.timeSignature.denominator).first
             return ScoreLayout(
                 timed, staffLines(-STAFF_LEAD, totalWidth), marks, inline, fixed, changes, initial,
-                headerWidth, SIGNATURE_LEFT, totalWidth, quarterWidth, path,
+                headerWidth, SIGNATURE_LEFT, totalWidth, quarterWidth, path, marginTop, marginBottom,
             )
         }
 
         /** Las diez líneas de los dos pentagramas, entre [fromX] y [toX]. */
+        private const val BAR_LABEL_SIZE = 1.8f
+        private const val BAR_LABEL_BASELINE = -3.0f
+        private const val EDGE_PAD = 0.5f
+
         private fun staffLines(fromX: Float, toX: Float): List<DrawOp> {
             val t = Geometry.STAFF_LINE_THICKNESS
             return listOf(Geometry.TREBLE_TOP, Geometry.BASS_TOP).flatMap { top ->
