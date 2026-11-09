@@ -80,11 +80,23 @@ class Mixer(private val sampleRate: Int = PianoMapping.SAMPLE_RATE, private val 
             if (v.done) { it.remove(); releaseGains.remove(v.id) } else if (v.releasing) releaseGains[v.id] = g
         }
         activeVoices = voices.size
-        for (i in 0 until frames) out[i] = out[i].coerceIn(-1f, 1f)
+        for (i in 0 until frames) out[i] = softLimit(out[i])
     }
 
     companion object {
         const val RELEASE_SECONDS = 0.18f
         private const val SILENCE = 0.001f
+
+        /** Hasta este nivel el sonido pasa sin tocarse; de ahí para arriba se comprime suave y nunca llega al tope. */
+        const val LIMIT_KNEE = 0.6f
+
+        /** Limitador suave: evita el recorte duro (que suena a distorsión) cuando suenan varias notas fuertes a la vez. */
+        fun softLimit(x: Float): Float {
+            val a = Math.abs(x)
+            if (a <= LIMIT_KNEE) return x
+            val room = 1f - LIMIT_KNEE
+            val y = LIMIT_KNEE + room * Math.tanh(((a - LIMIT_KNEE) / room).toDouble()).toFloat()
+            return if (x < 0f) -y else y
+        }
     }
 }

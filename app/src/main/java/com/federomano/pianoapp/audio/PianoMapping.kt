@@ -15,19 +15,34 @@ object PianoMapping {
     /** Hasta esta intensidad (0..127) se usa la muestra suave; desde acá, la fuerte. */
     private const val LOUD_FROM = 85
 
+    /** Niveles del control de graves: 0 = completos, 1 = suaves (el de siempre), 2 = mínimos. */
+    const val BASS_LEVELS = 3
+    const val DEFAULT_BASS = 1
+
+    /** Hasta Mi3 (52) las notas se van atenuando hacia abajo; el parlante de un celular no reproduce bien lo más grave. */
+    private const val BASS_KNEE = 52
+    private val BASS_MAX_CUT_DB = floatArrayOf(0f, 12f, 24f)
+
+    /** Multiplicador de volumen (0..1) para una nota según el nivel de graves: sin cambio desde Mi3 para arriba, y hasta -12 / -24 dB en La0. */
+    fun bassFactor(midi: Int, level: Int): Float {
+        val cut = BASS_MAX_CUT_DB[level.coerceIn(0, BASS_LEVELS - 1)]
+        val t = ((BASS_KNEE - midi.coerceIn(LOWEST, HIGHEST)).toFloat() / (BASS_KNEE - LOWEST)).coerceIn(0f, 1f)
+        return 10.0.pow(-(cut * t) / 20.0).toFloat()
+    }
+
     class Pick(val sampleNote: Int, val loud: Boolean, val rate: Float, val gain: Float) {
         val fileName: String get() = "piano/p%03d%s.pcm".format(sampleNote, if (loud) "f" else "s")
     }
 
     val sampleNotes: List<Int> = (LOWEST..HIGHEST step STEP).toList()
 
-    fun pick(midi: Int, velocity: Int = 90): Pick {
+    fun pick(midi: Int, velocity: Int = 90, bass: Int = DEFAULT_BASS): Pick {
         val note = midi.coerceIn(LOWEST, HIGHEST)
         val v = velocity.coerceIn(1, 127)
         val sample = LOWEST + ((note - LOWEST + 1) / STEP) * STEP
         val loud = v >= LOUD_FROM
         // Una sola curva para las dos muestras: así, al cruzar de suave a fuerte (un crescendo) no hay salto de volumen.
-        val gain = (0.1 + 0.9 * (v / 127.0).pow(1.3)).toFloat()
+        val gain = (0.1 + 0.9 * (v / 127.0).pow(1.3)).toFloat() * bassFactor(note, bass)
         return Pick(sample, loud, 2.0.pow((note - sample) / 12.0).toFloat(), gain)
     }
 }

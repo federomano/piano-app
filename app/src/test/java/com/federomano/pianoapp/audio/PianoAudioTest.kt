@@ -32,6 +32,32 @@ class PianoMappingTest {
     }
 
     @Test
+    fun bassIsCutOnlyBelowE3AndMoreAtLowerLevels() {
+        for (level in 0 until PianoMapping.BASS_LEVELS) assertEquals(1f, PianoMapping.bassFactor(52, level), 1e-6f)
+        for (note in 21..108) assertEquals(1f, PianoMapping.bassFactor(note, 0), 1e-6f)
+        assertEquals(0.25f, PianoMapping.bassFactor(21, 1), 0.01f)   // -12 dB
+        assertEquals(0.063f, PianoMapping.bassFactor(21, 2), 0.01f)  // -24 dB
+        assertTrue(PianoMapping.bassFactor(30, 1) > PianoMapping.bassFactor(24, 1))
+        assertTrue(PianoMapping.bassFactor(36, 2) < PianoMapping.bassFactor(36, 1))
+        assertEquals(PianoMapping.pick(60, 90, 0).gain, PianoMapping.pick(60, 90, 2).gain, 1e-6f)
+        assertTrue(PianoMapping.pick(30, 110, 1).gain < PianoMapping.pick(30, 110, 0).gain)
+    }
+
+    @Test
+    fun dynamicsSurviveTheBassCut() {
+        for (level in 0 until PianoMapping.BASS_LEVELS) assertTrue(PianoMapping.pick(30, 50, level).gain < PianoMapping.pick(30, 110, level).gain)
+    }
+
+    @Test
+    fun softLimiterKeepsNormalLevelsAndNeverReachesFullScale() {
+        assertEquals(0.5f, Mixer.softLimit(0.5f), 0f)
+        assertEquals(-0.3f, Mixer.softLimit(-0.3f), 0f)
+        assertTrue(Mixer.softLimit(3f) < 1f)
+        assertEquals(-Mixer.softLimit(2f), Mixer.softLimit(-2f), 0f)
+        assertTrue(Mixer.softLimit(0.9f) < Mixer.softLimit(1.5f))
+    }
+
+    @Test
     fun outOfRangeNotesAreClamped() {
         assertEquals(21, PianoMapping.pick(0).sampleNote)
         assertEquals(108, PianoMapping.pick(127).sampleNote)
@@ -107,12 +133,12 @@ class MixerTest {
     }
 
     @Test
-    fun chordsSumAndClipInsteadOfWrapping() {
+    fun chordsAreSoftLimitedInsteadOfClipping() {
         val m = Mixer()
-        repeat(6) { m.noteOn(ramp(1000, 30000), 1f, 1f) }
+        repeat(2) { m.noteOn(ramp(1000, 30000), 1f, 1f) }
         val out = renderAll(m, 100)
-        assertEquals(1f, out[10], 0f)
-        assertEquals(6, m.activeVoices)
+        assertTrue("el limitador no llega al tope", out[10] < 1f && out[10] > 0.9f)
+        assertEquals(2, m.activeVoices)
     }
 
     @Test

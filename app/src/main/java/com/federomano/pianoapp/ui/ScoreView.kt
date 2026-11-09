@@ -34,6 +34,7 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalContext
 import com.federomano.pianoapp.audio.NoteTrigger
+import com.federomano.pianoapp.audio.PianoMapping
 import com.federomano.pianoapp.audio.PianoPlayer
 import com.federomano.pianoapp.score.Score
 import com.federomano.pianoapp.score.playedNotes
@@ -97,7 +98,12 @@ fun ScoreView(score: Score, modifier: Modifier = Modifier, maxStaffSpaceDp: Floa
     // unas milésimas después en los cambios de compás o de armadura.
     val prefs = remember { context.getSharedPreferences("piano", android.content.Context.MODE_PRIVATE) }
     var muted by remember { mutableStateOf(prefs.getBoolean("muted", false)) }
-    val player = remember { PianoPlayer(context).also { it.muted = muted } }
+    var bass by remember { mutableStateOf(prefs.getInt("bass", PianoMapping.DEFAULT_BASS).coerceIn(0, PianoMapping.BASS_LEVELS - 1)) }
+    val player = remember { PianoPlayer(context).also { it.muted = muted; it.bass = bass } }
+    LaunchedEffect(bass) {
+        player.bass = bass
+        prefs.edit().putInt("bass", bass).apply()
+    }
     LaunchedEffect(muted) {
         player.muted = muted
         prefs.edit().putBoolean("muted", muted).apply()
@@ -382,6 +388,8 @@ fun ScoreView(score: Score, modifier: Modifier = Modifier, maxStaffSpaceDp: Floa
             },
             muted = muted,
             onMuteToggle = { muted = !muted },
+            bass = bass,
+            onBass = { bass = it },
         )
     }
 }

@@ -62,9 +62,11 @@ fun BoxScope.PlaybackControls(
     bpm: () -> Float,
     muted: Boolean,
     onMuteToggle: () -> Unit,
+    bass: Int,
+    onBass: (Int) -> Unit,
 ) {
     var panelOpen by remember { mutableStateOf(false) }
-    if (panelOpen) SpeedPanel(speed, onSpeed)
+    if (panelOpen) SpeedPanel(speed, onSpeed, bass, onBass)
     Row(
         modifier = Modifier
             .align(Alignment.BottomCenter)
@@ -84,7 +86,7 @@ fun BoxScope.PlaybackControls(
 
 /** Panel de velocidad: atajos (50% a 150%) y deslizador de 25% a 200%. */
 @Composable
-private fun BoxScope.SpeedPanel(speed: Float, onSpeed: (Float) -> Unit) {
+private fun BoxScope.SpeedPanel(speed: Float, onSpeed: (Float) -> Unit, bass: Int, onBass: (Int) -> Unit) {
     Column(
         modifier = Modifier
             .align(Alignment.BottomEnd)
@@ -134,6 +136,29 @@ private fun BoxScope.SpeedPanel(speed: Float, onSpeed: (Float) -> Unit) {
                 modifier = Modifier.weight(1f).padding(horizontal = 6.dp),
             )
             Text("200%", color = InkColor.copy(alpha = 0.6f), fontSize = 11.sp)
+        }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("Graves", color = InkColor.copy(alpha = 0.7f), fontSize = 13.sp, modifier = Modifier.padding(end = 6.dp))
+            for ((level, label) in listOf("Completos", "Suaves", "Mínimos").withIndex()) {
+                val selected = level == bass
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(horizontal = 2.dp)
+                        .height(36.dp)
+                        .clip(RoundedCornerShape(18.dp))
+                        .background(if (selected) InkColor.copy(alpha = 0.8f) else InkColor.copy(alpha = 0.08f))
+                        .clickable { onBass(level) },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        label,
+                        color = if (selected) PaperColor else InkColor,
+                        fontSize = 12.sp,
+                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                    )
+                }
+            }
         }
     }
 }

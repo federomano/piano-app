@@ -39,6 +39,9 @@ class PianoPlayer(private val context: Context) {
             if (value) mixer.allOff()
         }
 
+    /** Nivel de graves (0 completos, 1 suaves, 2 mínimos); vale para las notas que se toquen de ahora en más. */
+    @Volatile var bass = PianoMapping.DEFAULT_BASS
+
     @Volatile private var running = false
     private var worker: Thread? = null
 
@@ -83,7 +86,7 @@ class PianoPlayer(private val context: Context) {
     /** Toca una nota (número MIDI, 60 = Do central) con intensidad 1..127. Devuelve un número para soltarla. */
     fun noteOn(midi: Int, velocity: Int = 90): Int {
         if (muted) return -1
-        val pick = PianoMapping.pick(midi, velocity)
+        val pick = PianoMapping.pick(midi, velocity, bass)
         val data = samples[pick.fileName] ?: return -1
         return mixer.noteOn(data, pick.rate * ratio, pick.gain)
     }
