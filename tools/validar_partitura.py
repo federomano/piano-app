@@ -30,7 +30,7 @@ for _name, _base in BASES.items():
         ALLOWED[_base * 7 // 4] = _name + " con dos puntillos"
 
 SCORE_KEYS = {"formatVersion", "title", "composer", "level", "goal",
-              "timeSignatures", "keySignatures", "tempos", "pickupTicks", "dynamics", "hairpins", "notes", "rests"}
+              "timeSignatures", "keySignatures", "tempos", "pickupTicks", "dynamics", "hairpins", "clefs", "notes", "rests"}
 NOTE_KEYS = {"hand", "pitch", "startTick", "durationTicks", "tiedToNext", "finger", "tuplet", "voice", "grace", "staccato", "accent"}
 REST_KEYS = {"hand", "startTick", "durationTicks", "tuplet", "voice"}
 TS_KEYS = {"startTick", "numerator", "denominator"}
@@ -38,6 +38,7 @@ KS_KEYS = {"startTick", "fifths"}
 TEMPO_KEYS = {"startTick", "bpm"}
 DYNAMIC_KEYS = {"startTick", "level"}
 HAIRPIN_KEYS = {"startTick", "endTick", "kind"}
+CLEF_KEYS = {"hand", "startTick", "clef"}
 DYNAMIC_LEVELS = ["ppp", "pp", "p", "mp", "mf", "f", "ff", "fff"]
 HAIRPIN_KINDS = ["crescendo", "diminuendo"]
 
@@ -160,6 +161,28 @@ def check_dynamics(dynamics, hairpins, end, errors):
                               "una dinámica va al principio o al final del regulador.")
 
 
+def check_clefs(clefs, starts, end, errors):
+    last = {}
+    for i, c in enumerate(clefs, 1):
+        where = f"clefs #{i}"
+        hand, clef, t = c.get("hand"), c.get("clef"), c.get("startTick")
+        ok = True
+        if hand not in ("right", "left"):
+            errors.append(f"{where}: \"hand\" tiene que ser \"right\" o \"left\" (es {hand!r}).")
+            ok = False
+        if clef not in ("treble", "bass"):
+            errors.append(f"{where}: \"clef\" tiene que ser \"treble\" (sol) o \"bass\" (fa) (es {clef!r}).")
+        if not is_int(t) or t < 0:
+            errors.append(f"{where}: \"startTick\" tiene que ser un entero de 0 o más.")
+            continue
+        if t < end and t not in starts:
+            errors.append(f"El cambio de clave de la {HAND_LABEL.get(hand, 'mano')} del tick {t} no cae al inicio de un compás.")
+        if ok:
+            if hand in last and t <= last[hand]:
+                errors.append(f"Claves de la {HAND_LABEL[hand]}: tienen que estar ordenadas y sin repetir posición.")
+            last[hand] = t
+
+
 def validate(data):
     """Devuelve la lista de problemas (vacía = el archivo cumple el contrato)."""
     errors = []
@@ -188,6 +211,7 @@ def validate(data):
     tempos = load_list(data, "tempos", TEMPO_KEYS, errors)
     dynamics = load_list(data, "dynamics", DYNAMIC_KEYS, errors)
     hairpins = load_list(data, "hairpins", HAIRPIN_KEYS, errors)
+    clefs = load_list(data, "clefs", CLEF_KEYS, errors)
     if not sigs:
         sigs = [{"startTick": 0, "numerator": 4, "denominator": 4}]
     if not keys:
@@ -388,6 +412,7 @@ def validate(data):
                 errors.append(f"El {what} del tick {it['startTick']} no cae al inicio de un compás.")
 
     check_dynamics(dynamics, hairpins, end, errors)
+    check_clefs(clefs, starts, end, errors)
 
     def measure_of(t):
         return next(m for m in measures if m[1] <= t < m[2])

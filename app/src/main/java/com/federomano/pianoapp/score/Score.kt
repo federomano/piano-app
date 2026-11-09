@@ -95,6 +95,21 @@ enum class Hand(val label: String) {
     @SerialName("left") LEFT("mano izquierda"),
 }
 
+/** Clave de un pentagrama. La derecha empieza en sol y la izquierda en fa, salvo que la partitura diga otra cosa. */
+@Serializable
+enum class Clef {
+    @SerialName("treble") TREBLE,
+    @SerialName("bass") BASS,
+}
+
+/** Clave de [hand] desde [startTick] (tiene que ser el inicio de un compás). Solo cambia cómo se dibujan las notas, no cómo suenan. */
+@Serializable
+data class ClefChange(val hand: Hand, val startTick: Int, val clef: Clef) {
+    init {
+        require(startTick >= 0) { "La posición de la clave no puede ser negativa." }
+    }
+}
+
 /** Nombre de la nota sin alteración. */
 enum class Step(val semitone: Int) { C(0), D(2), E(4), F(5), G(7), A(9), B(11) }
 
@@ -307,6 +322,8 @@ data class Score(
     val dynamics: List<DynamicMark> = emptyList(),
     /** Reguladores (crescendo y diminuendo), sin superponerse. */
     val hairpins: List<Hairpin> = emptyList(),
+    /** Cambios de clave por mano, a partir del inicio de un compás. Sin esto: derecha en sol e izquierda en fa. */
+    val clefs: List<ClefChange> = emptyList(),
     val notes: List<Note> = emptyList(),
     val rests: List<Rest> = emptyList(),
 ) {
@@ -317,6 +334,10 @@ data class Score(
         require(title.isNotBlank()) { "La partitura necesita un título." }
         require(pickupTicks >= 0) { "La anacrusa (pickupTicks) no puede ser negativa (era $pickupTicks)." }
     }
+
+    /** Clave vigente de [hand] en [tick]. */
+    fun clefAt(hand: Hand, tick: Int): Clef =
+        clefs.lastOrNull { it.hand == hand && it.startTick <= tick }?.clef ?: if (hand == Hand.RIGHT) Clef.TREBLE else Clef.BASS
 
     /** Fin de la partitura: donde termina la última nota o silencio. */
     val lengthTicks: Int

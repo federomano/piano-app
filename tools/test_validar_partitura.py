@@ -331,6 +331,21 @@ class Validador(unittest.TestCase):
             d["notes"].append({"hand": "left", "pitch": "G3", "startTick": 0, "durationTicks": 1920, "staccato": True})
         self.assertProblema(con(cambio), "el mismo \"staccato\"")
 
+    def test_claves(self):
+        ok = con(lambda d: d.update(clefs=[{"hand": "left", "startTick": 0, "clef": "treble"}]))
+        self.assertEqual(v.validate(ok), [])
+        mal_mano = con(lambda d: d.update(clefs=[{"hand": "izq", "startTick": 0, "clef": "bass"}]))
+        self.assertProblema(mal_mano, "\"hand\" tiene que ser")
+        mal_clave = con(lambda d: d.update(clefs=[{"hand": "left", "startTick": 0, "clef": "alto"}]))
+        self.assertProblema(mal_clave, "\"clef\" tiene que ser")
+        medio = con(lambda d: d.update(clefs=[{"hand": "left", "startTick": 480, "clef": "treble"}]))
+        self.assertProblema(medio, "no cae al inicio de un compás")
+        desorden = con(lambda d: d.update(clefs=[{"hand": "left", "startTick": 0, "clef": "treble"},
+                                                 {"hand": "left", "startTick": 0, "clef": "bass"}]))
+        self.assertProblema(desorden, "ordenadas")
+        de_mas = con(lambda d: d.update(clefs=[{"hand": "left", "startTick": 0, "clef": "bass", "x": 1}]))
+        self.assertProblema(de_mas, "\"x\"")
+
     def test_json_roto(self):
         import tempfile
         with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False) as f:

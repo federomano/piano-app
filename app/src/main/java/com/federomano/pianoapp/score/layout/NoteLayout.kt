@@ -1,6 +1,7 @@
 package com.federomano.pianoapp.score.layout
 
 import com.federomano.pianoapp.score.Chord
+import com.federomano.pianoapp.score.Clef
 import com.federomano.pianoapp.score.Hand
 import com.federomano.pianoapp.score.Measure
 import com.federomano.pianoapp.score.Note
@@ -81,7 +82,9 @@ object NoteLayout {
     fun diatonic(pitch: Pitch): Int = pitch.octave * 7 + STEP_INDEX.getValue(pitch.step)
 
     /** Posición en el pentagrama: 0 = línea inferior, 1 = primer espacio, 2 = segunda línea, etc. */
-    fun staffPosition(pitch: Pitch, hand: Hand): Int = diatonic(pitch) - if (hand == Hand.RIGHT) TREBLE_BOTTOM else BASS_BOTTOM
+    fun staffPosition(pitch: Pitch, clef: Clef): Int = diatonic(pitch) - if (clef == Clef.TREBLE) TREBLE_BOTTOM else BASS_BOTTOM
+
+    fun staffPosition(pitch: Pitch, hand: Hand): Int = staffPosition(pitch, if (hand == Hand.RIGHT) Clef.TREBLE else Clef.BASS)
 
     private fun staffTop(hand: Hand) = if (hand == Hand.RIGHT) Geometry.TREBLE_TOP else Geometry.BASS_TOP
 
@@ -104,12 +107,12 @@ object NoteLayout {
     }
 
     /** Todo lo que hace falta saber de un acorde (o nota suelta) para dibujarlo. */
-    private class Plan(val chord: Chord, val measureIndex: Int, val measure: Measure, val noteX: Float) {
+    private class Plan(val chord: Chord, val measureIndex: Int, val measure: Measure, val noteX: Float, val clef: Clef) {
         val hand = chord.hand
         val figure = figureOf(chord.durationTicks, chord.tuplet)
         val whole = figure.base == Ticks.WHOLE
         val headWidth = if (whole) Smufl.NOTEHEAD_WHOLE_WIDTH else Smufl.NOTEHEAD_WIDTH
-        val heads = chord.notes.map { Head(it, staffPosition(it.pitch, hand)) }.sortedBy { it.position }
+        val heads = chord.notes.map { Head(it, staffPosition(it.pitch, clef)) }.sortedBy { it.position }
         val lowest = heads.first().position
         val highest = heads.last().position
         val beamable = figure.base <= Ticks.EIGHTH
@@ -180,7 +183,7 @@ object NoteLayout {
 
         val plans = score.chords().map { chord ->
             val index = measureIndexAt(chord.startTick)
-            Plan(chord, index, measures[index].measure, xOfTick(chord.startTick))
+            Plan(chord, index, measures[index].measure, xOfTick(chord.startTick), score.clefAt(chord.hand, chord.startTick))
         }
 
         // Plicas: con varias voces en una mano, la voz 1 va arriba y las otras abajo.
@@ -252,7 +255,7 @@ object NoteLayout {
                 grace to (grace.pitch.alter != current)
             }
             val leftMost = drawChord(ops, plan, plan.measure.keyFifths, handState, tiedFromBefore)
-            if (graceAccidentals.isNotEmpty()) drawGrace(ops, plan.hand, graceAccidentals, leftMost)
+            if (graceAccidentals.isNotEmpty()) drawGrace(ops, plan.hand, plan.clef, graceAccidentals, leftMost)
         }
         for (group in plans.mapNotNull { it.group }.distinct()) drawBeam(ops, group)
 
@@ -598,17 +601,17 @@ object NoteLayout {
      * Adorno (acciaccatura): una o más notas chiquitas, pegadas a la izquierda de [leftMost], con plica hacia arriba, banderita y una
      * rayita en diagonal. [graces] trae cada nota y si lleva alteración.
      */
-    private fun drawGrace(ops: MutableList<DrawOp>, hand: Hand, graces: List<Pair<Note, Boolean>>, leftMost: Float) {
+    private fun drawGrace(ops: MutableList<DrawOp>, hand: Hand, clef: Clef, graces: List<Pair<Note, Boolean>>, leftMost: Float) {
         val headWidth = Smufl.NOTEHEAD_WIDTH * GRACE_SCALE
         val headX = leftMost - GRACE_GAP - headWidth
-        val positions = graces.map { staffPosition(it.first.pitch, hand) }
+        val positions = graces.map { staffPosition(it.first.pitch, clef) }
         fun yOf(position: Int) = NoteLayout.yOf(position, hand)
 
         for ((note, needsAccidental) in graces) {
             if (!needsAccidental) continue
             val alter = note.pitch.alter
             val x = headX - accidentalAdvance(alter) * GRACE_SCALE - ACCIDENTAL_MARGIN * GRACE_SCALE
-            ops += GlyphOp(accidentalCode(alter), x, yOf(staffPosition(note.pitch, hand)), GRACE_SCALE)
+            ops += GlyphOp(accidentalCode(alter), x, yOf(staffPosition(note.pitch, clef)), GRACE_SCALE)
         }
         val ledgers = sortedSetOf<Int>()
         for (p in positions) {

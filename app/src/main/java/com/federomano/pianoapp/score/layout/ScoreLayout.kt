@@ -1,5 +1,7 @@
 package com.federomano.pianoapp.score.layout
 
+import com.federomano.pianoapp.score.Clef
+import com.federomano.pianoapp.score.Hand
 import com.federomano.pianoapp.score.Measure
 import com.federomano.pianoapp.score.Score
 import com.federomano.pianoapp.score.TICKS_PER_QUARTER
@@ -223,6 +225,9 @@ class ScoreLayout private constructor(
         private const val SIGNATURE_LEAD = 0.8f
         private const val ACCIDENTAL_GAP = 0.15f
         private const val SIGNATURE_GAP = 0.9f
+        private const val CLEF_CHANGE_SCALE = 0.8f
+        private const val CLEF_CHANGE_LEAD = 0.6f
+        private const val CLEF_CHANGE_GAP = 0.3f
 
         private val BRACE_SCALE = Geometry.SYSTEM_BOTTOM / Smufl.BRACE_HEIGHT
         private val SYSTEM_LEFT = LEFT_PAD + Smufl.BRACE_WIDTH * BRACE_SCALE + 0.1f
@@ -269,6 +274,16 @@ class ScoreLayout private constructor(
                 val x0 = x
                 var cursor = x0
                 val previous = measures.getOrNull(index - 1)
+                // Cambio de clave: una clave chica al principio del compás, en el pentagrama de cada mano que cambia.
+                val clefChanges = if (index == 0) emptyList() else score.clefs.filter { it.startTick == m.startTick && score.clefAt(it.hand, m.startTick - 1) != it.clef }
+                if (clefChanges.isNotEmpty()) {
+                    for (c in clefChanges) {
+                        val top = if (c.hand == Hand.RIGHT) Geometry.TREBLE_TOP else Geometry.BASS_TOP
+                        marks += if (c.clef == Clef.TREBLE) GlyphOp(Smufl.G_CLEF, cursor + CLEF_CHANGE_LEAD, top + 3f, CLEF_CHANGE_SCALE)
+                        else GlyphOp(Smufl.F_CLEF, cursor + CLEF_CHANGE_LEAD, top + 1f, CLEF_CHANGE_SCALE)
+                    }
+                    cursor += CLEF_CHANGE_LEAD + Smufl.CLEF_ADVANCE * CLEF_CHANGE_SCALE + CLEF_CHANGE_GAP
+                }
                 val keyChanged = previous != null && previous.keyFifths != m.keyFifths
                 val timeChanged = previous != null && (
                     previous.timeSignature.numerator != m.timeSignature.numerator ||

@@ -168,6 +168,16 @@ fun Score.validate(): List<String> {
         errors += "El cambio de armadura del tick ${it.startTick} no cae al inicio de un compás."
     }
 
+    for (hand in Hand.entries) {
+        val own = clefs.filter { it.hand == hand }
+        if (own.zipWithNext().any { (a, b) -> b.startTick <= a.startTick }) {
+            errors += "Claves de la ${hand.label}: tienen que estar ordenadas y sin repetir posición."
+        }
+    }
+    clefs.filter { it.startTick !in measureStarts && it.startTick < lengthTicks }.forEach {
+        errors += "El cambio de clave de la ${it.hand.label} del tick ${it.startTick} no cae al inicio de un compás."
+    }
+
     fun describe(note: Note) = "La nota ${note.pitch} (${note.hand.label}, compás ${measureAt(note.startTick).number})"
 
     for (note in notes) {

@@ -25,6 +25,7 @@ class ReferenceFilesTest {
         "ejercicio-dinamicas.json" to "dinamicas",
         "ejercicio-articulaciones.json" to "articulaciones",
         "ejercicio-fusas.json" to "fusas",
+        "ejercicio-claves.json" to "claves",
     )
 
     @Test
@@ -91,6 +92,9 @@ class ReferenceFilesTest {
             },
             score.hairpins.takeIf { it.isNotEmpty() }?.let { list ->
                 block("hairpins", list) { "{ \"startTick\": ${it.startTick}, \"endTick\": ${it.endTick}, \"kind\": \"${it.kind.name.lowercase()}\" }" }
+            },
+            score.clefs.takeIf { it.isNotEmpty() }?.let { list ->
+                block("clefs", list) { "{ \"hand\": \"${if (it.hand == Hand.RIGHT) "right" else "left"}\", \"startTick\": ${it.startTick}, \"clef\": \"${it.clef.name.lowercase()}\" }" }
             },
         ) + listOf(
             block("notes", score.notes.sortedWith(compareBy({ it.hand }, { it.voice }, { it.startTick }, { it.pitch.midi })), { it.hand to it.voice }) {

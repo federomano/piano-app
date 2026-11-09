@@ -15,6 +15,7 @@ object ExampleScores {
         ExampleScore("dinamicas", "Ejercicio: dinámicas", "Del mp al ff con un crescendo, y de vuelta al p con un diminuendo. Se escucha cómo cambia la fuerza.") { dynamics() },
         ExampleScore("articulaciones", "Ejercicio: staccato y acentos", "Notas cortitas y separadas (puntito) y notas más fuertes (>), con las dos manos.") { articulations() },
         ExampleScore("fusas", "Ejercicio: fusas", "Notas muy rápidas, de a ocho por negra, con tres barras. Para probar el dibujo y el sonido.") { thirtySeconds() },
+        ExampleScore("claves", "Ejercicio: cambios de clave", "La izquierda pasa a clave de sol, la derecha baja a clave de fa, y después las dos vuelven. Suena igual: solo cambia cómo se escribe.") { clefChanges() },
         ExampleScore("ejercicio", "Ejercicio: todo lo que dibuja la app", "Alteraciones, silencios, acordes, ligaduras y cambios de armadura, compás y tempo.") { DemoScore.create() },
     )
 
@@ -194,6 +195,27 @@ object ExampleScores {
             level = "intermedio",
             goal = "Tocar la notita de adorno rápido y justo antes del tiempo, sin correr el pulso de la nota que sigue.",
             tempos = listOf(TempoChange(0, 70.0)),
+            notes = b.notes,
+            rests = b.rests,
+        )
+    }
+
+    private fun clefChanges(): Score {
+        val b = Builder()
+        // 1: claves de siempre. 2: la izquierda en clave de sol. 3: la derecha en clave de fa (y la izquierda sigue en sol). 4: vuelven las dos.
+        b.right("C5/q E5/q G5/q E5/q  C5/q E5/q G5/q E5/q  C3/q E3/q G3/q E3/q  C5/w")
+        b.left("C3/h G2/h  E4/q G4/q E4/q C4/q  E4/h C4/h  C3/w")
+        return Score(
+            title = "Ejercicio: cambios de clave",
+            level = "intermedio",
+            goal = "Leer una mano en la clave que no es la suya: las mismas teclas, escritas en el otro pentagrama.",
+            tempos = listOf(TempoChange(0, 70.0)),
+            clefs = listOf(
+                ClefChange(Hand.LEFT, 1920, Clef.TREBLE),
+                ClefChange(Hand.RIGHT, 2 * 1920, Clef.BASS),
+                ClefChange(Hand.RIGHT, 3 * 1920, Clef.TREBLE),
+                ClefChange(Hand.LEFT, 3 * 1920, Clef.BASS),
+            ),
             notes = b.notes,
             rests = b.rests,
         )

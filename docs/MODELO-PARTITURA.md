@@ -36,6 +36,7 @@ Un compás de 4/4 dura 1920 ticks, uno de 3/4 o 6/8 dura 1440. La posición de c
 | `pickupTicks` | Anacrusa: duración en ticks del primer compás cuando es más corto que los demás (480 = una negra en 4/4). Ese compás es el 0 y el primer compás entero es el 1. Si no se indica, 0 (no hay anacrusa). |
 | `dynamics` | Dinámicas (`ppp` a `fff`): cada una vale desde su `startTick` hasta la siguiente, para las dos manos. Opcional. |
 | `hairpins` | Reguladores: `startTick`, `endTick` y `kind` (`"crescendo"` o `"diminuendo"`). Opcional. |
+| `clefs` | Cambios de clave por mano: `hand`, `startTick` (inicio de un compás) y `clef` (`"treble"` sol o `"bass"` fa). Opcional: sin esto, la derecha va en sol y la izquierda en fa. Solo cambia el dibujo, no el sonido. |
 | `notes` | Las notas de las dos manos. |
 | `rests` | Los silencios de las dos manos. |
 
@@ -43,7 +44,7 @@ Un compás de 4/4 dura 1920 ticks, uno de 3/4 o 6/8 dura 1440. La posición de c
 
 | Campo | Qué es |
 |---|---|
-| `hand` | `"right"` (mano derecha, clave de sol) o `"left"` (mano izquierda, clave de fa). |
+| `hand` | `"right"` (mano derecha, pentagrama de arriba, clave de sol salvo que `clefs` diga otra) o `"left"` (mano izquierda, pentagrama de abajo, clave de fa salvo que `clefs` diga otra). |
 | `pitch` | Altura escrita como texto: `C4` es el Do central, `F#4` es Fa sostenido, `Bb3` es Si bemol. Letras en inglés: C=Do, D=Re, E=Mi, F=Fa, G=Sol, A=La, B=Si. El número es la octava (el La de 440 Hz es `A4`). |
 | `startTick` | Dónde empieza. |
 | `durationTicks` | Cuánto dura. |
@@ -109,5 +110,5 @@ El JSON es estricto: una clave mal escrita, una altura inválida o una versión 
 
 ## Lo que todavía no cubre
 
-- **Pedal, repeticiones, trinos y mordentes, indicaciones de texto, cambios de clave y el signo de 8va:** no se representan (las notas de adorno cortas sí, con `grace`).
+- **Pedal, repeticiones, trinos y mordentes, indicaciones de texto, y el signo de 8va:** no se representan (las notas de adorno cortas sí, con `grace`).
 - **Una nota ligada a varias seguidas:** se encadenan ligaduras, una por una.
