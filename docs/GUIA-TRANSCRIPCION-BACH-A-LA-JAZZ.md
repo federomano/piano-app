@@ -15,15 +15,15 @@ Para el profesor de piano. La meta es **un solo archivo `bach-a-la-jazz.json`** 
 | Anacrusa de un pulso (compás 0) | `"pickupTicks": 480`. Las notas arrancan en el tick 0; el primer compás entero empieza en el tick 480 y es el 1. Llenar el compás 0 con notas/silencios en las dos manos. |
 | Tresillos (casi toda la pieza) | `"tuplet": "3:2"`: corchea de tresillo = 160 ticks, negra de tresillo = 320. Grupos completos dentro del compás; silencios de tresillo también llevan `"tuplet"`. |
 | Cuatro en el tiempo de tres (compases 54–55) | `"tuplet": "4:3"`, negra = 360 ticks. |
-| Notas de adorno (compases 16, 22, 23, 24 y 31, mano izquierda) | `"grace": true`, mismo `startTick` que la nota principal, `durationTicks` 60. Una sola por nota. |
+| Notas de adorno (según el PDF: compases 16, 22, 23, 24 y 37 en la mano derecha, y el 31 en la izquierda) | `"grace": true`, mismo `startTick` que la nota principal, `durationTicks` 60. Una sola por nota. |
 | Dos líneas a la vez en una mano (derecha 11–16, izquierda 31) | `"voice"`: 1 la principal, 2 la otra. Cada voz sin superponerse y llenando sus compases. |
 | Ligaduras de duración | Partir en la barra de compás con `tiedToNext`. |
 | Cambios de clave (compases 54–58: la izquierda pasa a clave de sol; la derecha a clave de fa en el 57) | **No existen.** Cada nota va en la mano que la toca, con su altura real; la app la dibuja con líneas adicionales. Avisar en qué compases pasa. |
 | Signo 8va (compases 55–56) | **No existe.** Escribir las alturas reales, como suenan. Avisar. |
 | Compás 58, posibles fusas | **No se pueden.** Revisar el original: si hay fusas, aproximar a semicorcheas (o agrupar) y avisar qué cambió y por qué. |
 | Dinámicas (mf en el compás 0, mp en el 7, f en el 51, ff en el 55) | `"dynamics"`: `{ "startTick": …, "level": "mf" }` en el tick donde empieza ese compás. Cuenta de ticks: el compás 0 empieza en 0; el compás N (de 1 en adelante) empieza en `480 + (N − 1) × 1440`. |
-| Crescendo de los compases 47–48 y regulador del 54 | `"hairpins"`: `{ "startTick": …, "endTick": …, "kind": "crescendo" }` (o `"diminuendo"`; mirar en el PDF para qué lado abre). Si termina en una dinámica (por ejemplo el f del 51), esa dinámica va en el `endTick`. Sin superponerse. |
-| Staccato (casi todos los acordes de la izquierda en la introducción y en los compases 17–30) | `"staccato": true` en cada nota del acorde (todas iguales). La duración en ticks es la de la figura escrita; la app se encarga de acortar el sonido. |
+| Crescendo que empieza en el compás 47 (dice «cresc.» escrito: llega hasta el f del 51) y regulador del 54 (termina en el ff del 55) | `"hairpins"`: `{ "startTick": …, "endTick": …, "kind": "crescendo" }` (o `"diminuendo"`; mirar en el PDF para qué lado abre). Si termina en una dinámica (por ejemplo el f del 51), esa dinámica va en el `endTick`. Sin superponerse. |
+| Staccato (mirar el PDF punto por punto: en el 17–22 está solo en el primer acorde de cada compás; revisar si sigue en el 23–30) | `"staccato": true` en cada nota del acorde (todas iguales). La duración en ticks es la de la figura escrita; la app se encarga de acortar el sonido. |
 | Acentos (compases 7 y 56–58) | `"accent": true` en la nota (o en todas las del acorde). Se puede combinar con `"staccato": true`. No va en notas ligadas (staccato) ni en adornos. |
 | Repeticiones | Desplegadas, compás por compás. |
 
