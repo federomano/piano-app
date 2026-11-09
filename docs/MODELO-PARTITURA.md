@@ -17,6 +17,7 @@ Todo se mide en **ticks**. Una negra siempre son **480 ticks**.
 | Negra | 480 | Corchea con puntillo | 360 |
 | Corchea | 240 | | |
 | Semicorchea | 120 | | |
+| Fusa | 60 | | |
 
 Un compás de 4/4 dura 1920 ticks, uno de 3/4 o 6/8 dura 1440. La posición de cada cosa (`startTick`) se cuenta desde el principio de la pieza, que es el tick 0.
 
@@ -108,5 +109,5 @@ El JSON es estricto: una clave mal escrita, una altura inválida o una versión 
 
 ## Lo que todavía no cubre
 
-- **Pedal, repeticiones, trinos y mordentes, indicaciones de texto, fusas, cambios de clave y el signo de 8va:** no se representan (las notas de adorno cortas sí, con `grace`).
+- **Pedal, repeticiones, trinos y mordentes, indicaciones de texto, cambios de clave y el signo de 8va:** no se representan (las notas de adorno cortas sí, con `grace`).
 - **Una nota ligada a varias seguidas:** se encadenan ligaduras, una por una.

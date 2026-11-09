@@ -224,6 +224,23 @@ class Validador(unittest.TestCase):
         d = con(lambda d: d.update(pickupTicks=-5))
         self.assertProblema(d, "pickupTicks")
 
+    def test_fusas(self):
+        def fusas(d):
+            # Un compás de 4/4 en la derecha: ocho fusas (480), una negra, una corchea con puntillo y una fusa con puntillo + dos más.
+            ns = [{"hand": "right", "pitch": "C5", "startTick": i * 60, "durationTicks": 60} for i in range(8)]
+            ns += [{"hand": "right", "pitch": "D5", "startTick": 480, "durationTicks": 960},
+                   {"hand": "right", "pitch": "E5", "startTick": 1440, "durationTicks": 90},
+                   {"hand": "right", "pitch": "F5", "startTick": 1530, "durationTicks": 30}]
+            d["notes"] = ns + [n for n in d["notes"] if n["hand"] == "left"]
+        # 30 ticks no es una figura: el validador lo dice; sin esa nota, las fusas están bien.
+        self.assertProblema(con(fusas), "30")
+        def bien(d):
+            fusas(d)
+            d["notes"] = [n for n in d["notes"] if n["durationTicks"] != 30 and n["durationTicks"] != 90]
+            d["notes"].append({"hand": "right", "pitch": "E5", "startTick": 1440, "durationTicks": 480})
+        errores = [e for e in v.validate(con(bien)) if "duración" in e or "figura" in e]
+        self.assertEqual(errores, [])
+
     def test_adorno_bien(self):
         d = con(lambda d: d["notes"].append(
             {"hand": "right", "pitch": "B3", "startTick": 960, "durationTicks": 60, "grace": True}))

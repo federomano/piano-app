@@ -61,14 +61,14 @@ object NoteLayout {
     /** [tuplet]: si la figura es de un grupo irregular, se dibuja la figura escrita (un tresillo de 160 ticks es una corchea). */
     fun figureOf(realTicks: Int, tuplet: Tuplet? = null): Figure {
         val ticks = tuplet?.written(realTicks) ?: realTicks
-        val bases = listOf(Ticks.WHOLE, Ticks.HALF, Ticks.QUARTER, Ticks.EIGHTH, Ticks.SIXTEENTH)
+        val bases = listOf(Ticks.WHOLE, Ticks.HALF, Ticks.QUARTER, Ticks.EIGHTH, Ticks.SIXTEENTH, Ticks.THIRTY_SECOND)
         for (base in bases) {
             if (ticks == base) return Figure(base, 0)
             if (ticks == base * 3 / 2) return Figure(base, 1)
             if (ticks == base * 7 / 4) return Figure(base, 2)
         }
         // Duración rara (tresillos, etc.): se dibuja con la figura más grande que entre, sin puntillos.
-        return Figure(bases.firstOrNull { it <= ticks } ?: Ticks.SIXTEENTH, 0)
+        return Figure(bases.firstOrNull { it <= ticks } ?: Ticks.THIRTY_SECOND, 0)
     }
 
     /** Duración del grupo de barras: un tiempo del compás (la negra, o la negra con puntillo en los compases compuestos). */
@@ -126,14 +126,14 @@ object NoteLayout {
         var leftEdge = 0f
         var rightEdge = 0f
 
-        val beams: Int get() = if (figure.base == Ticks.SIXTEENTH) 2 else 1
+        val beams: Int get() = when (figure.base) { Ticks.THIRTY_SECOND -> 3; Ticks.SIXTEENTH -> 2; else -> 1 }
         fun yOf(position: Int) = NoteLayout.yOf(position, hand)
         val stemAnchorTop: Float get() = yOf(highest) + STEM_ANCHOR
         val stemAnchorBottom: Float get() = yOf(lowest) - STEM_ANCHOR
 
         /** Donde terminaría la plica si no hubiera barra. */
         fun idealTip(beamLevels: Int = beams): Float {
-            val extra = (beamLevels - 1) * (BEAM_THICKNESS + BEAM_SPACING) + if (group == null && beams > 1) 0.5f else 0f
+            val extra = (beamLevels - 1) * (BEAM_THICKNESS + BEAM_SPACING) + if (group == null && beams > 1) 0.5f * (beams - 1) else 0f
             val middle = staffTop(hand) + 2f
             return if (stemDown) max(yOf(lowest) + STEM_LENGTH + extra, middle) else min(yOf(highest) - STEM_LENGTH - extra, middle)
         }
@@ -340,7 +340,8 @@ object NoteLayout {
         Ticks.HALF -> Smufl.REST_HALF_WIDTH
         Ticks.QUARTER -> Smufl.REST_QUARTER_WIDTH
         Ticks.EIGHTH -> Smufl.REST_8TH_WIDTH
-        else -> Smufl.REST_16TH_WIDTH
+        Ticks.SIXTEENTH -> Smufl.REST_16TH_WIDTH
+        else -> Smufl.REST_32ND_WIDTH
     }
 
     private fun tupletLabel(tuplet: Tuplet): List<Int> =
@@ -446,20 +447,23 @@ object NoteLayout {
         }
         // Primera barra: de la primera a la última plica.
         segment(plans.first().stemX, plans.last().stemX + STEM_THICKNESS, 0)
-        // Segunda barra: una sola entre semicorcheas vecinas; una semicorchea sola lleva un tramo corto.
-        var i = 0
-        while (i < plans.size) {
-            if (plans[i].beams < 2) { i++; continue }
-            var j = i
-            while (j + 1 < plans.size && plans[j + 1].beams >= 2) j++
-            if (j > i) {
-                segment(plans[i].stemX, plans[j].stemX + STEM_THICKNESS, 1)
-            } else if (i == 0) {
-                segment(plans[i].stemX, plans[i].stemX + STUB_LENGTH, 1)
-            } else {
-                segment(plans[i].stemX + STEM_THICKNESS - STUB_LENGTH, plans[i].stemX + STEM_THICKNESS, 1)
+        // Barras siguientes (semicorcheas: la 2.ª; fusas: la 2.ª y la 3.ª): una sola entre figuras vecinas que las llevan;
+        // una figura sola lleva un tramo corto.
+        for (level in 1 until plans.maxOf { it.beams }) {
+            var i = 0
+            while (i < plans.size) {
+                if (plans[i].beams <= level) { i++; continue }
+                var j = i
+                while (j + 1 < plans.size && plans[j + 1].beams > level) j++
+                if (j > i) {
+                    segment(plans[i].stemX, plans[j].stemX + STEM_THICKNESS, level)
+                } else if (i == 0) {
+                    segment(plans[i].stemX, plans[i].stemX + STUB_LENGTH, level)
+                } else {
+                    segment(plans[i].stemX + STEM_THICKNESS - STUB_LENGTH, plans[i].stemX + STEM_THICKNESS, level)
+                }
+                i = j + 1
             }
-            i = j + 1
         }
     }
 
@@ -683,7 +687,8 @@ object NoteLayout {
             Ticks.HALF -> Smufl.REST_HALF to Smufl.REST_HALF_WIDTH
             Ticks.QUARTER -> Smufl.REST_QUARTER to Smufl.REST_QUARTER_WIDTH
             Ticks.EIGHTH -> Smufl.REST_8TH to Smufl.REST_8TH_WIDTH
-            else -> Smufl.REST_16TH to Smufl.REST_16TH_WIDTH
+            Ticks.SIXTEENTH -> Smufl.REST_16TH to Smufl.REST_16TH_WIDTH
+            else -> Smufl.REST_32ND to Smufl.REST_32ND_WIDTH
         }
         // El silencio de compás completo va centrado en el compás, sea cual sea la firma.
         val left = if (wholeMeasure && !manyVoices) (measure.contentX + measure.x1) / 2 - width / 2 else x
@@ -694,7 +699,8 @@ object NoteLayout {
             Ticks.WHOLE -> 0f to 0.5f
             Ticks.HALF -> 0.5f to 0f
             Ticks.EIGHTH -> 1.0f to 1.0f
-            else -> 1.5f to 1.5f
+            Ticks.SIXTEENTH -> 1.5f to 1.5f
+            else -> 1.7f to 2.0f
         }
         // La voz 1 sube y las demás bajan hasta quedar libres de las cabezas de las otras voces; si no se logra, queda donde estaba.
         val direction = if (voice == 1) -1f else 1f
@@ -724,6 +730,7 @@ object NoteLayout {
     private fun flagFor(base: Int, down: Boolean): Int? = when (base) {
         Ticks.EIGHTH -> if (down) Smufl.FLAG_8TH_DOWN else Smufl.FLAG_8TH_UP
         Ticks.SIXTEENTH -> if (down) Smufl.FLAG_16TH_DOWN else Smufl.FLAG_16TH_UP
+        Ticks.THIRTY_SECOND -> if (down) Smufl.FLAG_32ND_DOWN else Smufl.FLAG_32ND_UP
         else -> null
     }
 

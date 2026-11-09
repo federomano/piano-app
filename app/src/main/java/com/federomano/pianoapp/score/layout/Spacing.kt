@@ -56,7 +56,8 @@ object Spacing {
         Ticks.HALF -> Smufl.REST_HALF_WIDTH
         Ticks.QUARTER -> Smufl.REST_QUARTER_WIDTH
         Ticks.EIGHTH -> Smufl.REST_8TH_WIDTH
-        else -> Smufl.REST_16TH_WIDTH
+        Ticks.SIXTEENTH -> Smufl.REST_16TH_WIDTH
+        else -> Smufl.REST_32ND_WIDTH
     }
 
     fun anchors(score: Score, m: Measure, perTick: Float, isLast: Boolean): Anchors {

@@ -21,7 +21,7 @@ MAX_VOICES = 4
 GRACE_MAX = TICKS_PER_QUARTER // 4  # lo más largo que puede ser un adorno: una semicorchea
 
 # Duraciones permitidas: base * (1, 1.5, 1.75) con hasta dos puntillos.
-BASES = {"redonda": 1920, "blanca": 960, "negra": 480, "corchea": 240, "semicorchea": 120}
+BASES = {"redonda": 1920, "blanca": 960, "negra": 480, "corchea": 240, "semicorchea": 120, "fusa": 60}
 ALLOWED = {}
 for _name, _base in BASES.items():
     ALLOWED[_base] = _name
@@ -287,7 +287,7 @@ def validate(data):
             w = written_ticks(d, tuplet)
             if w is None or w not in ALLOWED:
                 errors.append(f"{where}: con el grupo {item['tuplet']} no puede durar {d} ticks: la figura escrita "
-                              "tendría que ser redonda, blanca, negra, corchea o semicorchea (con hasta dos puntillos).")
+                              "tendría que ser redonda, blanca, negra, corchea, semicorchea o fusa (con hasta dos puntillos).")
         return True
 
     graces = []

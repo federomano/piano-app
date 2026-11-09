@@ -14,12 +14,13 @@ object ExampleScores {
         ExampleScore("adornos", "Ejercicio: notas de adorno", "Notas chiquitas que se tocan justo antes del tiempo: con alteración, con línea adicional, en acorde y en la mano izquierda.") { graceNotes() },
         ExampleScore("dinamicas", "Ejercicio: dinámicas", "Del mp al ff con un crescendo, y de vuelta al p con un diminuendo. Se escucha cómo cambia la fuerza.") { dynamics() },
         ExampleScore("articulaciones", "Ejercicio: staccato y acentos", "Notas cortitas y separadas (puntito) y notas más fuertes (>), con las dos manos.") { articulations() },
+        ExampleScore("fusas", "Ejercicio: fusas", "Notas muy rápidas, de a ocho por negra, con tres barras. Para probar el dibujo y el sonido.") { thirtySeconds() },
         ExampleScore("ejercicio", "Ejercicio: todo lo que dibuja la app", "Alteraciones, silencios, acordes, ligaduras y cambios de armadura, compás y tempo.") { DemoScore.create() },
     )
 
     /**
      * Escritura corta de una mano: figuras separadas por espacios, cada una "nota/duración".
-     * Duración: w redonda, h blanca, q negra, e corchea, s semicorchea; un punto al final = puntillo.
+     * Duración: w redonda, h blanca, q negra, e corchea, s semicorchea, t fusa; un punto al final = puntillo.
      * Un acorde une las notas con "+" (`C3+G3/h`), un silencio es `r/q` y una "~" pegada
      * al final liga la figura con la siguiente (`C3/h~`).
      * Varias voces en una mano: `right(texto, voice = 2, from = tick)` escribe otra línea que suena a la vez; cada voz lleva su propio
@@ -63,6 +64,7 @@ object ExampleScores {
                     "q" -> Ticks.QUARTER
                     "e" -> Ticks.EIGHTH
                     "s" -> Ticks.SIXTEENTH
+                    "t" -> Ticks.THIRTY_SECOND
                     else -> throw IllegalArgumentException("Duración inválida en \"$token\"")
                 }
                 val written = if (dotted) Ticks.dotted(base) else base
@@ -87,6 +89,25 @@ object ExampleScores {
             level = "principiante",
             goal = "Leer las notas de Do a Do con las dos manos, subiendo y bajando.",
             tempos = listOf(TempoChange(0, 80.0)),
+            notes = b.notes,
+            rests = b.rests,
+        )
+    }
+
+    private fun thirtySeconds(): Score {
+        val b = Builder()
+        // Compás 1: una corrida de ocho fusas, una negra, una figura mezclada (corchea, semicorchea y dos fusas) y otra negra.
+        b.right("C5/t D5/t E5/t F5/t G5/t A5/t B5/t C6/t  C6/q  B5/e A5/s G5/t F5/t  E5/q")
+        // Compás 2: una negra, un silencio de fusa antes de la corrida que baja y una blanca.
+        // Compás 3: en cada tiempo, una fusa, un silencio de semicorchea con puntillo y una corchea.
+        b.right("G5/q  r/t F5/t E5/t D5/t C5/e  C5/h")
+        b.right("E5/t r/s. E5/e  G5/t r/s. G5/e  F5/t r/s. F5/e  D5/t r/s. D5/e")
+        b.left("C3/w  C3/q G2/q C3/h  C3/h G2/h")
+        return Score(
+            title = "Ejercicio: fusas",
+            level = "intermedio",
+            goal = "Leer y tocar figuras muy rápidas (fusas): empezá lento, a la mitad de la velocidad o menos.",
+            tempos = listOf(TempoChange(0, 60.0)),
             notes = b.notes,
             rests = b.rests,
         )

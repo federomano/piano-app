@@ -14,7 +14,7 @@ La app lee **un solo formato**: el JSON propio de la partitura, descrito en [`MO
 ## Reglas obligatorias
 
 1. **Dos manos.** `"right"` es la mano derecha y se dibuja en clave de sol; `"left"` es la mano izquierda y se dibuja en clave de fa. No hay cambios de clave ni notas que pasen de un pentagrama al otro. Si en la pieza original la melodía la toca la izquierda, va en `"left"`.
-2. **Duraciones que la app sabe dibujar.** Una negra son 480 ticks. Se pueden usar redonda, blanca, negra, corchea y semicorchea, con un puntillo o con dos:
+2. **Duraciones que la app sabe dibujar.** Una negra son 480 ticks. Se pueden usar redonda, blanca, negra, corchea, semicorchea y fusa, con un puntillo o con dos:
 
    | Figura | Sin puntillo | Un puntillo | Dos puntillos |
    |---|---|---|---|
@@ -23,6 +23,7 @@ La app lee **un solo formato**: el JSON propio de la partitura, descrito en [`MO
    | Negra | 480 | 720 | 840 |
    | Corchea | 240 | 360 | 420 |
    | Semicorchea | 120 | 180 | 210 |
+   | Fusa | 60 | 90 | 105 |
 
    **Tresillos y otros grupos irregulares.** Se escriben con el campo `"tuplet"` y la duración **real** en ticks (la que suena):
 
@@ -67,7 +68,7 @@ La app lee **un solo formato**: el JSON propio de la partitura, descrito en [`MO
 
 ## Lo que la app todavía no representa
 
-Pedal, ornamentos (trinos, mordentes), indicaciones de texto ("swing feel"), fusas, cambios de clave (una nota que el original escribe en clave de sol dentro de la mano izquierda se escribe igual en clave de fa, con líneas adicionales) y el signo de 8va (se escriben las alturas reales, tal como suenan). Si algo de eso está en el original, se deja afuera y se le avisa a Fede en la respuesta, diciendo en qué compases.
+Pedal, ornamentos (trinos, mordentes), indicaciones de texto ("swing feel"), cambios de clave (una nota que el original escribe en clave de sol dentro de la mano izquierda se escribe igual en clave de fa, con líneas adicionales) y el signo de 8va (se escriben las alturas reales, tal como suenan). Si algo de eso está en el original, se deja afuera y se le avisa a Fede en la respuesta, diciendo en qué compases.
 
 ## Errores comunes
 
@@ -115,7 +116,7 @@ La app también detecta varios errores al abrir un archivo (`validate()` devuelv
 
 ## Texto para pegar en las instrucciones del Proyecto "Profesor de piano"
 
-> Cuando te pida una partitura o un ejercicio, entregame un archivo `.json` en el formato de la app de piano: el modelo está en MODELO-PARTITURA.md y las reglas en CONTRATO-ARCHIVOS.md. Los puntos que más importan: mano derecha = clave de sol (`"right"`), mano izquierda = clave de fa (`"left"`); 480 ticks por negra; solo redonda, blanca, negra, corchea y semicorchea (con hasta dos puntillos), tresillos y similares con `"tuplet"` (por ejemplo `"3:2"`, corchea de tresillo = 160 ticks); cada mano llena cada compás completo con notas y silencios; ninguna nota ni silencio cruza una barra de compás (se parte y se liga con `tiedToNext`); dos líneas a la vez en una misma mano con `"voice"` (1 la principal, 2 la otra; cada voz sin superponerse); si empieza con compás incompleto, `"pickupTicks"` (ese compás es el 0); notitas de adorno con `"grace": true` (mismo `startTick` que la nota principal, `durationTicks` 60); dinámicas con `"dynamics"` (`"mf"`, `"f"`...) y reguladores con `"hairpins"` (crescendo/diminuendo entre dos ticks); repeticiones desplegadas; alturas escritas como suenan (`F#4`, `Bb3`, `F4` si es natural) dentro de `A0`–`C8`; tempo en negras por minuto; con `title`, `level` y `goal`. Antes de entregar, corré `python3 /mnt/project/piano/validar_partitura.py archivo.json` hasta que diga que cumple el contrato, y decime qué simplificaste o no pudiste representar. Usá como modelo los archivos de `piano/ejemplos`.
+> Cuando te pida una partitura o un ejercicio, entregame un archivo `.json` en el formato de la app de piano: el modelo está en MODELO-PARTITURA.md y las reglas en CONTRATO-ARCHIVOS.md. Los puntos que más importan: mano derecha = clave de sol (`"right"`), mano izquierda = clave de fa (`"left"`); 480 ticks por negra; solo redonda, blanca, negra, corchea, semicorchea y fusa (con hasta dos puntillos), tresillos y similares con `"tuplet"` (por ejemplo `"3:2"`, corchea de tresillo = 160 ticks); cada mano llena cada compás completo con notas y silencios; ninguna nota ni silencio cruza una barra de compás (se parte y se liga con `tiedToNext`); dos líneas a la vez en una misma mano con `"voice"` (1 la principal, 2 la otra; cada voz sin superponerse); si empieza con compás incompleto, `"pickupTicks"` (ese compás es el 0); notitas de adorno con `"grace": true` (mismo `startTick` que la nota principal, `durationTicks` 60); dinámicas con `"dynamics"` (`"mf"`, `"f"`...) y reguladores con `"hairpins"` (crescendo/diminuendo entre dos ticks); repeticiones desplegadas; alturas escritas como suenan (`F#4`, `Bb3`, `F4` si es natural) dentro de `A0`–`C8`; tempo en negras por minuto; con `title`, `level` y `goal`. Antes de entregar, corré `python3 /mnt/project/piano/validar_partitura.py archivo.json` hasta que diga que cumple el contrato, y decime qué simplificaste o no pudiste representar. Usá como modelo los archivos de `piano/ejemplos`.
 
 ## Ejemplos de referencia
 

@@ -232,7 +232,7 @@ fun Score.validate(): List<String> {
         val written = tuplet.written(durationTicks)
         return if (written != null && written in Ticks.STANDARD) null
         else "con el grupo $tuplet no puede durar $durationTicks ticks: la figura escrita tendría que ser redonda, blanca, negra, " +
-            "corchea o semicorchea (con hasta dos puntillos)."
+            "corchea, semicorchea o fusa (con hasta dos puntillos)."
     }
     for (note in notes) {
         durationProblem(note.durationTicks, note.tuplet)?.let { errors += "${describe(note)} $it" }

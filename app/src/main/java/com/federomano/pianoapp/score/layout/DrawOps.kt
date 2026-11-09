@@ -63,6 +63,8 @@ object Smufl {
     const val FLAG_8TH_DOWN = 0xE241
     const val FLAG_16TH_UP = 0xE242
     const val FLAG_16TH_DOWN = 0xE243
+    const val FLAG_32ND_UP = 0xE244
+    const val FLAG_32ND_DOWN = 0xE245
     const val AUGMENTATION_DOT = 0xE1E7
     const val STACCATO_ABOVE = 0xE4A2
     const val ACCENT_ABOVE = 0xE4A0
@@ -78,11 +80,13 @@ object Smufl {
     const val REST_QUARTER = 0xE4E5
     const val REST_8TH = 0xE4E6
     const val REST_16TH = 0xE4E7
+    const val REST_32ND = 0xE4E8
     const val REST_WHOLE_WIDTH = 1.128f
     const val REST_HALF_WIDTH = 1.128f
     const val REST_QUARTER_WIDTH = 1.08f
     const val REST_8TH_WIDTH = 0.988f
     const val REST_16TH_WIDTH = 1.28f
+    const val REST_32ND_WIDTH = 1.452f
 
     /** Números de los grupos irregulares (tresillos, etc.): 0xE880 + dígito; los dos puntos son 0xE88A. */
     fun tupletDigit(digit: Int): Int = 0xE880 + digit

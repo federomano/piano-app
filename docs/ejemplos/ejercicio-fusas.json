@@ -1,0 +1,59 @@
+{
+  "formatVersion": 1,
+  "title": "Ejercicio: fusas",
+  "level": "intermedio",
+  "goal": "Leer y tocar figuras muy rápidas (fusas): empezá lento, a la mitad de la velocidad o menos.",
+  "timeSignatures": [
+    { "startTick": 0, "numerator": 4, "denominator": 4 }
+  ],
+  "keySignatures": [
+    { "startTick": 0, "fifths": 0 }
+  ],
+  "tempos": [
+    { "startTick": 0, "bpm": 60.0 }
+  ],
+  "notes": [
+    { "hand": "right", "pitch": "C5", "startTick": 0, "durationTicks": 60 },
+    { "hand": "right", "pitch": "D5", "startTick": 60, "durationTicks": 60 },
+    { "hand": "right", "pitch": "E5", "startTick": 120, "durationTicks": 60 },
+    { "hand": "right", "pitch": "F5", "startTick": 180, "durationTicks": 60 },
+    { "hand": "right", "pitch": "G5", "startTick": 240, "durationTicks": 60 },
+    { "hand": "right", "pitch": "A5", "startTick": 300, "durationTicks": 60 },
+    { "hand": "right", "pitch": "B5", "startTick": 360, "durationTicks": 60 },
+    { "hand": "right", "pitch": "C6", "startTick": 420, "durationTicks": 60 },
+    { "hand": "right", "pitch": "C6", "startTick": 480, "durationTicks": 480 },
+    { "hand": "right", "pitch": "B5", "startTick": 960, "durationTicks": 240 },
+    { "hand": "right", "pitch": "A5", "startTick": 1200, "durationTicks": 120 },
+    { "hand": "right", "pitch": "G5", "startTick": 1320, "durationTicks": 60 },
+    { "hand": "right", "pitch": "F5", "startTick": 1380, "durationTicks": 60 },
+    { "hand": "right", "pitch": "E5", "startTick": 1440, "durationTicks": 480 },
+    { "hand": "right", "pitch": "G5", "startTick": 1920, "durationTicks": 480 },
+    { "hand": "right", "pitch": "F5", "startTick": 2460, "durationTicks": 60 },
+    { "hand": "right", "pitch": "E5", "startTick": 2520, "durationTicks": 60 },
+    { "hand": "right", "pitch": "D5", "startTick": 2580, "durationTicks": 60 },
+    { "hand": "right", "pitch": "C5", "startTick": 2640, "durationTicks": 240 },
+    { "hand": "right", "pitch": "C5", "startTick": 2880, "durationTicks": 960 },
+    { "hand": "right", "pitch": "E5", "startTick": 3840, "durationTicks": 60 },
+    { "hand": "right", "pitch": "E5", "startTick": 4080, "durationTicks": 240 },
+    { "hand": "right", "pitch": "G5", "startTick": 4320, "durationTicks": 60 },
+    { "hand": "right", "pitch": "G5", "startTick": 4560, "durationTicks": 240 },
+    { "hand": "right", "pitch": "F5", "startTick": 4800, "durationTicks": 60 },
+    { "hand": "right", "pitch": "F5", "startTick": 5040, "durationTicks": 240 },
+    { "hand": "right", "pitch": "D5", "startTick": 5280, "durationTicks": 60 },
+    { "hand": "right", "pitch": "D5", "startTick": 5520, "durationTicks": 240 },
+
+    { "hand": "left", "pitch": "C3", "startTick": 0, "durationTicks": 1920 },
+    { "hand": "left", "pitch": "C3", "startTick": 1920, "durationTicks": 480 },
+    { "hand": "left", "pitch": "G2", "startTick": 2400, "durationTicks": 480 },
+    { "hand": "left", "pitch": "C3", "startTick": 2880, "durationTicks": 960 },
+    { "hand": "left", "pitch": "C3", "startTick": 3840, "durationTicks": 960 },
+    { "hand": "left", "pitch": "G2", "startTick": 4800, "durationTicks": 960 }
+  ],
+  "rests": [
+    { "hand": "right", "startTick": 2400, "durationTicks": 60 },
+    { "hand": "right", "startTick": 3900, "durationTicks": 180 },
+    { "hand": "right", "startTick": 4380, "durationTicks": 180 },
+    { "hand": "right", "startTick": 4860, "durationTicks": 180 },
+    { "hand": "right", "startTick": 5340, "durationTicks": 180 }
+  ]
+}

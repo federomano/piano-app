@@ -35,6 +35,8 @@ object Ticks {
     const val QUARTER = TICKS_PER_QUARTER
     const val EIGHTH = TICKS_PER_QUARTER / 2
     const val SIXTEENTH = TICKS_PER_QUARTER / 4
+    /** Fusa: 60 ticks. */
+    const val THIRTY_SECOND = TICKS_PER_QUARTER / 8
 
     /** Cuánto antes del tiempo suena una nota de adorno (si no se dice otra cosa): 60 ticks, una fusa. */
     const val GRACE = TICKS_PER_QUARTER / 8
@@ -45,10 +47,10 @@ object Ticks {
     /** Figura con puntillo: dura una vez y media la figura original. */
     fun dotted(ticks: Int): Int = ticks * 3 / 2
 
-    /** Las duraciones que la app sabe dibujar sin grupo irregular: redonda a semicorchea, con hasta dos puntillos. */
+    /** Las duraciones que la app sabe dibujar sin grupo irregular: redonda a fusa, con hasta dos puntillos. */
     val STANDARD: Set<Int> = buildSet {
         add(WHOLE)
-        for (base in listOf(HALF, QUARTER, EIGHTH, SIXTEENTH)) {
+        for (base in listOf(HALF, QUARTER, EIGHTH, SIXTEENTH, THIRTY_SECOND)) {
             add(base); add(base * 3 / 2); add(base * 7 / 4)
         }
     }

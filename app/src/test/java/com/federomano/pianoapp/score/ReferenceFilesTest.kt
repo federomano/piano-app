@@ -24,6 +24,7 @@ class ReferenceFilesTest {
         "ejercicio-adornos.json" to "adornos",
         "ejercicio-dinamicas.json" to "dinamicas",
         "ejercicio-articulaciones.json" to "articulaciones",
+        "ejercicio-fusas.json" to "fusas",
     )
 
     @Test
