@@ -49,6 +49,13 @@ object Smufl {
     const val SHARP_ADVANCE = 0.996f
     const val CLEF_ADVANCE = 2.74f
 
+    /** Signos de octava: "8va" y "8vb" (la base está en la línea de base; miden 1,85 de alto). */
+    const val OTTAVA_ALTA = 0xE511
+    const val OTTAVA_BASSA = 0xE512
+    const val OTTAVA_ALTA_WIDTH = 3.54f
+    const val OTTAVA_BASSA_WIDTH = 3.356f
+    const val OTTAVA_HEIGHT = 1.85f
+
     /** Medidas de la llave a tamaño normal: 4 espacios de alto por 0,277 de ancho. */
     const val BRACE_HEIGHT = 4.002f
     const val BRACE_WIDTH = 0.277f

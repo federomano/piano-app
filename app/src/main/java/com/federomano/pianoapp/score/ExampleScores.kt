@@ -16,6 +16,7 @@ object ExampleScores {
         ExampleScore("articulaciones", "Ejercicio: staccato y acentos", "Notas cortitas y separadas (puntito) y notas más fuertes (>), con las dos manos.") { articulations() },
         ExampleScore("fusas", "Ejercicio: fusas", "Notas muy rápidas, de a ocho por negra, con tres barras. Para probar el dibujo y el sonido.") { thirtySeconds() },
         ExampleScore("claves", "Ejercicio: cambios de clave", "La izquierda pasa a clave de sol, la derecha baja a clave de fa, y después las dos vuelven. Suena igual: solo cambia cómo se escribe.") { clefChanges() },
+        ExampleScore("octavas", "Ejercicio: signo de octava", "Las mismas notas agudas con y sin 8va, y notas graves con 8vb. Suena igual: solo cambia cómo se escribe.") { octaves() },
         ExampleScore("ejercicio", "Ejercicio: todo lo que dibuja la app", "Alteraciones, silencios, acordes, ligaduras y cambios de armadura, compás y tempo.") { DemoScore.create() },
     )
 
@@ -215,6 +216,26 @@ object ExampleScores {
                 ClefChange(Hand.RIGHT, 2 * 1920, Clef.BASS),
                 ClefChange(Hand.RIGHT, 3 * 1920, Clef.TREBLE),
                 ClefChange(Hand.LEFT, 3 * 1920, Clef.BASS),
+            ),
+            notes = b.notes,
+            rests = b.rests,
+        )
+    }
+
+    private fun octaves(): Score {
+        val b = Builder()
+        // 1: notas muy agudas, escritas como suenan (con muchas líneas adicionales). 2: las mismas con 8va.
+        // 3: notas muy graves en la izquierda con 8vb (con el acorde del final).
+        b.right("C7/q E7/q G7/q E7/q  C7/q E7/q G7/q E7/q  C5/w  C5/w")
+        b.left("C3/w  C3/w  C1/q E1/q G1/q E1/q  C1+G1/w")
+        return Score(
+            title = "Ejercicio: signo de octava",
+            level = "intermedio",
+            goal = "Leer el signo 8va (se toca una octava más arriba de lo escrito) y 8vb (una más abajo).",
+            tempos = listOf(TempoChange(0, 70.0)),
+            ottavas = listOf(
+                OttavaMark(Hand.RIGHT, 1920, 2 * 1920, OttavaKind.OTTAVA_ALTA),
+                OttavaMark(Hand.LEFT, 2 * 1920, 4 * 1920, OttavaKind.OTTAVA_BASSA),
             ),
             notes = b.notes,
             rests = b.rests,

@@ -346,6 +346,29 @@ class Validador(unittest.TestCase):
         de_mas = con(lambda d: d.update(clefs=[{"hand": "left", "startTick": 0, "clef": "bass", "x": 1}]))
         self.assertProblema(de_mas, "\"x\"")
 
+    def test_octavas(self):
+        ok = con(lambda d: d.update(ottavas=[{"hand": "right", "startTick": 0, "endTick": 1920, "kind": "8va"}]))
+        self.assertEqual(v.validate(ok), [])
+        self.assertProblema(con(lambda d: d.update(ottavas=[{"hand": "right", "startTick": 0, "endTick": 1920, "kind": "15ma"}])),
+                            "\"kind\" tiene que ser")
+        self.assertProblema(con(lambda d: d.update(ottavas=[{"hand": "right", "startTick": 960, "endTick": 960, "kind": "8va"}])),
+                            "endTick mayor que startTick")
+        self.assertProblema(con(lambda d: d.update(ottavas=[{"hand": "right", "startTick": 0, "endTick": 1000, "kind": "8va"},
+                                                            {"hand": "right", "startTick": 900, "endTick": 1920, "kind": "8va"}])),
+                            "no pueden superponerse")
+        self.assertProblema(con(lambda d: d.update(ottavas=[{"hand": "right", "startTick": 5000, "endTick": 6000, "kind": "8vb"}])),
+                            "ninguna nota")
+
+    def test_octava_y_ligadura(self):
+        def cambio(d):
+            d["notes"] = [
+                {"hand": "right", "pitch": "C4", "startTick": 0, "durationTicks": 1920, "tiedToNext": True},
+                {"hand": "right", "pitch": "C4", "startTick": 1920, "durationTicks": 1920},
+                {"hand": "left", "pitch": "C3", "startTick": 0, "durationTicks": 3840},
+            ]
+            d["ottavas"] = [{"hand": "right", "startTick": 0, "endTick": 1920, "kind": "8va"}]
+        self.assertProblema(con(cambio), "fuera de su signo de octava")
+
     def test_json_roto(self):
         import tempfile
         with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False) as f:

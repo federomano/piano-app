@@ -26,6 +26,7 @@ class ReferenceFilesTest {
         "ejercicio-articulaciones.json" to "articulaciones",
         "ejercicio-fusas.json" to "fusas",
         "ejercicio-claves.json" to "claves",
+        "ejercicio-octavas.json" to "octavas",
     )
 
     @Test
@@ -92,6 +93,9 @@ class ReferenceFilesTest {
             },
             score.hairpins.takeIf { it.isNotEmpty() }?.let { list ->
                 block("hairpins", list) { "{ \"startTick\": ${it.startTick}, \"endTick\": ${it.endTick}, \"kind\": \"${it.kind.name.lowercase()}\" }" }
+            },
+            score.ottavas.takeIf { it.isNotEmpty() }?.let { list ->
+                block("ottavas", list) { "{ \"hand\": \"${if (it.hand == Hand.RIGHT) "right" else "left"}\", \"startTick\": ${it.startTick}, \"endTick\": ${it.endTick}, \"kind\": \"${if (it.kind == OttavaKind.OTTAVA_ALTA) "8va" else "8vb"}\" }" }
             },
             score.clefs.takeIf { it.isNotEmpty() }?.let { list ->
                 block("clefs", list) { "{ \"hand\": \"${if (it.hand == Hand.RIGHT) "right" else "left"}\", \"startTick\": ${it.startTick}, \"clef\": \"${it.clef.name.lowercase()}\" }" }

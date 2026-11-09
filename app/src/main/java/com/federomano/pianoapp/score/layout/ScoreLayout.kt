@@ -333,6 +333,11 @@ class ScoreLayout private constructor(
             marks += NoteLayout.build(score, timed) { tick ->
                 timed[timed.indexOfLast { it.measure.startTick <= tick }.coerceAtLeast(0)].xOfTick(tick)
             }
+            // Signos de octava: arriba o abajo de lo que hayan dibujado las notas (sin contar las barras de compás, que cruzan todo).
+            val beforeOttavas = Extents.boxes(marks.filterNot { it is RectOp && it.height >= Geometry.SYSTEM_BOTTOM - 0.01f })
+            marks += OttavaLayout.build(score, { tick ->
+                timed[timed.indexOfLast { it.measure.startTick <= tick }.coerceAtLeast(0)].xOfTick(tick)
+            }, beforeOttavas)
             // Las letras de dinámica esquivan lo que haya abajo (notas graves, acentos); los números de compás, lo que haya arriba.
             val noteBoxes = Extents.boxes(marks)
             marks += DynamicsLayout.build(score, { tick ->

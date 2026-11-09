@@ -178,6 +178,24 @@ fun Score.validate(): List<String> {
         errors += "El cambio de clave de la ${it.hand.label} del tick ${it.startTick} no cae al inicio de un compás."
     }
 
+    for (hand in Hand.entries) {
+        val own = ottavas.filter { it.hand == hand }.sortedBy { it.startTick }
+        if (own.zipWithNext().any { (a, b) -> b.startTick < a.endTick }) {
+            errors += "Signos de octava de la ${hand.label}: no pueden superponerse."
+        }
+        for (o in own) {
+            if (notes.none { it.hand == hand && it.startTick >= o.startTick && it.startTick < o.endTick }) {
+                errors += "El signo de octava de la ${hand.label} (ticks ${o.startTick} a ${o.endTick}) no tiene ninguna nota de esa mano adentro."
+            }
+        }
+    }
+    for (note in notes.filter { it.tiedToNext }) {
+        val next = notes.firstOrNull { it.hand == note.hand && it.pitch.midi == note.pitch.midi && it.startTick == note.endTick } ?: continue
+        if (octaveShiftAt(note.hand, note.startTick) != octaveShiftAt(note.hand, next.startTick)) {
+            errors += "La nota ${note.pitch} (${note.hand.label}, tick ${note.startTick}) está ligada a otra que cae fuera de su signo de octava: el signo tiene que cubrir las dos."
+        }
+    }
+
     fun describe(note: Note) = "La nota ${note.pitch} (${note.hand.label}, compás ${measureAt(note.startTick).number})"
 
     for (note in notes) {

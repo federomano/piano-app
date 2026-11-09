@@ -36,6 +36,8 @@ object Extents {
             c in 0xE880..0xE88A -> Box(op.x, op.y - Smufl.TUPLET_DIGIT_HEIGHT, op.x + 1.4f, op.y)
             // Letras de dinámica (p, f, mf, ff...): suben casi dos espacios y la p baja un poco.
             c in 0xE520..0xE53F -> Box(op.x, op.y - 1.8f, op.x + 3.4f, op.y + 0.7f)
+            c == Smufl.OTTAVA_ALTA -> Box(op.x, op.y - Smufl.OTTAVA_HEIGHT, op.x + Smufl.OTTAVA_ALTA_WIDTH, op.y)
+            c == Smufl.OTTAVA_BASSA -> Box(op.x, op.y - Smufl.OTTAVA_HEIGHT, op.x + Smufl.OTTAVA_BASSA_WIDTH, op.y)
             c == Smufl.ACCENT_ABOVE -> Box(op.x, op.y - 0.98f, op.x + 1.36f, op.y)
             c == Smufl.ACCENT_BELOW -> Box(op.x, op.y, op.x + 1.36f, op.y + 0.98f)
             c == Smufl.STACCATO_ABOVE -> Box(op.x, op.y - 0.34f, op.x + 0.34f, op.y)

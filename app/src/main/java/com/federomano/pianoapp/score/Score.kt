@@ -110,6 +110,25 @@ data class ClefChange(val hand: Hand, val startTick: Int, val clef: Clef) {
     }
 }
 
+/** Signo de octava: "8va" (las notas suenan una octava más arriba de lo escrito) u "8vb" (una más abajo). */
+@Serializable
+enum class OttavaKind {
+    @SerialName("8va") OTTAVA_ALTA,
+    @SerialName("8vb") OTTAVA_BASSA,
+}
+
+/**
+ * Signo de octava de una mano, para las notas que empiezan desde [startTick] hasta [endTick] (sin incluirlo).
+ * Las alturas del archivo son las que suenan; solo cambia dónde se dibujan las notas (una octava más cerca del pentagrama).
+ */
+@Serializable
+data class OttavaMark(val hand: Hand, val startTick: Int, val endTick: Int, val kind: OttavaKind) {
+    init {
+        require(startTick >= 0) { "El inicio del signo de octava no puede ser negativo." }
+        require(endTick > startTick) { "El signo de octava tiene que terminar después de donde empieza (endTick $endTick, startTick $startTick)." }
+    }
+}
+
 /** Nombre de la nota sin alteración. */
 enum class Step(val semitone: Int) { C(0), D(2), E(4), F(5), G(7), A(9), B(11) }
 
@@ -322,6 +341,8 @@ data class Score(
     val dynamics: List<DynamicMark> = emptyList(),
     /** Reguladores (crescendo y diminuendo), sin superponerse. */
     val hairpins: List<Hairpin> = emptyList(),
+    /** Signos de octava (8va / 8vb) por mano, sin superponerse en una misma mano. Solo cambian el dibujo, no el sonido. */
+    val ottavas: List<OttavaMark> = emptyList(),
     /** Cambios de clave por mano, a partir del inicio de un compás. Sin esto: derecha en sol e izquierda en fa. */
     val clefs: List<ClefChange> = emptyList(),
     val notes: List<Note> = emptyList(),
@@ -338,6 +359,14 @@ data class Score(
     /** Clave vigente de [hand] en [tick]. */
     fun clefAt(hand: Hand, tick: Int): Clef =
         clefs.lastOrNull { it.hand == hand && it.startTick <= tick }?.clef ?: if (hand == Hand.RIGHT) Clef.TREBLE else Clef.BASS
+
+    /** Cuántas octavas se escribe más abajo (8va: 1) o más arriba (8vb: -1) lo que empieza en [tick] en [hand]. 0 si no hay signo. */
+    fun octaveShiftAt(hand: Hand, tick: Int): Int =
+        when (ottavas.firstOrNull { it.hand == hand && tick >= it.startTick && tick < it.endTick }?.kind) {
+            OttavaKind.OTTAVA_ALTA -> 1
+            OttavaKind.OTTAVA_BASSA -> -1
+            null -> 0
+        }
 
     /** Fin de la partitura: donde termina la última nota o silencio. */
     val lengthTicks: Int

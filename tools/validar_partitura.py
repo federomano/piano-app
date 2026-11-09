@@ -30,7 +30,7 @@ for _name, _base in BASES.items():
         ALLOWED[_base * 7 // 4] = _name + " con dos puntillos"
 
 SCORE_KEYS = {"formatVersion", "title", "composer", "level", "goal",
-              "timeSignatures", "keySignatures", "tempos", "pickupTicks", "dynamics", "hairpins", "clefs", "notes", "rests"}
+              "timeSignatures", "keySignatures", "tempos", "pickupTicks", "dynamics", "hairpins", "clefs", "ottavas", "notes", "rests"}
 NOTE_KEYS = {"hand", "pitch", "startTick", "durationTicks", "tiedToNext", "finger", "tuplet", "voice", "grace", "staccato", "accent"}
 REST_KEYS = {"hand", "startTick", "durationTicks", "tuplet", "voice"}
 TS_KEYS = {"startTick", "numerator", "denominator"}
@@ -39,6 +39,7 @@ TEMPO_KEYS = {"startTick", "bpm"}
 DYNAMIC_KEYS = {"startTick", "level"}
 HAIRPIN_KEYS = {"startTick", "endTick", "kind"}
 CLEF_KEYS = {"hand", "startTick", "clef"}
+OTTAVA_KEYS = {"hand", "startTick", "endTick", "kind"}
 DYNAMIC_LEVELS = ["ppp", "pp", "p", "mp", "mf", "f", "ff", "fff"]
 HAIRPIN_KINDS = ["crescendo", "diminuendo"]
 
@@ -183,6 +184,45 @@ def check_clefs(clefs, starts, end, errors):
             last[hand] = t
 
 
+def check_ottavas(ottavas, notes, errors):
+    good = []
+    for i, o in enumerate(ottavas, 1):
+        where = f"ottavas #{i}"
+        ok = True
+        if o.get("hand") not in ("right", "left"):
+            errors.append(f"{where}: \"hand\" tiene que ser \"right\" o \"left\" (es {o.get('hand')!r}).")
+            ok = False
+        if o.get("kind") not in ("8va", "8vb"):
+            errors.append(f"{where}: \"kind\" tiene que ser \"8va\" o \"8vb\" (es {o.get('kind')!r}).")
+            ok = False
+        a, b = o.get("startTick"), o.get("endTick")
+        if not is_int(a) or not is_int(b) or a < 0 or b <= a:
+            errors.append(f"{where}: \"startTick\" y \"endTick\" tienen que ser enteros, con endTick mayor que startTick.")
+            ok = False
+        if ok:
+            good.append(o)
+    for hand in ("right", "left"):
+        own = sorted((o for o in good if o["hand"] == hand), key=lambda o: o["startTick"])
+        if any(b["startTick"] < a["endTick"] for a, b in zip(own, own[1:])):
+            errors.append(f"Signos de octava de la {HAND_LABEL[hand]}: no pueden superponerse.")
+        for o in own:
+            if not any(n["hand"] == hand and o["startTick"] <= n["startTick"] < o["endTick"] for n in notes):
+                errors.append(f"El signo de octava de la {HAND_LABEL[hand]} (ticks {o['startTick']} a {o['endTick']}) no tiene ninguna nota de esa mano adentro.")
+
+    def shift(hand, tick):
+        for o in good:
+            if o["hand"] == hand and o["startTick"] <= tick < o["endTick"]:
+                return o["kind"]
+        return None
+
+    for n in notes:
+        if not n.get("tied"):
+            continue
+        nxt = next((m for m in notes if m["hand"] == n["hand"] and m["midi"] == n["midi"] and m["startTick"] == n["startTick"] + n["durationTicks"]), None)
+        if nxt is not None and shift(n["hand"], n["startTick"]) != shift(n["hand"], nxt["startTick"]):
+            errors.append(f"La nota {n['pitch']} ({HAND_LABEL[n['hand']]}, tick {n['startTick']}) está ligada a otra que cae fuera de su signo de octava: el signo tiene que cubrir las dos.")
+
+
 def validate(data):
     """Devuelve la lista de problemas (vacía = el archivo cumple el contrato)."""
     errors = []
@@ -212,6 +252,7 @@ def validate(data):
     dynamics = load_list(data, "dynamics", DYNAMIC_KEYS, errors)
     hairpins = load_list(data, "hairpins", HAIRPIN_KEYS, errors)
     clefs = load_list(data, "clefs", CLEF_KEYS, errors)
+    ottavas = load_list(data, "ottavas", OTTAVA_KEYS, errors)
     if not sigs:
         sigs = [{"startTick": 0, "numerator": 4, "denominator": 4}]
     if not keys:
@@ -413,6 +454,7 @@ def validate(data):
 
     check_dynamics(dynamics, hairpins, end, errors)
     check_clefs(clefs, starts, end, errors)
+    check_ottavas(ottavas, notes, errors)
 
     def measure_of(t):
         return next(m for m in measures if m[1] <= t < m[2])
