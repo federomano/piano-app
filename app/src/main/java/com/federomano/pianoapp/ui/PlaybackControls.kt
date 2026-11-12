@@ -64,9 +64,35 @@ fun BoxScope.PlaybackControls(
     onMuteToggle: () -> Unit,
     bass: Int,
     onBass: (Int) -> Unit,
+    /** Bucle A-B: tramo marcado (ticks, el fin no se incluye) o null. */
+    loopStartTick: Int?,
+    loopEndTick: Int?,
+    loopPicking: Boolean,
+    /** Número del primer compás elegido mientras se marca el tramo. */
+    loopFirstLabel: Int?,
+    onLoopButton: () -> Unit,
+    rightMuted: Boolean,
+    leftMuted: Boolean,
+    onRightMuted: () -> Unit,
+    onLeftMuted: () -> Unit,
+    dimMuted: Boolean,
+    onDimMuted: () -> Unit,
 ) {
     var panelOpen by remember { mutableStateOf(false) }
-    if (panelOpen) SpeedPanel(speed, onSpeed, bass, onBass)
+    if (panelOpen) SpeedPanel(speed, onSpeed, bass, onBass, rightMuted, leftMuted, onRightMuted, onLeftMuted, dimMuted, onDimMuted)
+    if (loopPicking) {
+        val hint = if (loopFirstLabel == null) "Tocá en la barra el compás donde empieza el tramo"
+        else "Compás $loopFirstLabel marcado. Ahora tocá donde termina"
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 62.dp)
+                .clip(RoundedCornerShape(14.dp))
+                .background(PaperColor)
+                .background(InkColor.copy(alpha = 0.12f))
+                .padding(horizontal = 14.dp, vertical = 8.dp),
+        ) { Text(hint, color = InkColor, fontSize = 14.sp) }
+    }
     Row(
         modifier = Modifier
             .align(Alignment.BottomCenter)
@@ -76,8 +102,10 @@ fun BoxScope.PlaybackControls(
     ) {
         RestartButton(onRestart)
         Spacer(Modifier.width(8.dp))
-        ProgressBar(Modifier.weight(1f), measureStarts, firstMeasureNumber, endTick, currentTick, onSeek)
-        Spacer(Modifier.width(8.dp))
+        ProgressBar(Modifier.weight(1f), measureStarts, firstMeasureNumber, endTick, currentTick, onSeek, loopStartTick, loopEndTick)
+        Spacer(Modifier.width(4.dp))
+        LoopButton(active = loopStartTick != null, picking = loopPicking, onClick = onLoopButton)
+        Spacer(Modifier.width(4.dp))
         SpeedButton(speed, bpm, open = panelOpen) { panelOpen = !panelOpen }
         Spacer(Modifier.width(4.dp))
         MuteButton(muted, onMuteToggle)
@@ -86,7 +114,18 @@ fun BoxScope.PlaybackControls(
 
 /** Panel de velocidad: atajos (50% a 150%) y deslizador de 25% a 200%. */
 @Composable
-private fun BoxScope.SpeedPanel(speed: Float, onSpeed: (Float) -> Unit, bass: Int, onBass: (Int) -> Unit) {
+private fun BoxScope.SpeedPanel(
+    speed: Float,
+    onSpeed: (Float) -> Unit,
+    bass: Int,
+    onBass: (Int) -> Unit,
+    rightMuted: Boolean,
+    leftMuted: Boolean,
+    onRightMuted: () -> Unit,
+    onLeftMuted: () -> Unit,
+    dimMuted: Boolean,
+    onDimMuted: () -> Unit,
+) {
     Column(
         modifier = Modifier
             .align(Alignment.BottomEnd)
@@ -160,6 +199,42 @@ private fun BoxScope.SpeedPanel(speed: Float, onSpeed: (Float) -> Unit, bass: In
                 }
             }
         }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("Suenan", color = InkColor.copy(alpha = 0.7f), fontSize = 13.sp, modifier = Modifier.padding(end = 6.dp))
+            for ((label, on, toggle) in listOf(Triple("Derecha", !rightMuted, onRightMuted), Triple("Izquierda", !leftMuted, onLeftMuted))) {
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(horizontal = 2.dp)
+                        .height(36.dp)
+                        .clip(RoundedCornerShape(18.dp))
+                        .background(if (on) InkColor.copy(alpha = 0.8f) else InkColor.copy(alpha = 0.08f))
+                        .clickable(onClick = toggle),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        if (on) label else "$label (silenciada)",
+                        color = if (on) PaperColor else InkColor.copy(alpha = 0.6f),
+                        fontSize = 12.sp,
+                        fontWeight = if (on) FontWeight.Bold else FontWeight.Normal,
+                    )
+                }
+            }
+        }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("Atenuar la mano silenciada", color = InkColor.copy(alpha = 0.7f), fontSize = 13.sp, modifier = Modifier.weight(1f).padding(start = 2.dp))
+            androidx.compose.material3.Switch(
+                checked = dimMuted,
+                onCheckedChange = { onDimMuted() },
+                colors = androidx.compose.material3.SwitchDefaults.colors(
+                    checkedThumbColor = PaperColor,
+                    checkedTrackColor = InkColor.copy(alpha = 0.8f),
+                    uncheckedThumbColor = PaperColor,
+                    uncheckedTrackColor = InkColor.copy(alpha = 0.25f),
+                    uncheckedBorderColor = Color.Transparent,
+                ),
+            )
+        }
     }
 }
 
@@ -193,6 +268,42 @@ private fun SpeedButton(speed: Float, bpm: () -> Float, open: Boolean, onClick: 
         paint.color = InkColor.copy(alpha = 0.6f).toArgb()
         paint.textSize = 10.dp.toPx()
         canvas.drawText("${Math.round(bpm())} bpm", center.x, center.y + 13.dp.toPx(), paint)
+    }
+}
+
+/** Bucle: dos flechas en círculo. Apagado, marcando (resaltado) o con un tramo activo (oscuro). */
+@Composable
+private fun LoopButton(active: Boolean, picking: Boolean, onClick: () -> Unit) {
+    Canvas(
+        modifier = Modifier
+            .size(48.dp)
+            .clickable(onClick = onClick),
+    ) {
+        val c = center
+        drawCircle(
+            if (active) InkColor.copy(alpha = 0.8f) else if (picking) PlayheadColor.copy(alpha = 0.25f) else InkColor.copy(alpha = 0.08f),
+            radius = 22.dp.toPx(), center = c,
+        )
+        val ink = if (active) PaperColor else InkColor.copy(alpha = 0.8f)
+        val r = 8.dp.toPx()
+        val stroke = androidx.compose.ui.graphics.drawscope.Stroke(width = 2.dp.toPx())
+        // Dos arcos con su flecha: el símbolo de repetir.
+        drawArc(ink, startAngle = 200f, sweepAngle = 140f, useCenter = false, topLeft = Offset(c.x - r, c.y - r), size = Size(2 * r, 2 * r), style = stroke)
+        drawArc(ink, startAngle = 20f, sweepAngle = 140f, useCenter = false, topLeft = Offset(c.x - r, c.y - r), size = Size(2 * r, 2 * r), style = stroke)
+        val a = Path().apply {
+            moveTo(c.x + r * 0.77f - 3.dp.toPx(), c.y - r * 0.64f - 4.dp.toPx())
+            lineTo(c.x + r * 0.77f + 4.dp.toPx(), c.y - r * 0.64f - 1.dp.toPx())
+            lineTo(c.x + r * 0.77f - 2.dp.toPx(), c.y - r * 0.64f + 4.dp.toPx())
+            close()
+        }
+        drawPath(a, ink, style = Fill)
+        val b = Path().apply {
+            moveTo(c.x - r * 0.77f + 3.dp.toPx(), c.y + r * 0.64f + 4.dp.toPx())
+            lineTo(c.x - r * 0.77f - 4.dp.toPx(), c.y + r * 0.64f + 1.dp.toPx())
+            lineTo(c.x - r * 0.77f + 2.dp.toPx(), c.y + r * 0.64f - 4.dp.toPx())
+            close()
+        }
+        drawPath(b, ink, style = Fill)
     }
 }
 
@@ -263,6 +374,8 @@ private fun ProgressBar(
     endTick: Int,
     currentTick: () -> Float,
     onSeek: (Int) -> Unit,
+    loopStartTick: Int?,
+    loopEndTick: Int?,
 ) {
     val textPaint = remember {
         Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -296,6 +409,13 @@ private fun ProgressBar(
         // Pista y parte ya recorrida.
         drawRoundRect(InkColor.copy(alpha = 0.14f), Offset(x0, y - thickness / 2), Size(x1 - x0, thickness), androidx.compose.ui.geometry.CornerRadius(thickness / 2))
         drawRoundRect(InkColor.copy(alpha = 0.55f), Offset(x0, y - thickness / 2), Size(maxOf(xNow - x0, thickness), thickness), androidx.compose.ui.geometry.CornerRadius(thickness / 2))
+
+        // Tramo del bucle, resaltado sobre la pista.
+        if (loopStartTick != null && loopEndTick != null && endTick > 0) {
+            val lx0 = x0 + (x1 - x0) * loopStartTick / endTick
+            val lx1 = x0 + (x1 - x0) * loopEndTick / endTick
+            drawRoundRect(PlayheadColor.copy(alpha = 0.30f), Offset(lx0, y - 9.dp.toPx()), Size(maxOf(lx1 - lx0, 6.dp.toPx()), 18.dp.toPx()), androidx.compose.ui.geometry.CornerRadius(5.dp.toPx()))
+        }
 
         // Una marca por compás (si no quedan demasiado juntas).
         var lastX = -100f

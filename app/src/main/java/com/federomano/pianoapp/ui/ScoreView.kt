@@ -36,6 +36,9 @@ import androidx.compose.ui.platform.LocalContext
 import com.federomano.pianoapp.audio.NoteTrigger
 import com.federomano.pianoapp.audio.PianoMapping
 import com.federomano.pianoapp.audio.PianoPlayer
+import com.federomano.pianoapp.score.Hand
+import com.federomano.pianoapp.score.Loop
+import com.federomano.pianoapp.score.Note
 import com.federomano.pianoapp.score.Score
 import com.federomano.pianoapp.score.playedNotes
 import com.federomano.pianoapp.score.velocityOf
@@ -44,6 +47,7 @@ import com.federomano.pianoapp.score.TempoMap
 import com.federomano.pianoapp.score.layout.DrawOp
 import com.federomano.pianoapp.score.layout.Geometry
 import com.federomano.pianoapp.score.layout.GlyphOp
+import com.federomano.pianoapp.score.layout.HandBands
 import com.federomano.pianoapp.score.layout.PolygonOp
 import com.federomano.pianoapp.score.layout.RectOp
 import com.federomano.pianoapp.score.layout.ScoreLayout
@@ -59,6 +63,9 @@ private const val SOUND_START_TOLERANCE_TICKS = 24f
 
 /** En pausa, velocidad mínima (espacios por segundo) con la que soltar el dedo deja a la partitura deslizándose. */
 private const val MIN_FLING_SPEED = 1.5f
+
+/** Cuánto se ve la mano silenciada cuando se atenúa. */
+private const val MUTED_HAND_ALPHA = 0.28f
 
 /** Alto que ocupan los controles de reproducción abajo (botones, barra y el texto del compás), en dp. */
 private const val CONTROLS_RESERVE_DP = 60f
@@ -82,6 +89,7 @@ private const val FLING_END_SPEED = 0.4f
 fun ScoreView(score: Score, modifier: Modifier = Modifier, maxStaffSpaceDp: Float = 17f) {
     val context = LocalContext.current
     val layout = remember(score) { ScoreLayout.build(score) }
+    val markHands = remember(layout) { layout.marks.map { HandBands.of(it) } }
     val musicFont = remember { Typeface.createFromAsset(context.assets, "fonts/Bravura.otf") }
     // NaN = todavía no se movió: se queda en el comienzo de la pieza.
     var scrollSp by remember { mutableFloatStateOf(Float.NaN) }
@@ -113,6 +121,26 @@ fun ScoreView(score: Score, modifier: Modifier = Modifier, maxStaffSpaceDp: Floa
         onDispose { player.stop() }
     }
     val trigger = remember(score) { NoteTrigger(score.playedNotes()) }
+
+    // Practicar una mano sola (PIA-22): cada mano se puede silenciar; la silenciada se atenúa en pantalla (opcional).
+    var rightMuted by remember(score) { mutableStateOf(false) }
+    var leftMuted by remember(score) { mutableStateOf(false) }
+    var dimMuted by remember { mutableStateOf(prefs.getBoolean("dimMuted", true)) }
+    LaunchedEffect(dimMuted) { prefs.edit().putBoolean("dimMuted", dimMuted).apply() }
+    val currentRightMuted by rememberUpdatedState(rightMuted)
+    val currentLeftMuted by rememberUpdatedState(leftMuted)
+    val playNote: (Note) -> Int = { note ->
+        val silenced = if (note.hand == Hand.RIGHT) currentRightMuted else currentLeftMuted
+        if (silenced) -1 else player.noteOn(note.pitch.midi, score.velocityOf(note))
+    }
+
+    // Bucle A-B (PIA-24): se marcan dos compases sobre la barra; el tramo se repite mientras reproduce.
+    var loopPicking by remember(score) { mutableStateOf(false) }
+    var loopFirst by remember(score) { mutableStateOf<Int?>(null) }
+    var loopMeasures by remember(score) { mutableStateOf<Pair<Int, Int>?>(null) }
+    val measureStartTicks = remember(layout) { layout.measures.map { it.measure.startTick } }
+    val loopTicks = loopMeasures?.let { (a, b) -> Loop.ticks(measureStartTicks, layout.endTick, a, b) }
+    val currentLoop by rememberUpdatedState(loopTicks)
 
     BoxWithConstraints(modifier = modifier.background(PaperColor)) {
         val density = LocalDensity.current.density
@@ -179,15 +207,24 @@ fun ScoreView(score: Score, modifier: Modifier = Modifier, maxStaffSpaceDp: Floa
                     val now = withFrameNanos { it }
                     val seconds = ((now - last) / 1_000_000_000f).coerceAtMost(0.1f)
                     last = now
+                    val before = tick
                     tick = tempoMap.advance(tick, seconds * currentSpeed)
+                    // Bucle: al llegar al final del tramo se vuelve a su inicio sin cortar la reproducción.
+                    currentLoop?.let { (loopStart, loopEnd) ->
+                        if (Loop.crossedEnd(before, tick, loopEnd)) {
+                            trigger.releaseAll(player::noteOff)
+                            tick = loopStart.toFloat()
+                            trigger.reset(tick)
+                        }
+                    }
                     if (tick >= end) {
                         scrollSp = layout.scrollForTick(end, currentPlayhead)
-                        trigger.advance(Float.MAX_VALUE, { player.noteOn(it.pitch.midi, score.velocityOf(it)) }, player::noteOff)
+                        trigger.advance(Float.MAX_VALUE, playNote, player::noteOff)
                         playing = false
                         break
                     }
                     scrollSp = layout.scrollForTick(tick, currentPlayhead)
-                    trigger.advance(tick, { player.noteOn(it.pitch.midi, score.velocityOf(it)) }, player::noteOff)
+                    trigger.advance(tick, playNote, player::noteOff)
                 }
             } finally {
                 // Pausa, salto o arrastre: lo que suena se apaga suavemente.
@@ -270,7 +307,7 @@ fun ScoreView(score: Score, modifier: Modifier = Modifier, maxStaffSpaceDp: Floa
                                             trigger.reset(clock - SOUND_START_TOLERANCE_TICKS)
                                             sound.armed = true
                                         }
-                                        trigger.advance(clock, { player.noteOn(it.pitch.midi, score.velocityOf(it)) }, player::noteOff)
+                                        trigger.advance(clock, playNote, player::noteOff)
                                     } else if (sound.armed) {
                                         trigger.releaseAll(player::noteOff)
                                         sound.armed = false
@@ -348,10 +385,14 @@ fun ScoreView(score: Score, modifier: Modifier = Modifier, maxStaffSpaceDp: Floa
             // 3) Barras de compás y números: pasan por encima del área fija y se desvanecen
             //    al acercarse a la clave.
             val fadeEnd = layout.signatureLeft
-            for (op in layout.marks) {
+            for ((i, op) in layout.marks.withIndex()) {
                 val x = (when (op) { is RectOp -> op.x; is TextOp -> op.x; is GlyphOp -> op.x; is PolygonOp -> op.minX }) - scroll + layout.headerWidth
                 if (x < 0f || x > widthPx / spPx) continue
-                val alpha = ((x - fadeEnd) / (layout.headerWidth - fadeEnd)).coerceIn(0f, 1f)
+                var alpha = ((x - fadeEnd) / (layout.headerWidth - fadeEnd)).coerceIn(0f, 1f)
+                if (dimMuted) {
+                    val hand = markHands[i]
+                    if ((hand == HandBands.RIGHT && rightMuted) || (hand == HandBands.LEFT && leftMuted)) alpha *= MUTED_HAND_ALPHA
+                }
                 paintOp(op, (layout.headerWidth - scroll) * spPx, alpha)
             }
 
@@ -371,10 +412,44 @@ fun ScoreView(score: Score, modifier: Modifier = Modifier, maxStaffSpaceDp: Floa
             endTick = layout.endTick,
             currentTick = { layout.tickAtScroll(if (scrollSp.isNaN()) minScroll else scrollSp, playheadSp) },
             onSeek = { tick ->
-                stopFling()
-                scrollSp = layout.scrollForTick(tick.toFloat(), playheadSp)
-                seek++
+                if (loopPicking) {
+                    // Marcando el bucle: el toque elige el compás en vez de saltar.
+                    val index = measureStartTicks.indexOfLast { it <= tick }.coerceAtLeast(0)
+                    val first = loopFirst
+                    if (first == null) {
+                        loopFirst = index
+                    } else {
+                        val range = Loop.ticks(measureStartTicks, layout.endTick, first, index)
+                        loopMeasures = minOf(first, index) to maxOf(first, index)
+                        loopPicking = false
+                        loopFirst = null
+                        stopFling()
+                        scrollSp = layout.scrollForTick(range.first.toFloat(), playheadSp)
+                        seek++
+                    }
+                } else {
+                    stopFling()
+                    scrollSp = layout.scrollForTick(tick.toFloat(), playheadSp)
+                    seek++
+                }
             },
+            loopStartTick = loopTicks?.first,
+            loopEndTick = loopTicks?.second,
+            loopPicking = loopPicking,
+            loopFirstLabel = loopFirst?.let { Loop.label(it, layout.measures.first().measure.number) },
+            onLoopButton = {
+                when {
+                    loopPicking -> { loopPicking = false; loopFirst = null }
+                    loopMeasures != null -> loopMeasures = null
+                    else -> loopPicking = true
+                }
+            },
+            rightMuted = rightMuted,
+            leftMuted = leftMuted,
+            onRightMuted = { rightMuted = !rightMuted },
+            onLeftMuted = { leftMuted = !leftMuted },
+            dimMuted = dimMuted,
+            onDimMuted = { dimMuted = !dimMuted },
             onRestart = {
                 stopFling()
                 scrollSp = minScroll
