@@ -43,6 +43,7 @@ import com.federomano.pianoapp.score.layout.NoteState
 import com.federomano.pianoapp.score.layout.NoteStates
 import com.federomano.pianoapp.score.layout.Zoom
 import com.federomano.pianoapp.audio.NoteTrigger
+import com.federomano.pianoapp.audio.Scratcher
 import com.federomano.pianoapp.audio.PianoMapping
 import com.federomano.pianoapp.audio.PianoPlayer
 import com.federomano.pianoapp.score.Hand
@@ -151,6 +152,7 @@ fun ScoreView(
         onDispose { player.stop() }
     }
     val trigger = remember(score) { NoteTrigger(score.playedNotes(), score.pedals) }
+    val scratcher = remember(score) { Scratcher(score.playedNotes()) }
 
     // Practicar una mano sola (PIA-22): cada mano se puede silenciar; la silenciada se atenúa en pantalla (opcional).
     var rightMuted by remember(score) { mutableStateOf(false) }
@@ -354,6 +356,34 @@ fun ScoreView(
             } finally {
                 // Pausa, salto o arrastre: lo que suena se apaga suavemente.
                 trigger.releaseAll(player::noteOff)
+            }
+        }
+
+        // Efecto vinilo (PIA-55): mientras la reproducción está suspendida (dedo abajo o inercia), suena lo que hay bajo la
+        // línea, frotado a la velocidad del gesto. Cuando la inercia ya va al ritmo normal, toman la posta las notas de siempre.
+        LaunchedEffect(holding, layout) {
+            if (!holding) return@LaunchedEffect
+            var last = withFrameNanos { it }
+            try {
+                while (true) {
+                    val now = withFrameNanos { it }
+                    val seconds = ((now - last) / 1_000_000_000f).coerceAtMost(0.1f)
+                    last = now
+                    if (sound.armed) {
+                        scratcher.stop()
+                    } else {
+                        val position = if (scrollSp.isNaN()) minScroll else scrollSp
+                        scratcher.update(
+                            tick = layout.tickAtScroll(position, currentPlayhead),
+                            frameSeconds = seconds,
+                            secondsSince = { startTick, tick -> tempoMap.secondsBetween(startTick.toFloat(), tick) / currentSpeed },
+                            silenced = { note -> if (note.hand == Hand.RIGHT) currentRightMuted else currentLeftMuted },
+                            start = { note, offset -> player.scratchOn(note.pitch.midi, score.velocityOf(note), offset) },
+                        )
+                    }
+                }
+            } finally {
+                scratcher.stop()
             }
         }
 

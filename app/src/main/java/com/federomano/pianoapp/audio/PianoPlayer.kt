@@ -97,6 +97,14 @@ class PianoPlayer(private val context: Context) {
         return mixer.noteOn(data, pick.rate * ratio, pick.gain)
     }
 
+    /** Efecto vinilo (PIA-55): una nota que se frota. [offsetSeconds] es el punto de la nota donde está la posición. Null si no suena. */
+    fun scratchOn(midi: Int, velocity: Int, offsetSeconds: Float): Mixer.ScratchVoice? {
+        if (muted) return null
+        val pick = PianoMapping.pick(midi, velocity, bass)
+        val data = samples[pick.fileName] ?: return null
+        return mixer.scratchOn(data, pick.rate * ratio, pick.rate.toDouble() * PianoMapping.SAMPLE_RATE, pick.gain, offsetSeconds)
+    }
+
     /** Un clic de metrónomo (acentuado en el primer tiempo). Suena aunque el piano esté silenciado. */
     fun click(accent: Boolean) {
         val volume = clickVolume.coerceIn(0f, 1f)
