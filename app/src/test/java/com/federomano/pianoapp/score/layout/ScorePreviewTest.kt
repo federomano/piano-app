@@ -72,6 +72,7 @@ class ScorePreviewTest {
         draw(layout.staff, headerPx - scrollSp * spPx, 1f)
         g.clip = previousClip
         draw(layout.fixed, 0f, 1f)
+        for (d in layout.clefDraws(scrollSp)) draw(d.ops, d.dx * spPx, d.alpha)
         for (d in layout.headerDraws(scrollSp, widthPx / spPx)) draw(d.ops, d.dx * spPx, d.alpha)
         for (op in layout.marks) {
             val x = (when (op) { is RectOp -> op.x; is TextOp -> op.x; is GlyphOp -> op.x; is PolygonOp -> op.minX }) - scrollSp + layout.headerWidth

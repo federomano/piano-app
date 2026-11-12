@@ -507,6 +507,7 @@ fun ScoreView(
 
             // 2) Área fija: líneas, llave y claves (no cambian nunca), y encima la armadura y el compás.
             paint(layout.fixed, 0f)
+            for (draw in layout.clefDraws(scroll)) paint(draw.ops, draw.dx * spPx, draw.alpha)
             for (draw in layout.headerDraws(scroll, widthPx / spPx)) paint(draw.ops, draw.dx * spPx, draw.alpha)
 
             // 3) Barras de compás y números: pasan por encima del área fija y se desvanecen

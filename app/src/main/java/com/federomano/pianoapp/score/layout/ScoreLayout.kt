@@ -108,6 +108,13 @@ class SignatureChange(
     val pinScroll: Float,
 )
 
+/**
+ * Cambio de la clave grande que queda fija a la izquierda (PIA-74): la de [hand] pasa a [clef]. La clave chica que viaja con la
+ * partitura llega al borde del área fija cuando el desplazamiento es [startScroll]; desde ahí hasta [endScroll] (donde ya se
+ * desvaneció del todo) la clave fija anterior se desvanece y la nueva aparece. Con el desplazamiento al revés, vuelve la anterior.
+ */
+class ClefHeaderChange(val hand: Hand, val clef: Clef, val startScroll: Float, val endScroll: Float)
+
 /** Un grupo de dibujos del área fija, corrido [dx] y con opacidad [alpha] (de 0 a 1). */
 data class HeaderDraw(val ops: List<DrawOp>, val dx: Float, val alpha: Float)
 
@@ -140,6 +147,9 @@ class ScoreLayout private constructor(
     private val labelBuilder: (names: Boolean, fingers: Boolean) -> List<NoteLabel> = { _, _ -> emptyList() },
     /** Qué marcas son de cada acorde (ordenados por tiempo), para resaltar el actual y atenuar lo ya tocado (PIA-16). */
     val chordSpans: List<ChordSpan> = emptyList(),
+    /** Claves con las que empieza cada mano y cómo cambia la clave fija a lo largo de la pieza. */
+    private val initialClefs: Map<Hand, Clef> = mapOf(Hand.RIGHT to Clef.TREBLE, Hand.LEFT to Clef.BASS),
+    val clefChanges: List<ClefHeaderChange> = emptyList(),
 ) {
     /** Nombres de nota y dedos (PIA-18) según lo que se quiera ver; viajan con la partitura pero no forman parte de [marks]. */
     fun labels(names: Boolean, fingers: Boolean): List<NoteLabel> = labelBuilder(names, fingers)
@@ -199,8 +209,36 @@ class ScoreLayout private constructor(
     private fun currentOps(scrollX: Float): List<DrawOp> =
         changes.lastOrNull { it.pinScroll <= scrollX }?.ops ?: initial
 
+    private fun clefGlyph(hand: Hand, clef: Clef): List<DrawOp> {
+        val top = if (hand == Hand.RIGHT) Geometry.TREBLE_TOP else Geometry.BASS_TOP
+        return listOf(if (clef == Clef.TREBLE) GlyphOp(Smufl.G_CLEF, CLEF_X, top + 3f) else GlyphOp(Smufl.F_CLEF, CLEF_X, top + 1f))
+    }
+
+    /** La clave vigente de cada mano con ese desplazamiento, sin contar transiciones en curso. */
+    private fun currentClefs(scrollX: Float): List<DrawOp> = Hand.entries.flatMap { hand ->
+        val done = clefChanges.lastOrNull { it.hand == hand && it.endScroll <= scrollX }
+        clefGlyph(hand, done?.clef ?: initialClefs.getValue(hand))
+    }
+
+    /**
+     * Las claves fijas a dibujar con ese desplazamiento. Cuando la clave chica de un cambio llega al área fija, la clave
+     * de esa mano se va desvaneciendo y aparece la nueva en su lugar.
+     */
+    fun clefDraws(scrollX: Float): List<HeaderDraw> {
+        val out = mutableListOf<HeaderDraw>()
+        for (hand in Hand.entries) {
+            val mine = clefChanges.filter { it.hand == hand }
+            val current = mine.lastOrNull { it.endScroll <= scrollX }?.clef ?: initialClefs.getValue(hand)
+            val next = mine.firstOrNull { it.endScroll > scrollX }
+            val p = if (next == null) 0f else ((scrollX - next.startScroll) / (next.endScroll - next.startScroll)).coerceIn(0f, 1f)
+            out += HeaderDraw(clefGlyph(hand, current), 0f, 1f - p)
+            if (next != null && p > 0f) out += HeaderDraw(clefGlyph(hand, next.clef), 0f, p)
+        }
+        return out
+    }
+
     /** Lo que está fijo a la izquierda con ese desplazamiento, sin contar transiciones en curso. */
-    fun headerAt(scrollX: Float): Header = Header(fixed + currentOps(scrollX), headerWidth)
+    fun headerAt(scrollX: Float): Header = Header(fixed + currentClefs(scrollX) + currentOps(scrollX), headerWidth)
 
     /** Avance de un cambio: 0 cuando toca el borde del área fija, 1 cuando coincide con su lugar fijo. */
     fun progress(change: SignatureChange, scrollX: Float): Float {
@@ -264,6 +302,7 @@ class ScoreLayout private constructor(
             val labelAt = mutableListOf<Pair<Int, Float>>()
             val inline = mutableListOf<DrawOp>()
             val changes = mutableListOf<SignatureChange>()
+            val clefHeader = mutableListOf<ClefHeaderChange>()
             val laidOut = mutableListOf<MeasureLayout>()
             val perTick = quarterWidth / TICKS_PER_QUARTER
 
@@ -289,6 +328,8 @@ class ScoreLayout private constructor(
                 val clefChanges = if (index == 0) emptyList() else score.clefs.filter { it.startTick == m.startTick && score.clefAt(it.hand, m.startTick - 1) != it.clef }
                 if (clefChanges.isNotEmpty()) {
                     for (c in clefChanges) {
+                        val clefX = cursor + CLEF_CHANGE_LEAD
+                        clefHeader += ClefHeaderChange(c.hand, c.clef, clefX, clefX + headerWidth - SIGNATURE_LEFT)
                         val top = if (c.hand == Hand.RIGHT) Geometry.TREBLE_TOP else Geometry.BASS_TOP
                         marks += if (c.clef == Clef.TREBLE) GlyphOp(Smufl.G_CLEF, cursor + CLEF_CHANGE_LEAD, top + 3f, CLEF_CHANGE_SCALE)
                         else GlyphOp(Smufl.F_CLEF, cursor + CLEF_CHANGE_LEAD, top + 1f, CLEF_CHANGE_SCALE)
@@ -379,9 +420,7 @@ class ScoreLayout private constructor(
             fixed += staffLines(SYSTEM_LEFT, headerWidth)
             fixed += GlyphOp(Smufl.BRACE, LEFT_PAD, Geometry.SYSTEM_BOTTOM, BRACE_SCALE)
             fixed += RectOp(SYSTEM_LEFT, 0f, Geometry.THIN_BARLINE, Geometry.SYSTEM_BOTTOM)
-            // Claves: sol en la línea de sol (la 2.ª desde abajo), fa en la línea de fa (la 4.ª desde abajo).
-            fixed += GlyphOp(Smufl.G_CLEF, CLEF_X, Geometry.TREBLE_TOP + 3f)
-            fixed += GlyphOp(Smufl.F_CLEF, CLEF_X, Geometry.BASS_TOP + 1f)
+            // Las claves no van acá: cambian con la pieza (ver [clefDraws]). Sol en la línea de sol (la 2.ª desde abajo), fa en la de fa (la 4.ª).
 
             val path = SmoothPath.build(
                 endTick = timed.last().measure.endTick.toFloat(),
@@ -395,6 +434,7 @@ class ScoreLayout private constructor(
             return ScoreLayout(
                 timed, staffLines(-STAFF_LEAD, totalWidth), marks, inline, fixed, changes, initial,
                 headerWidth, SIGNATURE_LEFT, totalWidth, quarterWidth, path, marginTop, marginBottom, labelBuilder, chordSpans,
+                Hand.entries.associateWith { score.clefAt(it, first.startTick) }, clefHeader,
             )
         }
 
