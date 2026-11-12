@@ -153,6 +153,9 @@ fun ScoreView(
     }
     val trigger = remember(score) { NoteTrigger(score.playedNotes(), score.pedals) }
     val scratcher = remember(score) { Scratcher(score.playedNotes()) }
+    var scratchSound by remember { mutableStateOf(prefs.getBoolean("scratch", true)) }
+    LaunchedEffect(scratchSound) { prefs.edit().putBoolean("scratch", scratchSound).apply() }
+    val currentScratchSound by rememberUpdatedState(scratchSound)
 
     // Practicar una mano sola (PIA-22): cada mano se puede silenciar; la silenciada se atenúa en pantalla (opcional).
     var rightMuted by remember(score) { mutableStateOf(false) }
@@ -369,7 +372,7 @@ fun ScoreView(
                     val now = withFrameNanos { it }
                     val seconds = ((now - last) / 1_000_000_000f).coerceAtMost(0.1f)
                     last = now
-                    if (sound.armed) {
+                    if (sound.armed || !currentScratchSound) {
                         scratcher.stop()
                     } else {
                         val position = if (scrollSp.isNaN()) minScroll else scrollSp
@@ -656,6 +659,8 @@ fun ScoreView(
             onCountIn = { countIn = !countIn },
             clickVolume = clickVolume,
             onClickVolume = { clickVolume = it },
+            scratch = scratchSound,
+            onScratch = { scratchSound = !scratchSound },
         )
         if (countInBeat > 0) {
             Box(modifier = Modifier.align(Alignment.Center)) {

@@ -101,6 +101,9 @@ fun BoxScope.PlaybackControls(
     onCountIn: () -> Unit,
     clickVolume: Float,
     onClickVolume: (Float) -> Unit,
+    /** Sonido de vinilo al arrastrar la partitura (PIA-55). */
+    scratch: Boolean,
+    onScratch: () -> Unit,
 ) {
     var panelOpen by remember { mutableStateOf(false) }
     if (panelOpen) {
@@ -110,6 +113,7 @@ fun BoxScope.PlaybackControls(
             highlight, onHighlight,
             showNames, onShowNames, showFingers, hasFingers, onShowFingers,
             metronome, onMetronome, countIn, onCountIn, clickVolume, onClickVolume,
+            scratch, onScratch,
         )
     }
     if (loopPicking) {
@@ -173,6 +177,9 @@ private fun BoxScope.SpeedPanel(
     onCountIn: () -> Unit,
     clickVolume: Float,
     onClickVolume: (Float) -> Unit,
+    /** Sonido de vinilo al arrastrar la partitura (PIA-55). */
+    scratch: Boolean,
+    onScratch: () -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -307,6 +314,7 @@ private fun BoxScope.SpeedPanel(
             }
         }
         PanelSwitch("Atenuar la mano silenciada", dimMuted, onDimMuted)
+        PanelSwitch("Sonido de scratch al arrastrar", scratch, onScratch)
         PanelSwitch("Resaltar la nota que toca", highlight, onHighlight)
         PanelSwitch("Nombre de las notas (Do, Re, Mi)", showNames, onShowNames)
         PanelSwitch(if (hasFingers) "Dedos (1 a 5)" else "Dedos (esta partitura no los trae)", showFingers && hasFingers, { if (hasFingers) onShowFingers() })
