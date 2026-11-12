@@ -37,7 +37,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.material3.Text
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.sp
+import androidx.compose.runtime.SideEffect
 import com.federomano.pianoapp.audio.Metronome
+import com.federomano.pianoapp.score.layout.Zoom
 import com.federomano.pianoapp.audio.NoteTrigger
 import com.federomano.pianoapp.audio.PianoMapping
 import com.federomano.pianoapp.audio.PianoPlayer
@@ -147,6 +149,11 @@ fun ScoreView(score: Score, modifier: Modifier = Modifier, maxStaffSpaceDp: Floa
     val noteLabels = remember(layout, showNames, showFingers) { layout.labels(showNames, showFingers) }
     val hasFingers = remember(score) { score.notes.any { it.finger != null } }
 
+    // Tamaño de la partitura (PIA-17).
+    var zoom by remember { mutableFloatStateOf(prefs.getFloat("zoom", Zoom.DEFAULT)) }
+    LaunchedEffect(zoom) { prefs.edit().putFloat("zoom", zoom).apply() }
+    var zoomLimit by remember { mutableFloatStateOf(Zoom.MAX) }
+
     // Metrónomo y cuenta (PIA-23): el clic cae en cada tiempo según la firma de compás; la cuenta es un compás de clics
     // antes de arrancar. El volumen del clic es aparte del piano.
     var metronome by remember { mutableStateOf(prefs.getBoolean("metronome", false)) }
@@ -181,7 +188,13 @@ fun ScoreView(score: Score, modifier: Modifier = Modifier, maxStaffSpaceDp: Floa
         val heightPx = constraints.maxHeight.toFloat()
         // Un espacio de pentagrama: lo que entre en el alto, sin pasarse de un tamaño cómodo de leer.
         // Los controles de reproducción tapan el borde de abajo: si la partitura llega hasta ahí, se achica un poco (PIA-72).
-        val fit = layout.fit(heightPx, maxStaffSpaceDp * density, CONTROLS_RESERVE_DP * density, noteLabels)
+        val controlsPx = CONTROLS_RESERVE_DP * density
+        val base = layout.fit(heightPx, maxStaffSpaceDp * density, controlsPx, noteLabels)
+        // Tamaño a gusto (PIA-17): multiplica el tamaño justo; se recuerda.
+        val zoomMax = Zoom.max(heightPx, controlsPx, base.spPx)
+        val zoomNow = Zoom.clamp(zoom, zoomMax)
+        SideEffect { zoomLimit = zoomMax }
+        val fit = Zoom.apply(base, zoomNow, heightPx, controlsPx)
         val spPx = fit.spPx
 
         // Línea de reproducción: fija en pantalla. El desplazamiento mínimo deja el comienzo de la pieza
@@ -191,6 +204,17 @@ fun ScoreView(score: Score, modifier: Modifier = Modifier, maxStaffSpaceDp: Floa
         val maxScroll = layout.scrollForTick(layout.endTick.toFloat(), playheadSp)
         val currentPlayhead by rememberUpdatedState(playheadSp)
         val currentMin by rememberUpdatedState(minScroll)
+
+        // Al cambiar el tamaño (o girar el celular) la línea de reproducción cambia de lugar en espacios de pentagrama:
+        // se reacomoda para que siga sobre la misma nota. Sonando, el avance ya lo hace solo.
+        val lastPlayhead = remember { floatArrayOf(Float.NaN) }
+        LaunchedEffect(playheadSp) {
+            val before = lastPlayhead[0]
+            if (!before.isNaN() && before != playheadSp && !scrollSp.isNaN()) {
+                scrollSp = layout.scrollForTick(layout.tickAtScroll(scrollSp, before), playheadSp)
+            }
+            lastPlayhead[0] = playheadSp
+        }
 
         // Arrastre tipo vinilo: mientras el dedo está abajo, o la partitura sigue deslizándose por inercia,
         // la reproducción se suspende ([holding]); al terminar retoma desde donde quedó, y si estaba en
@@ -541,6 +565,9 @@ fun ScoreView(score: Score, modifier: Modifier = Modifier, maxStaffSpaceDp: Floa
             onMuteToggle = { muted = !muted },
             bass = bass,
             onBass = { bass = it },
+            zoom = Zoom.clamp(zoom, zoomLimit),
+            zoomMax = zoomLimit,
+            onZoom = { zoom = it },
             showNames = showNames,
             onShowNames = { showNames = !showNames },
             showFingers = showFingers,

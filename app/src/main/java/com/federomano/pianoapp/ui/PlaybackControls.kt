@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import com.federomano.pianoapp.score.layout.Zoom
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -80,6 +81,10 @@ fun BoxScope.PlaybackControls(
     onLeftMuted: () -> Unit,
     dimMuted: Boolean,
     onDimMuted: () -> Unit,
+    /** Tamaño de la partitura (1 = el justo para la pantalla) y hasta dónde se puede agrandar. */
+    zoom: Float,
+    zoomMax: Float,
+    onZoom: (Float) -> Unit,
     /** Ayudas para leer: nombre de las notas y dedos (si la partitura los trae). */
     showNames: Boolean,
     onShowNames: () -> Unit,
@@ -98,6 +103,7 @@ fun BoxScope.PlaybackControls(
     if (panelOpen) {
         SpeedPanel(
             speed, onSpeed, bass, onBass, rightMuted, leftMuted, onRightMuted, onLeftMuted, dimMuted, onDimMuted,
+            zoom, zoomMax, onZoom,
             showNames, onShowNames, showFingers, hasFingers, onShowFingers,
             metronome, onMetronome, countIn, onCountIn, clickVolume, onClickVolume,
         )
@@ -147,6 +153,9 @@ private fun BoxScope.SpeedPanel(
     onLeftMuted: () -> Unit,
     dimMuted: Boolean,
     onDimMuted: () -> Unit,
+    zoom: Float,
+    zoomMax: Float,
+    onZoom: (Float) -> Unit,
     showNames: Boolean,
     onShowNames: () -> Unit,
     showFingers: Boolean,
@@ -211,6 +220,22 @@ private fun BoxScope.SpeedPanel(
                 modifier = Modifier.weight(1f).padding(horizontal = 6.dp),
             )
             Text("200%", color = InkColor.copy(alpha = 0.6f), fontSize = 11.sp)
+        }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("Tamaño ${(zoom * 100).toInt()}%", color = InkColor.copy(alpha = 0.7f), fontSize = 13.sp, modifier = Modifier.width(84.dp).padding(start = 2.dp))
+            Slider(
+                value = zoom,
+                onValueChange = { onZoom((Math.round(it * 20f) / 20f).coerceIn(Zoom.MIN, zoomMax)) },
+                valueRange = Zoom.MIN..maxOf(zoomMax, Zoom.MIN + 0.05f),
+                colors = SliderDefaults.colors(
+                    thumbColor = PlayheadColor,
+                    activeTrackColor = InkColor.copy(alpha = 0.6f),
+                    inactiveTrackColor = InkColor.copy(alpha = 0.18f),
+                    activeTickColor = Color.Transparent,
+                    inactiveTickColor = Color.Transparent,
+                ),
+                modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
+            )
         }
         PanelSwitch("Metrónomo (clic en cada tiempo)", metronome, onMetronome)
         PanelSwitch("Cuenta de un compás al empezar", countIn, onCountIn)
