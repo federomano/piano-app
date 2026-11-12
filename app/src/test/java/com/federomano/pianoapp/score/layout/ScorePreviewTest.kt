@@ -22,8 +22,11 @@ class ScorePreviewTest {
     private val paper = Color(0xF6, 0xF3, 0xEA)
     private val ink = Color(0x1A, 0x1A, 0x1A)
 
-    private fun render(layout: ScoreLayout, scrollSp: Float, widthPx: Int, spPx: Float, music: Font): BufferedImage {
-        val heightPx = (layout.totalHeight * spPx).toInt()
+    private fun render(layout: ScoreLayout, scrollSp: Float, widthPx: Int, spPx: Float, music: Font, labels: List<NoteLabel> = emptyList()): BufferedImage {
+        val labelBoxes = Extents.boxes(labels.map { it.op })
+        val mt = if (labelBoxes.isEmpty()) layout.marginTop else maxOf(layout.marginTop, -labelBoxes.minOf { it.top } + 0.5f)
+        val mb = if (labelBoxes.isEmpty()) layout.marginBottom else maxOf(layout.marginBottom, labelBoxes.maxOf { it.bottom } - Geometry.SYSTEM_BOTTOM + 0.5f)
+        val heightPx = ((mt + Geometry.SYSTEM_BOTTOM + mb) * spPx).toInt()
         val image = BufferedImage(widthPx, heightPx, BufferedImage.TYPE_INT_RGB)
         val g = image.createGraphics()
         g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
@@ -57,7 +60,7 @@ class ScorePreviewTest {
             }
         }
 
-        val dy = layout.marginTop * spPx
+        val dy = mt * spPx
         val headerPx = (layout.headerWidth * spPx).toInt()
         fun draw(ops: List<DrawOp>, dx: Float, alpha: Float) {
             g.composite = java.awt.AlphaComposite.getInstance(java.awt.AlphaComposite.SRC_OVER, alpha.coerceIn(0f, 1f))
@@ -75,6 +78,11 @@ class ScorePreviewTest {
             if (x < 0f || x > widthPx / spPx) continue
             val alpha = ((x - layout.signatureLeft) / (layout.headerWidth - layout.signatureLeft)).coerceIn(0f, 1f)
             draw(listOf(op), (layout.headerWidth - scrollSp) * spPx, alpha)
+        }
+        for (label in labels) {
+            val x = label.op.x - scrollSp + layout.headerWidth
+            if (x < 0f || x > widthPx / spPx) continue
+            draw(listOf(label.op), (layout.headerWidth - scrollSp) * spPx, 1f)
         }
         g.dispose()
         return image
@@ -115,6 +123,15 @@ class ScorePreviewTest {
             for (m in measures) {
                 val scroll = if (m == 0) 0f else layout.measures[m].x0 - layout.headerWidth + 0.1f
                 ImageIO.write(render(layout, scroll, 1900, 26f, music), "png", File(out, "ej-$id-${m + 1}.png"))
+            }
+        }
+        // Con los nombres de nota (y dedos, si los trae) a la vista.
+        for ((id, measures) in listOf("himno" to listOf(0, 3), "tresillos" to listOf(1, 2), "voces" to listOf(2, 3), "fusas" to listOf(1), "ejercicio" to listOf(0, 1))) {
+            val layout = ScoreLayout.build(com.federomano.pianoapp.score.ExampleScores.all.first { it.id == id }.create())
+            val labels = layout.labels(names = true, fingers = true)
+            for (m in measures) {
+                val scroll = if (m == 0) 0f else layout.measures[m].x0 - layout.headerWidth + 0.1f
+                ImageIO.write(render(layout, scroll, 1900, 26f, music, labels), "png", File(out, "ej-$id-nombres-${m + 1}.png"))
             }
         }
     }

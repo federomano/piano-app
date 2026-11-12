@@ -137,7 +137,11 @@ class ScoreLayout private constructor(
     /** Espacio libre arriba del pentagrama de la derecha y abajo del de la izquierda (alcanza para todo lo dibujado). */
     val marginTop: Float = Geometry.MARGIN_TOP,
     val marginBottom: Float = Geometry.MARGIN_BOTTOM,
+    private val labelBuilder: (names: Boolean, fingers: Boolean) -> List<NoteLabel> = { _, _ -> emptyList() },
 ) {
+    /** Nombres de nota y dedos (PIA-18) según lo que se quiera ver; viajan con la partitura pero no forman parte de [marks]. */
+    fun labels(names: Boolean, fingers: Boolean): List<NoteLabel> = labelBuilder(names, fingers)
+
     /** Alto total que hay que mostrar, en espacios de pentagrama. */
     val totalHeight: Float get() = marginTop + Geometry.SYSTEM_BOTTOM + marginBottom
 
@@ -149,13 +153,18 @@ class ScoreLayout private constructor(
      * los controles de reproducción: si lo dibujado llega hasta ahí (notas muy graves, dinámicas), se achica un poco para que quede arriba.
      * Las partituras comunes (con el margen de siempre) quedan exactamente como estaban.
      */
-    fun fit(heightPx: Float, maxSpPx: Float, controlsPx: Float): Fit {
-        fun topFor(sp: Float) = (heightPx - totalHeight * sp) / 2f + marginTop * sp
-        val belowSystem = Geometry.SYSTEM_BOTTOM + marginBottom - EDGE_PAD
-        val plain = minOf(maxSpPx, heightPx / totalHeight)
-        if (marginBottom <= Geometry.MARGIN_BOTTOM || topFor(plain) + belowSystem * plain <= heightPx - controlsPx) return Fit(plain, topFor(plain))
-        val sp = minOf(plain, (heightPx - controlsPx) / (marginTop + belowSystem))
-        return Fit(sp, marginTop * sp)
+    fun fit(heightPx: Float, maxSpPx: Float, controlsPx: Float, labels: List<NoteLabel> = emptyList()): Fit {
+        // Los nombres de nota y dedos, si se ven, pueden pedir más lugar arriba o abajo.
+        val boxes = Extents.boxes(labels.map { it.op })
+        val mt = if (boxes.isEmpty()) marginTop else max(marginTop, -boxes.minOf { it.top } + EDGE_PAD)
+        val mb = if (boxes.isEmpty()) marginBottom else max(marginBottom, boxes.maxOf { it.bottom } - Geometry.SYSTEM_BOTTOM + EDGE_PAD)
+        val total = mt + Geometry.SYSTEM_BOTTOM + mb
+        fun topFor(sp: Float) = (heightPx - total * sp) / 2f + mt * sp
+        val belowSystem = Geometry.SYSTEM_BOTTOM + mb - EDGE_PAD
+        val plain = minOf(maxSpPx, heightPx / total)
+        if (mb <= Geometry.MARGIN_BOTTOM || topFor(plain) + belowSystem * plain <= heightPx - controlsPx) return Fit(plain, topFor(plain))
+        val sp = minOf(plain, (heightPx - controlsPx) / (mt + belowSystem))
+        return Fit(sp, mt * sp)
     }
 
     /** Todo lo que viaja con la partitura (para pruebas): líneas, marcas y cambios en su lugar dentro del compás. */
@@ -350,6 +359,10 @@ class ScoreLayout private constructor(
                 val clearTop = Extents.highest(aboveBoxes, labelX - 0.3f, labelX + width + 0.3f, 0f)
                 marks += TextOp(text, labelX, minOf(BAR_LABEL_BASELINE, clearTop - 0.4f), BAR_LABEL_SIZE)
             }
+            // Nombres de nota y dedos (PIA-18): se calculan al mostrarse; si hace falta más margen, lo pide [fit].
+            val labelObstacles = Extents.boxes(marks)
+            val xOf = { tick: Int -> timed[timed.indexOfLast { it.measure.startTick <= tick }.coerceAtLeast(0)].xOfTick(tick) }
+            val labelBuilder = { names: Boolean, fingers: Boolean -> NoteLabelLayout.build(score, xOf, labelObstacles, names, fingers) }
             // Margen arriba y abajo según lo que de verdad se dibujó: nada queda cortado ni tapado por los controles.
             val all = Extents.boxes(marks)
             val marginTop = max(Geometry.MARGIN_TOP, -all.minOf { it.top } + EDGE_PAD)
@@ -373,7 +386,7 @@ class ScoreLayout private constructor(
             val initial = piece(first.keyFifths, first.timeSignature.numerator, first.timeSignature.denominator).first
             return ScoreLayout(
                 timed, staffLines(-STAFF_LEAD, totalWidth), marks, inline, fixed, changes, initial,
-                headerWidth, SIGNATURE_LEFT, totalWidth, quarterWidth, path, marginTop, marginBottom,
+                headerWidth, SIGNATURE_LEFT, totalWidth, quarterWidth, path, marginTop, marginBottom, labelBuilder,
             )
         }
 

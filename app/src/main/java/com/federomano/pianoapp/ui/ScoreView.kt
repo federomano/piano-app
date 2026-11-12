@@ -139,6 +139,14 @@ fun ScoreView(score: Score, modifier: Modifier = Modifier, maxStaffSpaceDp: Floa
         if (silenced) -1 else player.noteOn(note.pitch.midi, score.velocityOf(note))
     }
 
+    // Ayudas para leer (PIA-18): nombre de las notas y dedos, cada una con su interruptor.
+    var showNames by remember { mutableStateOf(prefs.getBoolean("showNames", false)) }
+    var showFingers by remember { mutableStateOf(prefs.getBoolean("showFingers", false)) }
+    LaunchedEffect(showNames) { prefs.edit().putBoolean("showNames", showNames).apply() }
+    LaunchedEffect(showFingers) { prefs.edit().putBoolean("showFingers", showFingers).apply() }
+    val noteLabels = remember(layout, showNames, showFingers) { layout.labels(showNames, showFingers) }
+    val hasFingers = remember(score) { score.notes.any { it.finger != null } }
+
     // Metrónomo y cuenta (PIA-23): el clic cae en cada tiempo según la firma de compás; la cuenta es un compás de clics
     // antes de arrancar. El volumen del clic es aparte del piano.
     var metronome by remember { mutableStateOf(prefs.getBoolean("metronome", false)) }
@@ -173,7 +181,7 @@ fun ScoreView(score: Score, modifier: Modifier = Modifier, maxStaffSpaceDp: Floa
         val heightPx = constraints.maxHeight.toFloat()
         // Un espacio de pentagrama: lo que entre en el alto, sin pasarse de un tamaño cómodo de leer.
         // Los controles de reproducción tapan el borde de abajo: si la partitura llega hasta ahí, se achica un poco (PIA-72).
-        val fit = layout.fit(heightPx, maxStaffSpaceDp * density, CONTROLS_RESERVE_DP * density)
+        val fit = layout.fit(heightPx, maxStaffSpaceDp * density, CONTROLS_RESERVE_DP * density, noteLabels)
         val spPx = fit.spPx
 
         // Línea de reproducción: fija en pantalla. El desplazamiento mínimo deja el comienzo de la pieza
@@ -455,6 +463,15 @@ fun ScoreView(score: Score, modifier: Modifier = Modifier, maxStaffSpaceDp: Floa
                 paintOp(op, (layout.headerWidth - scroll) * spPx, alpha)
             }
 
+            // 3b) Nombres de nota y dedos: viajan con la partitura, se desvanecen igual y siguen a su mano si está atenuada.
+            for (label in noteLabels) {
+                val x = label.op.x - scroll + layout.headerWidth
+                if (x < 0f || x > widthPx / spPx) continue
+                var alpha = ((x - fadeEnd) / (layout.headerWidth - fadeEnd)).coerceIn(0f, 1f)
+                if (dimMuted && ((label.hand == Hand.RIGHT && rightMuted) || (label.hand == Hand.LEFT && leftMuted))) alpha *= MUTED_HAND_ALPHA
+                paintOp(label.op, (layout.headerWidth - scroll) * spPx, alpha)
+            }
+
             // 4) Línea de reproducción, siempre en el mismo lugar de la pantalla.
             val lineX = playheadSp * spPx
             drawLine(
@@ -524,6 +541,11 @@ fun ScoreView(score: Score, modifier: Modifier = Modifier, maxStaffSpaceDp: Floa
             onMuteToggle = { muted = !muted },
             bass = bass,
             onBass = { bass = it },
+            showNames = showNames,
+            onShowNames = { showNames = !showNames },
+            showFingers = showFingers,
+            hasFingers = hasFingers,
+            onShowFingers = { showFingers = !showFingers },
             metronome = metronome,
             onMetronome = { metronome = !metronome },
             countIn = countIn,

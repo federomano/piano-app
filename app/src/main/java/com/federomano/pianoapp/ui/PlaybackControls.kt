@@ -80,6 +80,12 @@ fun BoxScope.PlaybackControls(
     onLeftMuted: () -> Unit,
     dimMuted: Boolean,
     onDimMuted: () -> Unit,
+    /** Ayudas para leer: nombre de las notas y dedos (si la partitura los trae). */
+    showNames: Boolean,
+    onShowNames: () -> Unit,
+    showFingers: Boolean,
+    hasFingers: Boolean,
+    onShowFingers: () -> Unit,
     /** Metrónomo: clic en cada tiempo, cuenta de un compás antes de empezar y volumen del clic (0..1). */
     metronome: Boolean,
     onMetronome: () -> Unit,
@@ -92,6 +98,7 @@ fun BoxScope.PlaybackControls(
     if (panelOpen) {
         SpeedPanel(
             speed, onSpeed, bass, onBass, rightMuted, leftMuted, onRightMuted, onLeftMuted, dimMuted, onDimMuted,
+            showNames, onShowNames, showFingers, hasFingers, onShowFingers,
             metronome, onMetronome, countIn, onCountIn, clickVolume, onClickVolume,
         )
     }
@@ -140,6 +147,11 @@ private fun BoxScope.SpeedPanel(
     onLeftMuted: () -> Unit,
     dimMuted: Boolean,
     onDimMuted: () -> Unit,
+    showNames: Boolean,
+    onShowNames: () -> Unit,
+    showFingers: Boolean,
+    hasFingers: Boolean,
+    onShowFingers: () -> Unit,
     metronome: Boolean,
     onMetronome: () -> Unit,
     countIn: Boolean,
@@ -264,6 +276,8 @@ private fun BoxScope.SpeedPanel(
             }
         }
         PanelSwitch("Atenuar la mano silenciada", dimMuted, onDimMuted)
+        PanelSwitch("Nombre de las notas (Do, Re, Mi)", showNames, onShowNames)
+        PanelSwitch(if (hasFingers) "Dedos (1 a 5)" else "Dedos (esta partitura no los trae)", showFingers && hasFingers, { if (hasFingers) onShowFingers() })
     }
 }
 
