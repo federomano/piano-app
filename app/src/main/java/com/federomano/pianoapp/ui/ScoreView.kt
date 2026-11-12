@@ -150,7 +150,7 @@ fun ScoreView(
         player.start()
         onDispose { player.stop() }
     }
-    val trigger = remember(score) { NoteTrigger(score.playedNotes()) }
+    val trigger = remember(score) { NoteTrigger(score.playedNotes(), score.pedals) }
 
     // Practicar una mano sola (PIA-22): cada mano se puede silenciar; la silenciada se atenúa en pantalla (opcional).
     var rightMuted by remember(score) { mutableStateOf(false) }

@@ -20,6 +20,7 @@ Para el profesor de piano. La meta es **un solo archivo `bach-a-la-jazz.json`** 
 | Ligaduras de duración | Partir en la barra de compás con `tiedToNext`. |
 | Cambios de clave (compases 54–58: la izquierda pasa a clave de sol; la derecha a clave de fa en el 57) | **Sí existen:** lista `"clefs"` con `{ "hand": "left", "startTick": …, "clef": "treble" }` en el tick donde empieza el compás 54 (y `"bass"` para volver a fa donde corresponda); lo mismo con `"hand": "right"` y `"bass"` desde el 57. Cada nota sigue en la mano que la toca, con su altura real: la clave solo cambia cómo se dibuja. Mirar en el PDF/XML dónde vuelve cada clave. |
 | Signo 8va (compases 55–56) | **Sí existe:** lista `"ottavas"` con `{ "hand": "right", "startTick": …, "endTick": …, "kind": "8va" }`. Las alturas se escriben como suenan (igual que antes); la app las dibuja una octava más abajo y pone el signo con la línea punteada. `startTick` es el inicio de la primera nota del tramo y `endTick` donde termina la última nota con 8va (sin incluirla). Mirar en el PDF/XML hasta dónde llega la línea punteada y en qué mano está. |
+| Pedal («Ped.» en el compás 24 y al final, compases 58–59) | **Sí existe:** lista `"pedals"` con `{ "startTick": …, "endTick": … }`: `startTick` donde aparece «Ped.» y `endTick` donde está la estrella (o el ^ si cambia). Mirar en el PDF/XML dónde se aprieta y dónde se suelta. |
 | Compás 58, posibles fusas | **Sí se pueden:** una fusa dura 60 ticks y se escribe sin `"tuplet"`. Reemplazar el grupo "4:2" de semicorcheas que se usaba antes por fusas comunes de 60 ticks (se dibujan con tres barras). El sonido es el mismo. |
 | Dinámicas (mf en el compás 0, mp en el 7, f en el 51, ff en el 55) | `"dynamics"`: `{ "startTick": …, "level": "mf" }` en el tick donde empieza ese compás. Cuenta de ticks: el compás 0 empieza en 0; el compás N (de 1 en adelante) empieza en `480 + (N − 1) × 1440`. |
 | Crescendo que empieza en el compás 47 (dice «cresc.» escrito: llega hasta el f del 51) y regulador del 54 (termina en el ff del 55) | `"hairpins"`: `{ "startTick": …, "endTick": …, "kind": "crescendo" }` (o `"diminuendo"`; mirar en el PDF para qué lado abre). Si termina en una dinámica (por ejemplo el f del 51), esa dinámica va en el `endTick`. Sin superponerse. |
@@ -31,7 +32,7 @@ Para el profesor de piano. La meta es **un solo archivo `bach-a-la-jazz.json`** 
 
 (Las dinámicas, los reguladores, el staccato y los acentos **sí** se escriben, ver arriba.)
 
-Pedal (24 y 58–59) y los textos «light, staccato» / «swing feel». Decir qué se omitió y dónde.
+Los textos «light, staccato» / «swing feel». Decir qué se omitió y dónde.
 
 ## Cómo trabajar
 

@@ -359,6 +359,17 @@ class Validador(unittest.TestCase):
         self.assertProblema(con(lambda d: d.update(ottavas=[{"hand": "right", "startTick": 5000, "endTick": 6000, "kind": "8vb"}])),
                             "ninguna nota")
 
+    def test_pedal(self):
+        ok = con(lambda d: d.update(pedals=[{"startTick": 0, "endTick": 960}, {"startTick": 960, "endTick": 1920}]))
+        self.assertEqual(v.validate(ok), [])
+        self.assertProblema(con(lambda d: d.update(pedals=[{"startTick": 960, "endTick": 960}])),
+                            "endTick mayor que startTick")
+        self.assertProblema(con(lambda d: d.update(pedals=[{"startTick": 0, "endTick": 1000}, {"startTick": 900, "endTick": 1920}])),
+                            "sin superponerse")
+        self.assertProblema(con(lambda d: d.update(pedals=[{"startTick": 0, "endTick": 99999}])),
+                            "termina después del final")
+        self.assertProblema(con(lambda d: d.update(pedals=[{"startTick": 0, "endTick": 960, "x": 1}])), "\"x\"")
+
     def test_octava_y_ligadura(self):
         def cambio(d):
             d["notes"] = [

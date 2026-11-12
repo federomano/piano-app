@@ -69,10 +69,11 @@ La app lee **un solo formato**: el JSON propio de la partitura, descrito en [`MO
 15. **Cambios de clave.** Si el original cambia la clave de una mano (por ejemplo, la izquierda pasa a clave de sol), se escribe en la lista opcional `"clefs"`: `{ "hand": "left", "startTick": 1920, "clef": "treble" }`. `"clef"` es `"treble"` (sol) o `"bass"` (fa). Vale desde ese `startTick` hasta el próximo cambio de esa misma mano; tiene que caer al **inicio de un compás**, y las de cada mano van ordenadas y sin repetirse. Si no hay ninguna, la derecha va en sol y la izquierda en fa. **Solo cambia cómo se dibujan las notas, no cómo suenan:** las alturas se escriben igual (regla 8) y cada nota sigue en la mano que la toca. Para volver a la clave de siempre, se escribe otro cambio (`"treble"` para la derecha, `"bass"` para la izquierda). Ejemplo: `{ "hand": "right", "startTick": 3840, "clef": "bass" }`.
 
 16. **Signo de octava (8va / 8vb).** Si el original escribe un pasaje con «8va» (suena una octava más arriba de lo escrito) o «8vb» (una más abajo), se anota en la lista opcional `"ottavas"`: `{ "hand": "right", "startTick": 78240, "endTick": 79920, "kind": "8va" }`. `"kind"` es `"8va"` o `"8vb"`. Vale para las notas **de esa mano que empiezan desde `startTick` hasta `endTick`** (sin incluirlo); `endTick` es donde termina la última nota del tramo. Las alturas (`"pitch"`) se escriben **como suenan** (regla 8), no como están escritas en el papel: la app las dibuja una octava más cerca del pentagrama y pone el signo con su línea punteada. No cambia el sonido. Las de una misma mano no se pisan, tiene que haber al menos una nota de esa mano adentro, y una ligadura no puede quedar partida por el borde del signo (las dos notas ligadas van adentro o afuera). El «8vb» se dibuja como «8va» escrito abajo del pentagrama (la notación clásica de la octava baja).
+17. **Pedal de sustain.** Si el original trae «Ped.» y la estrella de soltarlo, se anota en la lista opcional `"pedals"`: `{ "startTick": 0, "endTick": 1920 }`. `startTick` es donde se aprieta y `endTick` donde se suelta. Vale para las dos manos. Mientras está apretado, las notas siguen sonando aunque termine su duración, y al soltarlo se apagan. Dos pedales seguidos, donde el segundo empieza justo donde termina el primero, son un cambio de pedal (el signo ^). Tienen que estar ordenados, sin pisarse (salvo ese caso de empezar justo donde termina el anterior) y no pasar del final de la partitura. La app dibuja «Ped.», el ^ y la estrella abajo del pentagrama de la izquierda. Ejemplo en `ejercicio-pedal.json`.
 
 ## Lo que la app todavía no representa
 
-Pedal, ornamentos (trinos, mordentes), indicaciones de texto ("swing feel") y la 15ma (dos octavas). Si algo de eso está en el original, se deja afuera y se le avisa a Fede en la respuesta, diciendo en qué compases.
+Ornamentos (trinos, mordentes), indicaciones de texto ("swing feel") y la 15ma (dos octavas). Si algo de eso está en el original, se deja afuera y se le avisa a Fede en la respuesta, diciendo en qué compases.
 
 ## Errores comunes
 
@@ -139,6 +140,7 @@ Todos abren sin avisos y los tests lo verifican en cada cambio.
 | [`ejercicio-dinamicas.json`](ejemplos/ejercicio-dinamicas.json) | Dinámicas (`mp`, `f`, `ff`, `p`) y reguladores: un crescendo y un diminuendo |
 | [`ejercicio-articulaciones.json`](ejemplos/ejercicio-articulaciones.json) | Staccato, acentos y las dos marcas juntas, en las dos manos y en acordes |
 | [`ejercicio-octavas.json`](ejemplos/ejercicio-octavas.json) | Signo de octava (`ottavas`): las mismas notas agudas con y sin 8va, y notas graves con 8vb |
+| [`ejercicio-pedal.json`](ejemplos/ejercicio-pedal.json) | Pedal de sustain (`pedals`): apretar, soltar y cambiar de pedal |
 | [`ejercicio-claves.json`](ejemplos/ejercicio-claves.json) | Cambios de clave (`clefs`): la izquierda en sol, la derecha en fa, y la vuelta a las de siempre |
 
 Este contrato se actualiza cada vez que la app gane o pierda soporte de algo.

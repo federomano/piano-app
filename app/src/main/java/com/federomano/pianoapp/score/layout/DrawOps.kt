@@ -56,6 +56,15 @@ object Smufl {
     const val OTTAVA_BASSA_WIDTH = 3.356f
     const val OTTAVA_HEIGHT = 1.85f
 
+    /** Pedal de resonancia: «Ped.», la estrella que lo suelta y el signo ^ del cambio de pedal (apoyados en la línea de base). */
+    const val PEDAL_DOWN = 0xE650
+    const val PEDAL_UP = 0xE655
+    const val PEDAL_CHANGE = 0xE657
+    const val PEDAL_DOWN_WIDTH = 4.08f
+    const val PEDAL_UP_WIDTH = 1.8f
+    const val PEDAL_CHANGE_WIDTH = 1.16f
+    const val PEDAL_HEIGHT = 2.22f
+
     /** Medidas de la llave a tamaño normal: 4 espacios de alto por 0,277 de ancho. */
     const val BRACE_HEIGHT = 4.002f
     const val BRACE_WIDTH = 0.277f

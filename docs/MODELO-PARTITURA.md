@@ -38,6 +38,7 @@ Un compás de 4/4 dura 1920 ticks, uno de 3/4 o 6/8 dura 1440. La posición de c
 | `hairpins` | Reguladores: `startTick`, `endTick` y `kind` (`"crescendo"` o `"diminuendo"`). Opcional. |
 | `clefs` | Cambios de clave por mano: `hand`, `startTick` (inicio de un compás) y `clef` (`"treble"` sol o `"bass"` fa). Opcional: sin esto, la derecha va en sol y la izquierda en fa. Solo cambia el dibujo, no el sonido. |
 | `ottavas` | Signos de octava por mano: `hand`, `startTick`, `endTick` (sin incluirlo) y `kind` (`"8va"` u `"8vb"`). Las alturas se escriben como suenan; la app las dibuja una octava más cerca del pentagrama, con el signo y la línea punteada. Opcional. Solo cambia el dibujo. |
+| `pedals` | Pedal de sustain: `startTick` (se aprieta) y `endTick` (se suelta). Vale para las dos manos; dos seguidos son un cambio de pedal. Opcional. Cambia el dibujo y el sonido (las notas siguen sonando mientras está apretado). |
 | `notes` | Las notas de las dos manos. |
 | `rests` | Los silencios de las dos manos. |
 
@@ -111,5 +112,5 @@ El JSON es estricto: una clave mal escrita, una altura inválida o una versión 
 
 ## Lo que todavía no cubre
 
-- **Pedal, repeticiones, trinos y mordentes, indicaciones de texto, y la 15ma:** no se representan (las notas de adorno cortas sí, con `grace`).
+- **Repeticiones, trinos y mordentes, indicaciones de texto, y la 15ma:** no se representan (las notas de adorno cortas sí, con `grace`).
 - **Una nota ligada a varias seguidas:** se encadenan ligaduras, una por una.

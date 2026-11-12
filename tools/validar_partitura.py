@@ -30,7 +30,7 @@ for _name, _base in BASES.items():
         ALLOWED[_base * 7 // 4] = _name + " con dos puntillos"
 
 SCORE_KEYS = {"formatVersion", "title", "composer", "level", "goal",
-              "timeSignatures", "keySignatures", "tempos", "pickupTicks", "dynamics", "hairpins", "clefs", "ottavas", "notes", "rests"}
+              "timeSignatures", "keySignatures", "tempos", "pickupTicks", "dynamics", "hairpins", "clefs", "ottavas", "pedals", "notes", "rests"}
 NOTE_KEYS = {"hand", "pitch", "startTick", "durationTicks", "tiedToNext", "finger", "tuplet", "voice", "grace", "staccato", "accent"}
 REST_KEYS = {"hand", "startTick", "durationTicks", "tuplet", "voice"}
 TS_KEYS = {"startTick", "numerator", "denominator"}
@@ -40,6 +40,7 @@ DYNAMIC_KEYS = {"startTick", "level"}
 HAIRPIN_KEYS = {"startTick", "endTick", "kind"}
 CLEF_KEYS = {"hand", "startTick", "clef"}
 OTTAVA_KEYS = {"hand", "startTick", "endTick", "kind"}
+PEDAL_KEYS = {"startTick", "endTick"}
 DYNAMIC_LEVELS = ["ppp", "pp", "p", "mp", "mf", "f", "ff", "fff"]
 HAIRPIN_KINDS = ["crescendo", "diminuendo"]
 
@@ -223,6 +224,21 @@ def check_ottavas(ottavas, notes, errors):
             errors.append(f"La nota {n['pitch']} ({HAND_LABEL[n['hand']]}, tick {n['startTick']}) está ligada a otra que cae fuera de su signo de octava: el signo tiene que cubrir las dos.")
 
 
+def check_pedals(pedals, end, errors):
+    good = []
+    for i, p in enumerate(pedals, 1):
+        a, b = p.get("startTick"), p.get("endTick")
+        if not is_int(a) or not is_int(b) or a < 0 or b <= a:
+            errors.append(f"pedals #{i}: \"startTick\" y \"endTick\" tienen que ser enteros, con endTick mayor que startTick.")
+            continue
+        good.append(p)
+    if any(b["startTick"] < a["endTick"] for a, b in zip(good, good[1:])):
+        errors.append("Pedal: tiene que estar ordenado y sin superponerse (uno puede empezar justo donde termina el anterior, que es un cambio de pedal).")
+    for p in good:
+        if p["endTick"] > end:
+            errors.append(f"El pedal que se suelta en el tick {p['endTick']} termina después del final de la partitura (tick {end}).")
+
+
 def validate(data):
     """Devuelve la lista de problemas (vacía = el archivo cumple el contrato)."""
     errors = []
@@ -253,6 +269,7 @@ def validate(data):
     hairpins = load_list(data, "hairpins", HAIRPIN_KEYS, errors)
     clefs = load_list(data, "clefs", CLEF_KEYS, errors)
     ottavas = load_list(data, "ottavas", OTTAVA_KEYS, errors)
+    pedals = load_list(data, "pedals", PEDAL_KEYS, errors)
     if not sigs:
         sigs = [{"startTick": 0, "numerator": 4, "denominator": 4}]
     if not keys:
@@ -455,6 +472,7 @@ def validate(data):
     check_dynamics(dynamics, hairpins, end, errors)
     check_clefs(clefs, starts, end, errors)
     check_ottavas(ottavas, notes, errors)
+    check_pedals(pedals, end, errors)
 
     def measure_of(t):
         return next(m for m in measures if m[1] <= t < m[2])

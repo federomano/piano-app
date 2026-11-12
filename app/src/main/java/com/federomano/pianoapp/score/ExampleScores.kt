@@ -17,6 +17,7 @@ object ExampleScores {
         ExampleScore("fusas", "Ejercicio: fusas", "Notas muy rápidas, de a ocho por negra, con tres barras. Para probar el dibujo y el sonido.") { thirtySeconds() },
         ExampleScore("claves", "Ejercicio: cambios de clave", "La izquierda pasa a clave de sol, la derecha baja a clave de fa, y después las dos vuelven. Suena igual: solo cambia cómo se escribe.") { clefChanges() },
         ExampleScore("octavas", "Ejercicio: signo de octava", "Las mismas notas agudas con y sin 8va, y notas graves con 8vb. Suena igual: solo cambia cómo se escribe.") { octaves() },
+        ExampleScore("pedal", "Ejercicio: pedal de resonancia", "Acordes quebrados con el pedal apretado, un cambio de pedal y un pedal que se suelta. Las notas siguen sonando mientras el pedal está abajo.") { pedal() },
         ExampleScore("ejercicio", "Ejercicio: todo lo que dibuja la app", "Alteraciones, silencios, acordes, ligaduras y cambios de armadura, compás y tempo.") { DemoScore.create() },
     )
 
@@ -196,6 +197,22 @@ object ExampleScores {
             level = "intermedio",
             goal = "Tocar la notita de adorno rápido y justo antes del tiempo, sin correr el pulso de la nota que sigue.",
             tempos = listOf(TempoChange(0, 70.0)),
+            notes = b.notes,
+            rests = b.rests,
+        )
+    }
+
+    private fun pedal(): Score {
+        val b = Builder()
+        b.right("E5/h G5/h  F5/h A5/h  D5/q F5/q G5/h  C5/w")
+        b.left("C3/q G3/q E4/q G3/q  F2/q C3/q A3/q C3/q  G2/q D3/q B3/q D3/q  C3/w")
+        return Score(
+            title = "Ejercicio: pedal de resonancia",
+            level = "principiante",
+            goal = "Escuchar cómo el pedal prolonga las notas, y practicar soltarlo y volver a apretarlo en el momento justo.",
+            tempos = listOf(TempoChange(0, 72.0)),
+            // Compás 1: pedal. Compás 2: cambio de pedal. Compás 3: sin pedal y se aprieta en el tercer tiempo. Compás 4: cambio y se suelta al final.
+            pedals = listOf(PedalMark(0, 1920), PedalMark(1920, 3840), PedalMark(4800, 5760), PedalMark(5760, 7680)),
             notes = b.notes,
             rests = b.rests,
         )

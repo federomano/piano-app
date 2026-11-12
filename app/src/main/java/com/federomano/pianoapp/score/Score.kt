@@ -129,6 +129,19 @@ data class OttavaMark(val hand: Hand, val startTick: Int, val endTick: Int, val 
     }
 }
 
+/**
+ * Pedal de resonancia (sustain) apretado desde [startTick] hasta [endTick] (donde se suelta). Vale para las dos manos.
+ * Mientras está apretado, las notas siguen sonando aunque termine su duración; al soltarlo se apagan. Dos pedales seguidos
+ * (el segundo empieza justo donde termina el primero) son un cambio de pedal: lo que sonaba se apaga y se vuelve a apretar.
+ */
+@Serializable
+data class PedalMark(val startTick: Int, val endTick: Int) {
+    init {
+        require(startTick >= 0) { "El inicio del pedal no puede ser negativo." }
+        require(endTick > startTick) { "El pedal tiene que soltarse después de donde se aprieta (endTick $endTick, startTick $startTick)." }
+    }
+}
+
 /** Nombre de la nota sin alteración. */
 enum class Step(val semitone: Int) { C(0), D(2), E(4), F(5), G(7), A(9), B(11) }
 
@@ -343,6 +356,8 @@ data class Score(
     val hairpins: List<Hairpin> = emptyList(),
     /** Signos de octava (8va / 8vb) por mano, sin superponerse en una misma mano. Solo cambian el dibujo, no el sonido. */
     val ottavas: List<OttavaMark> = emptyList(),
+    /** Pedal de resonancia: dónde se aprieta y dónde se suelta, en orden y sin superponerse. */
+    val pedals: List<PedalMark> = emptyList(),
     /** Cambios de clave por mano, a partir del inicio de un compás. Sin esto: derecha en sol e izquierda en fa. */
     val clefs: List<ClefChange> = emptyList(),
     val notes: List<Note> = emptyList(),

@@ -1,0 +1,47 @@
+{
+  "formatVersion": 1,
+  "title": "Ejercicio: pedal de resonancia",
+  "level": "principiante",
+  "goal": "Escuchar cómo el pedal prolonga las notas, y practicar soltarlo y volver a apretarlo en el momento justo.",
+  "timeSignatures": [
+    { "startTick": 0, "numerator": 4, "denominator": 4 }
+  ],
+  "keySignatures": [
+    { "startTick": 0, "fifths": 0 }
+  ],
+  "tempos": [
+    { "startTick": 0, "bpm": 72.0 }
+  ],
+  "pedals": [
+    { "startTick": 0, "endTick": 1920 },
+    { "startTick": 1920, "endTick": 3840 },
+    { "startTick": 4800, "endTick": 5760 },
+    { "startTick": 5760, "endTick": 7680 }
+  ],
+  "notes": [
+    { "hand": "right", "pitch": "E5", "startTick": 0, "durationTicks": 960 },
+    { "hand": "right", "pitch": "G5", "startTick": 960, "durationTicks": 960 },
+    { "hand": "right", "pitch": "F5", "startTick": 1920, "durationTicks": 960 },
+    { "hand": "right", "pitch": "A5", "startTick": 2880, "durationTicks": 960 },
+    { "hand": "right", "pitch": "D5", "startTick": 3840, "durationTicks": 480 },
+    { "hand": "right", "pitch": "F5", "startTick": 4320, "durationTicks": 480 },
+    { "hand": "right", "pitch": "G5", "startTick": 4800, "durationTicks": 960 },
+    { "hand": "right", "pitch": "C5", "startTick": 5760, "durationTicks": 1920 },
+
+    { "hand": "left", "pitch": "C3", "startTick": 0, "durationTicks": 480 },
+    { "hand": "left", "pitch": "G3", "startTick": 480, "durationTicks": 480 },
+    { "hand": "left", "pitch": "E4", "startTick": 960, "durationTicks": 480 },
+    { "hand": "left", "pitch": "G3", "startTick": 1440, "durationTicks": 480 },
+    { "hand": "left", "pitch": "F2", "startTick": 1920, "durationTicks": 480 },
+    { "hand": "left", "pitch": "C3", "startTick": 2400, "durationTicks": 480 },
+    { "hand": "left", "pitch": "A3", "startTick": 2880, "durationTicks": 480 },
+    { "hand": "left", "pitch": "C3", "startTick": 3360, "durationTicks": 480 },
+    { "hand": "left", "pitch": "G2", "startTick": 3840, "durationTicks": 480 },
+    { "hand": "left", "pitch": "D3", "startTick": 4320, "durationTicks": 480 },
+    { "hand": "left", "pitch": "B3", "startTick": 4800, "durationTicks": 480 },
+    { "hand": "left", "pitch": "D3", "startTick": 5280, "durationTicks": 480 },
+    { "hand": "left", "pitch": "C3", "startTick": 5760, "durationTicks": 1920 }
+  ],
+  "rests": [
+  ]
+}

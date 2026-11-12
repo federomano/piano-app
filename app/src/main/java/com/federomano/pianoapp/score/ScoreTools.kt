@@ -178,6 +178,13 @@ fun Score.validate(): List<String> {
         errors += "El cambio de clave de la ${it.hand.label} del tick ${it.startTick} no cae al inicio de un compás."
     }
 
+    if (pedals.zipWithNext().any { (a, b) -> b.startTick < a.endTick }) {
+        errors += "Pedal: tiene que estar ordenado y sin superponerse (uno puede empezar justo donde termina el anterior, que es un cambio de pedal)."
+    }
+    pedals.filter { it.endTick > lengthTicks }.forEach {
+        errors += "El pedal que se suelta en el tick ${it.endTick} termina después del final de la partitura (tick $lengthTicks)."
+    }
+
     for (hand in Hand.entries) {
         val own = ottavas.filter { it.hand == hand }.sortedBy { it.startTick }
         if (own.zipWithNext().any { (a, b) -> b.startTick < a.endTick }) {

@@ -401,6 +401,10 @@ class ScoreLayout private constructor(
             marks += DynamicsLayout.build(score, { tick ->
                 timed[timed.indexOfLast { it.measure.startTick <= tick }.coerceAtLeast(0)].xOfTick(tick)
             }) { from, to -> Extents.lowest(noteBoxes, from, to, Geometry.SYSTEM_BOTTOM) }
+            // Pedal: debajo del pentagrama de la izquierda y de lo que haya ahí.
+            marks += PedalLayout.build(score, { tick ->
+                timed[timed.indexOfLast { it.measure.startTick <= tick }.coerceAtLeast(0)].xOfTick(tick)
+            }, Extents.boxes(marks))
             val aboveBoxes = Extents.boxes(marks)
             for ((number, labelX) in labelAt) {
                 val text = number.toString()
