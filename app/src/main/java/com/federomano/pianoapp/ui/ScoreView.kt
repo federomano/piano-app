@@ -39,6 +39,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.sp
 import androidx.compose.runtime.SideEffect
 import com.federomano.pianoapp.audio.Metronome
+import com.federomano.pianoapp.score.layout.NoteState
+import com.federomano.pianoapp.score.layout.NoteStates
 import com.federomano.pianoapp.score.layout.Zoom
 import com.federomano.pianoapp.audio.NoteTrigger
 import com.federomano.pianoapp.audio.PianoMapping
@@ -77,6 +79,21 @@ private const val MUTED_HAND_ALPHA = 0.28f
 /** Alto que ocupan los controles de reproducción abajo (botones, barra y el texto del compás), en dp. */
 private const val CONTROLS_RESERVE_DP = 60f
 
+/** Cuánto se atenúa una nota que ya pasó (1 = igual que antes). */
+private const val PASSED_ALPHA = 0.35f
+
+private val CurrentNoteColor = Color(0xFF1565C0)
+private val HitNoteColor = Color(0xFF2E7D32)
+private val MissNoteColor = Color(0xFFD84315)
+
+/** Color de una nota según su estado; null = el negro de siempre. */
+private fun noteColor(state: NoteState): Int? = when (state) {
+    NoteState.CURRENT -> CurrentNoteColor.toArgb()
+    NoteState.HIT -> HitNoteColor.toArgb()
+    NoteState.MISS -> MissNoteColor.toArgb()
+    NoteState.PENDING, NoteState.PASSED -> null
+}
+
 /** Qué tan rápido se acerca la inercia a la velocidad de reproducción (por segundo): más chico, frena más despacio. */
 internal const val FLING_RATE = 3.8f
 
@@ -93,7 +110,13 @@ private const val FLING_END_SPEED = 0.4f
  * compás salta hasta ahí).
  */
 @Composable
-fun ScoreView(score: Score, modifier: Modifier = Modifier, maxStaffSpaceDp: Float = 17f) {
+fun ScoreView(
+    score: Score,
+    modifier: Modifier = Modifier,
+    maxStaffSpaceDp: Float = 17f,
+    /** Pintar notas sueltas con un estado (acierto, error...): lo usa el modo escucha. Sin entrada, la nota se ve según la reproducción. */
+    noteStates: Map<Note, NoteState> = emptyMap(),
+) {
     val context = LocalContext.current
     val layout = remember(score) { ScoreLayout.build(score) }
     val markHands = remember(layout) { layout.marks.map { HandBands.of(it) } }
@@ -148,6 +171,17 @@ fun ScoreView(score: Score, modifier: Modifier = Modifier, maxStaffSpaceDp: Floa
     LaunchedEffect(showFingers) { prefs.edit().putBoolean("showFingers", showFingers).apply() }
     val noteLabels = remember(layout, showNames, showFingers) { layout.labels(showNames, showFingers) }
     val hasFingers = remember(score) { score.notes.any { it.finger != null } }
+
+    // Nota actual (PIA-16): la que suena (o la que viene) se pinta de color y lo ya tocado se atenúa.
+    var highlight by remember { mutableStateOf(prefs.getBoolean("highlight", true)) }
+    LaunchedEffect(highlight) { prefs.edit().putBoolean("highlight", highlight).apply() }
+    val markSpan = remember(layout) {
+        IntArray(layout.marks.size) { -1 }.also { map -> for ((k, span) in layout.chordSpans.withIndex()) for (i in span.from until span.to) map[i] = k }
+    }
+    val markHead = remember(layout) {
+        HashMap<Int, Note>().also { map -> for (span in layout.chordSpans) for ((note, i) in span.heads) map[i] = note }
+    }
+    val longestChord = remember(layout) { NoteStates.longestOf(layout.chordSpans) }
 
     // Tamaño de la partitura (PIA-17).
     var zoom by remember { mutableFloatStateOf(prefs.getFloat("zoom", Zoom.DEFAULT)) }
@@ -425,9 +459,10 @@ fun ScoreView(score: Score, modifier: Modifier = Modifier, maxStaffSpaceDp: Floa
             val top = fit.topPx
             val headerPx = layout.headerWidth * spPx
 
-            fun paintOp(op: DrawOp, dx: Float, alpha: Float) {
+            fun paintOp(op: DrawOp, dx: Float, alpha: Float, color: Int? = null) {
                 if (alpha <= 0f) return
                 val native = drawContext.canvas.nativeCanvas
+                if (color != null) { musicPaint.color = color; textPaint.color = color }
                 val a = (alpha * 255).toInt().coerceIn(0, 255)
                 when (op) {
                     is RectOp -> {
@@ -460,6 +495,7 @@ fun ScoreView(score: Score, modifier: Modifier = Modifier, maxStaffSpaceDp: Floa
                         native.drawText(op.text, dx + op.x * spPx, top + op.y * spPx, textPaint)
                     }
                 }
+                if (color != null) { musicPaint.color = InkColor.toArgb(); textPaint.color = InkColor.toArgb() }
             }
 
             fun paint(ops: List<DrawOp>, dx: Float, alpha: Float = 1f) = ops.forEach { paintOp(it, dx, alpha) }
@@ -476,6 +512,8 @@ fun ScoreView(score: Score, modifier: Modifier = Modifier, maxStaffSpaceDp: Floa
             // 3) Barras de compás y números: pasan por encima del área fija y se desvanecen
             //    al acercarse a la clave.
             val fadeEnd = layout.signatureLeft
+            val tickNow = layout.tickAtScroll(scroll, playheadSp)
+            val currentChords = if (highlight && layout.chordSpans.isNotEmpty()) NoteStates.current(layout.chordSpans, tickNow, longestChord) else emptySet()
             for ((i, op) in layout.marks.withIndex()) {
                 val x = (when (op) { is RectOp -> op.x; is TextOp -> op.x; is GlyphOp -> op.x; is PolygonOp -> op.minX }) - scroll + layout.headerWidth
                 if (x < 0f || x > widthPx / spPx) continue
@@ -484,7 +522,13 @@ fun ScoreView(score: Score, modifier: Modifier = Modifier, maxStaffSpaceDp: Floa
                     val hand = markHands[i]
                     if ((hand == HandBands.RIGHT && rightMuted) || (hand == HandBands.LEFT && leftMuted)) alpha *= MUTED_HAND_ALPHA
                 }
-                paintOp(op, (layout.headerWidth - scroll) * spPx, alpha)
+                // Color según el estado de la nota: la que toca va de color, lo ya tocado se atenúa; el modo escucha puede pintar cabezas sueltas.
+                var state = NoteState.PENDING
+                val span = markSpan[i]
+                if (highlight && span >= 0) state = NoteStates.playback(layout.chordSpans, span, tickNow, currentChords)
+                val forced = markHead[i]?.let { noteStates[it] }
+                if (forced != null) state = forced
+                paintOp(op, (layout.headerWidth - scroll) * spPx, if (state == NoteState.PASSED) alpha * PASSED_ALPHA else alpha, noteColor(state))
             }
 
             // 3b) Nombres de nota y dedos: viajan con la partitura, se desvanecen igual y siguen a su mano si está atenuada.
@@ -568,6 +612,8 @@ fun ScoreView(score: Score, modifier: Modifier = Modifier, maxStaffSpaceDp: Floa
             zoom = Zoom.clamp(zoom, zoomLimit),
             zoomMax = zoomLimit,
             onZoom = { zoom = it },
+            highlight = highlight,
+            onHighlight = { highlight = !highlight },
             showNames = showNames,
             onShowNames = { showNames = !showNames },
             showFingers = showFingers,

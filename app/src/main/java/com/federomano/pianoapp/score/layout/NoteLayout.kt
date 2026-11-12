@@ -25,6 +25,15 @@ import kotlin.math.min
  * que ya valía en ese compás (o lo que da la armadura). Las corcheas y semicorcheas seguidas se unen con
  * barras dentro de cada tiempo del compás.
  */
+/**
+ * Las instrucciones de dibujo [from] hasta [to] (sin incluir) son las de [chord] (cabezas, plica, bandera, alteraciones, puntillos,
+ * articulaciones, líneas adicionales); [heads] dice cuál es la instrucción de la cabeza de cada nota. Las barras, ligaduras y
+ * grupos irregulares son de varias notas y quedan afuera.
+ */
+class ChordSpan(val chord: Chord, val from: Int, val to: Int, val heads: List<Pair<Note, Int>>)
+
+class Built(val ops: List<DrawOp>, val spans: List<ChordSpan>)
+
 object NoteLayout {
     const val STEM_THICKNESS = 0.12f
     const val LEDGER_THICKNESS = 0.16f
@@ -177,8 +186,13 @@ object NoteLayout {
     }
 
     /** Dibuja todas las notas, silencios y ligaduras de la partitura. [xOfTick] da la posición horizontal de cada instante. */
-    fun build(score: Score, measures: List<MeasureLayout>, xOfTick: (Int) -> Float): List<DrawOp> {
+    fun build(score: Score, measures: List<MeasureLayout>, xOfTick: (Int) -> Float): List<DrawOp> =
+        buildWithSpans(score, measures, xOfTick).ops
+
+    /** Lo mismo que [build], y además qué instrucciones de dibujo son de cada acorde (para pintarlas o atenuarlas, PIA-16). */
+    fun buildWithSpans(score: Score, measures: List<MeasureLayout>, xOfTick: (Int) -> Float): Built {
         val ops = mutableListOf<DrawOp>()
+        val spans = mutableListOf<ChordSpan>()
         fun measureIndexAt(tick: Int) = measures.indexOfLast { it.measure.startTick <= tick }.coerceAtLeast(0)
 
         val plans = score.chords().map { chord ->
@@ -254,7 +268,10 @@ object NoteLayout {
                 handState[key] = grace.pitch.alter
                 grace to (grace.pitch.alter != current)
             }
+            val spanFrom = ops.size
             val leftMost = drawChord(ops, plan, plan.measure.keyFifths, handState, tiedFromBefore)
+            val headOps = (spanFrom until ops.size).filter { i -> (ops[i] as? GlyphOp)?.let { it.codepoint in HEAD_CODES && it.scale == 1f } == true }
+            spans += ChordSpan(plan.chord, spanFrom, ops.size, if (headOps.size == plan.heads.size) plan.heads.map { it.note }.zip(headOps) else emptyList())
             if (graceAccidentals.isNotEmpty()) drawGrace(ops, plan.hand, plan.clef, plan.octaveShift, graceAccidentals, leftMost)
         }
         for (group in plans.mapNotNull { it.group }.distinct()) drawBeam(ops, group)
@@ -278,8 +295,10 @@ object NoteLayout {
 
         // 6) Corchetes y números de los grupos irregulares.
         drawTuplets(ops, score, plans, ::measureIndexAt, xOfTick, restSpans)
-        return ops
+        return Built(ops, spans)
     }
+
+    private val HEAD_CODES = setOf(Smufl.NOTEHEAD_WHOLE, Smufl.NOTEHEAD_HALF, Smufl.NOTEHEAD_BLACK)
 
     // --- Grupos irregulares (tresillos, etc.) ---
 

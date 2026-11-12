@@ -85,6 +85,9 @@ fun BoxScope.PlaybackControls(
     zoom: Float,
     zoomMax: Float,
     onZoom: (Float) -> Unit,
+    /** Resaltar la nota que toca y atenuar las que ya pasaron. */
+    highlight: Boolean,
+    onHighlight: () -> Unit,
     /** Ayudas para leer: nombre de las notas y dedos (si la partitura los trae). */
     showNames: Boolean,
     onShowNames: () -> Unit,
@@ -104,6 +107,7 @@ fun BoxScope.PlaybackControls(
         SpeedPanel(
             speed, onSpeed, bass, onBass, rightMuted, leftMuted, onRightMuted, onLeftMuted, dimMuted, onDimMuted,
             zoom, zoomMax, onZoom,
+            highlight, onHighlight,
             showNames, onShowNames, showFingers, hasFingers, onShowFingers,
             metronome, onMetronome, countIn, onCountIn, clickVolume, onClickVolume,
         )
@@ -156,6 +160,8 @@ private fun BoxScope.SpeedPanel(
     zoom: Float,
     zoomMax: Float,
     onZoom: (Float) -> Unit,
+    highlight: Boolean,
+    onHighlight: () -> Unit,
     showNames: Boolean,
     onShowNames: () -> Unit,
     showFingers: Boolean,
@@ -301,6 +307,7 @@ private fun BoxScope.SpeedPanel(
             }
         }
         PanelSwitch("Atenuar la mano silenciada", dimMuted, onDimMuted)
+        PanelSwitch("Resaltar la nota que toca", highlight, onHighlight)
         PanelSwitch("Nombre de las notas (Do, Re, Mi)", showNames, onShowNames)
         PanelSwitch(if (hasFingers) "Dedos (1 a 5)" else "Dedos (esta partitura no los trae)", showFingers && hasFingers, { if (hasFingers) onShowFingers() })
     }

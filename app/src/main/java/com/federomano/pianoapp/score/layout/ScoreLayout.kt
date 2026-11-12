@@ -138,6 +138,8 @@ class ScoreLayout private constructor(
     val marginTop: Float = Geometry.MARGIN_TOP,
     val marginBottom: Float = Geometry.MARGIN_BOTTOM,
     private val labelBuilder: (names: Boolean, fingers: Boolean) -> List<NoteLabel> = { _, _ -> emptyList() },
+    /** Qué marcas son de cada acorde (ordenados por tiempo), para resaltar el actual y atenuar lo ya tocado (PIA-16). */
+    val chordSpans: List<ChordSpan> = emptyList(),
 ) {
     /** Nombres de nota y dedos (PIA-18) según lo que se quiera ver; viajan con la partitura pero no forman parte de [marks]. */
     fun labels(names: Boolean, fingers: Boolean): List<NoteLabel> = labelBuilder(names, fingers)
@@ -339,9 +341,15 @@ class ScoreLayout private constructor(
             val totalWidth = x
             // El final de cada compás, en el tiempo, es la primera nota del siguiente (ver MeasureLayout.timeEndX).
             val timed = laidOut.mapIndexed { i, m -> m.copy(timeEndX = laidOut.getOrNull(i + 1)?.contentX ?: m.x1) }
-            marks += NoteLayout.build(score, timed) { tick ->
+            val notesFrom = marks.size
+            val builtNotes = NoteLayout.buildWithSpans(score, timed) { tick ->
                 timed[timed.indexOfLast { it.measure.startTick <= tick }.coerceAtLeast(0)].xOfTick(tick)
             }
+            marks += builtNotes.ops
+            // Qué marcas son de cada acorde, con los números ya referidos a [marks].
+            val chordSpans = builtNotes.spans
+                .map { ChordSpan(it.chord, it.from + notesFrom, it.to + notesFrom, it.heads.map { (n, i) -> n to i + notesFrom }) }
+                .sortedBy { it.chord.startTick }
             // Signos de octava: arriba o abajo de lo que hayan dibujado las notas (sin contar las barras de compás, que cruzan todo).
             val beforeOttavas = Extents.boxes(marks.filterNot { it is RectOp && it.height >= Geometry.SYSTEM_BOTTOM - 0.01f })
             marks += OttavaLayout.build(score, { tick ->
@@ -386,7 +394,7 @@ class ScoreLayout private constructor(
             val initial = piece(first.keyFifths, first.timeSignature.numerator, first.timeSignature.denominator).first
             return ScoreLayout(
                 timed, staffLines(-STAFF_LEAD, totalWidth), marks, inline, fixed, changes, initial,
-                headerWidth, SIGNATURE_LEFT, totalWidth, quarterWidth, path, marginTop, marginBottom, labelBuilder,
+                headerWidth, SIGNATURE_LEFT, totalWidth, quarterWidth, path, marginTop, marginBottom, labelBuilder, chordSpans,
             )
         }
 
