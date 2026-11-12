@@ -33,6 +33,11 @@ import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.foundation.layout.Box
+import androidx.compose.material3.Text
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.unit.sp
+import com.federomano.pianoapp.audio.Metronome
 import com.federomano.pianoapp.audio.NoteTrigger
 import com.federomano.pianoapp.audio.PianoMapping
 import com.federomano.pianoapp.audio.PianoPlayer
@@ -134,6 +139,26 @@ fun ScoreView(score: Score, modifier: Modifier = Modifier, maxStaffSpaceDp: Floa
         if (silenced) -1 else player.noteOn(note.pitch.midi, score.velocityOf(note))
     }
 
+    // Metrónomo y cuenta (PIA-23): el clic cae en cada tiempo según la firma de compás; la cuenta es un compás de clics
+    // antes de arrancar. El volumen del clic es aparte del piano.
+    var metronome by remember { mutableStateOf(prefs.getBoolean("metronome", false)) }
+    var countIn by remember { mutableStateOf(prefs.getBoolean("countIn", false)) }
+    var clickVolume by remember { mutableFloatStateOf(prefs.getFloat("clickVolume", PianoPlayer.DEFAULT_CLICK_VOLUME)) }
+    LaunchedEffect(metronome) { prefs.edit().putBoolean("metronome", metronome).apply() }
+    LaunchedEffect(countIn) { prefs.edit().putBoolean("countIn", countIn).apply() }
+    LaunchedEffect(clickVolume) {
+        player.clickVolume = clickVolume
+        prefs.edit().putFloat("clickVolume", clickVolume).apply()
+    }
+    val currentMetronome by rememberUpdatedState(metronome)
+    val currentCountIn by rememberUpdatedState(countIn)
+    val metro = remember(layout) { Metronome(layout.measures.map { it.measure }) }
+    // Número del tiempo de la cuenta que se está haciendo (0 = no hay cuenta).
+    var countInBeat by remember { mutableIntStateOf(0) }
+    // La cuenta se hace una vez por cada vez que se pone play (no al saltar o arrastrar con la reproducción andando).
+    val counted = remember { object { var done = false } }
+    LaunchedEffect(playing) { if (!playing) counted.done = false }
+
     // Bucle A-B (PIA-24): se marcan dos compases sobre la barra; el tramo se repite mientras reproduce.
     var loopPicking by remember(score) { mutableStateOf(false) }
     var loopFirst by remember(score) { mutableStateOf<Int?>(null) }
@@ -199,8 +224,39 @@ fun ScoreView(score: Score, modifier: Modifier = Modifier, maxStaffSpaceDp: Floa
             val from = if (scrollSp.isNaN()) currentMin else scrollSp
             var tick = layout.tickAtScroll(from, currentPlayhead).coerceAtLeast(0f)
             if (tick >= end - 1f) tick = 0f
+            if (!counted.done && currentCountIn) {
+                // Cuenta de un compás: la partitura espera quieta; si se pausa o se salta antes de terminar, se vuelve a hacer.
+                val signature = (layout.measures.lastOrNull { it.measure.startTick <= tick } ?: layout.measures.first()).measure.timeSignature
+                val beats = Metronome.countInBeats(signature)
+                val beatTicks = Metronome.beatTicks(signature)
+                try {
+                    var beat = 0
+                    var waited = 0f
+                    var before = withFrameNanos { it }
+                    player.click(true)
+                    countInBeat = 1
+                    while (beat < beats) {
+                        val now = withFrameNanos { it }
+                        waited += ((now - before) / 1_000_000_000f).coerceAtMost(0.1f)
+                        before = now
+                        val beatSeconds = beatTicks / (tempoMap.ticksPerSecond(tick) * currentSpeed)
+                        if (waited >= beatSeconds) {
+                            waited -= beatSeconds
+                            beat++
+                            if (beat < beats) {
+                                player.click(false)
+                                countInBeat = beat + 1
+                            }
+                        }
+                    }
+                } finally {
+                    countInBeat = 0
+                }
+                counted.done = true
+            }
             // Un poco antes, para no perder la nota que justo está en la línea al retomar o saltar.
             if (sound.armed) sound.armed = false else trigger.reset(tick - SOUND_START_TOLERANCE_TICKS)
+            metro.reset(tick)
             var last = withFrameNanos { it }
             try {
                 while (true) {
@@ -215,6 +271,7 @@ fun ScoreView(score: Score, modifier: Modifier = Modifier, maxStaffSpaceDp: Floa
                             trigger.releaseAll(player::noteOff)
                             tick = loopStart.toFloat()
                             trigger.reset(tick)
+                            metro.reset(tick)
                         }
                     }
                     if (tick >= end) {
@@ -225,6 +282,8 @@ fun ScoreView(score: Score, modifier: Modifier = Modifier, maxStaffSpaceDp: Floa
                     }
                     scrollSp = layout.scrollForTick(tick, currentPlayhead)
                     trigger.advance(tick, playNote, player::noteOff)
+                    // Apagado también avanza, así al prenderlo en medio no suenan de golpe los clics atrasados.
+                    metro.advance(tick) { accent -> if (currentMetronome) player.click(accent) }
                 }
             } finally {
                 // Pausa, salto o arrastre: lo que suena se apaga suavemente.
@@ -465,6 +524,17 @@ fun ScoreView(score: Score, modifier: Modifier = Modifier, maxStaffSpaceDp: Floa
             onMuteToggle = { muted = !muted },
             bass = bass,
             onBass = { bass = it },
+            metronome = metronome,
+            onMetronome = { metronome = !metronome },
+            countIn = countIn,
+            onCountIn = { countIn = !countIn },
+            clickVolume = clickVolume,
+            onClickVolume = { clickVolume = it },
         )
+        if (countInBeat > 0) {
+            Box(modifier = Modifier.align(Alignment.Center)) {
+                Text("$countInBeat", color = PlayheadColor.copy(alpha = 0.75f), fontSize = 96.sp)
+            }
+        }
     }
 }

@@ -24,6 +24,9 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -77,9 +80,21 @@ fun BoxScope.PlaybackControls(
     onLeftMuted: () -> Unit,
     dimMuted: Boolean,
     onDimMuted: () -> Unit,
+    /** Metrónomo: clic en cada tiempo, cuenta de un compás antes de empezar y volumen del clic (0..1). */
+    metronome: Boolean,
+    onMetronome: () -> Unit,
+    countIn: Boolean,
+    onCountIn: () -> Unit,
+    clickVolume: Float,
+    onClickVolume: (Float) -> Unit,
 ) {
     var panelOpen by remember { mutableStateOf(false) }
-    if (panelOpen) SpeedPanel(speed, onSpeed, bass, onBass, rightMuted, leftMuted, onRightMuted, onLeftMuted, dimMuted, onDimMuted)
+    if (panelOpen) {
+        SpeedPanel(
+            speed, onSpeed, bass, onBass, rightMuted, leftMuted, onRightMuted, onLeftMuted, dimMuted, onDimMuted,
+            metronome, onMetronome, countIn, onCountIn, clickVolume, onClickVolume,
+        )
+    }
     if (loopPicking) {
         val hint = if (loopFirstLabel == null) "Tocá en la barra el compás donde empieza el tramo"
         else "Compás $loopFirstLabel marcado. Ahora tocá donde termina"
@@ -125,6 +140,12 @@ private fun BoxScope.SpeedPanel(
     onLeftMuted: () -> Unit,
     dimMuted: Boolean,
     onDimMuted: () -> Unit,
+    metronome: Boolean,
+    onMetronome: () -> Unit,
+    countIn: Boolean,
+    onCountIn: () -> Unit,
+    clickVolume: Float,
+    onClickVolume: (Float) -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -134,6 +155,9 @@ private fun BoxScope.SpeedPanel(
             .clip(RoundedCornerShape(14.dp))
             .background(PaperColor)
             .background(InkColor.copy(alpha = 0.10f))
+            // Con tantas opciones, en un celular acostado no entra todo: se desliza.
+            .heightIn(max = 280.dp)
+            .verticalScroll(rememberScrollState())
             .padding(horizontal = 12.dp, vertical = 8.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -175,6 +199,24 @@ private fun BoxScope.SpeedPanel(
                 modifier = Modifier.weight(1f).padding(horizontal = 6.dp),
             )
             Text("200%", color = InkColor.copy(alpha = 0.6f), fontSize = 11.sp)
+        }
+        PanelSwitch("Metrónomo (clic en cada tiempo)", metronome, onMetronome)
+        PanelSwitch("Cuenta de un compás al empezar", countIn, onCountIn)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("Volumen del clic", color = InkColor.copy(alpha = 0.7f), fontSize = 13.sp, modifier = Modifier.padding(start = 2.dp))
+            Slider(
+                value = clickVolume,
+                onValueChange = onClickVolume,
+                valueRange = 0f..1f,
+                colors = SliderDefaults.colors(
+                    thumbColor = PlayheadColor,
+                    activeTrackColor = InkColor.copy(alpha = 0.6f),
+                    inactiveTrackColor = InkColor.copy(alpha = 0.18f),
+                    activeTickColor = Color.Transparent,
+                    inactiveTickColor = Color.Transparent,
+                ),
+                modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
+            )
         }
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text("Graves", color = InkColor.copy(alpha = 0.7f), fontSize = 13.sp, modifier = Modifier.padding(end = 6.dp))
@@ -221,20 +263,26 @@ private fun BoxScope.SpeedPanel(
                 }
             }
         }
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("Atenuar la mano silenciada", color = InkColor.copy(alpha = 0.7f), fontSize = 13.sp, modifier = Modifier.weight(1f).padding(start = 2.dp))
-            androidx.compose.material3.Switch(
-                checked = dimMuted,
-                onCheckedChange = { onDimMuted() },
-                colors = androidx.compose.material3.SwitchDefaults.colors(
-                    checkedThumbColor = PaperColor,
-                    checkedTrackColor = InkColor.copy(alpha = 0.8f),
-                    uncheckedThumbColor = PaperColor,
-                    uncheckedTrackColor = InkColor.copy(alpha = 0.25f),
-                    uncheckedBorderColor = Color.Transparent,
-                ),
-            )
-        }
+        PanelSwitch("Atenuar la mano silenciada", dimMuted, onDimMuted)
+    }
+}
+
+/** Una opción del panel con interruptor. */
+@Composable
+private fun PanelSwitch(label: String, checked: Boolean, onToggle: () -> Unit) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(label, color = InkColor.copy(alpha = 0.7f), fontSize = 13.sp, modifier = Modifier.weight(1f).padding(start = 2.dp))
+        androidx.compose.material3.Switch(
+            checked = checked,
+            onCheckedChange = { onToggle() },
+            colors = androidx.compose.material3.SwitchDefaults.colors(
+                checkedThumbColor = PaperColor,
+                checkedTrackColor = InkColor.copy(alpha = 0.8f),
+                uncheckedThumbColor = PaperColor,
+                uncheckedTrackColor = InkColor.copy(alpha = 0.25f),
+                uncheckedBorderColor = Color.Transparent,
+            ),
+        )
     }
 }
 

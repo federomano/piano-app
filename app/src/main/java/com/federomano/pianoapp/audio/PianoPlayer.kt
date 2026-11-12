@@ -42,6 +42,12 @@ class PianoPlayer(private val context: Context) {
     /** Nivel de graves (0 completos, 1 suaves, 2 mínimos); vale para las notas que se toquen de ahora en más. */
     @Volatile var bass = PianoMapping.DEFAULT_BASS
 
+    /** Volumen del clic del metrónomo (0..1), aparte del piano. */
+    @Volatile var clickVolume = DEFAULT_CLICK_VOLUME
+
+    private val clickAccent = ClickSound.render(accent = true)
+    private val clickNormal = ClickSound.render(accent = false)
+
     @Volatile private var running = false
     private var worker: Thread? = null
 
@@ -91,6 +97,13 @@ class PianoPlayer(private val context: Context) {
         return mixer.noteOn(data, pick.rate * ratio, pick.gain)
     }
 
+    /** Un clic de metrónomo (acentuado en el primer tiempo). Suena aunque el piano esté silenciado. */
+    fun click(accent: Boolean) {
+        val volume = clickVolume.coerceIn(0f, 1f)
+        if (volume <= 0f) return
+        mixer.noteOn(if (accent) clickAccent else clickNormal, ratio, volume * CLICK_GAIN)
+    }
+
     fun noteOff(id: Int) { if (id >= 0) mixer.noteOff(id) }
 
     fun allOff() = mixer.allOff()
@@ -130,6 +143,11 @@ class PianoPlayer(private val context: Context) {
     }
 
     companion object {
+        const val DEFAULT_CLICK_VOLUME = 0.6f
+
+        /** Con el volumen del clic al máximo, el clic suena a este nivel (el piano llega a 1). */
+        private const val CLICK_GAIN = 0.7f
+
         fun nativeRate(context: Context): Int =
             (context.getSystemService(Context.AUDIO_SERVICE) as AudioManager)
                 .getProperty(AudioManager.PROPERTY_OUTPUT_SAMPLE_RATE)?.toIntOrNull() ?: 48000
