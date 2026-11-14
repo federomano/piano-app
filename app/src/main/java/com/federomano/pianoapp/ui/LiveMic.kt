@@ -45,6 +45,8 @@ import androidx.lifecycle.LifecycleEventObserver
 import com.federomano.pianoapp.audio.LevelAnalyzer
 import com.federomano.pianoapp.audio.LevelReading
 import com.federomano.pianoapp.audio.MicCapture
+import com.federomano.pianoapp.audio.NoteDetection
+import com.federomano.pianoapp.audio.NoteDetector
 
 internal fun Context.findActivity(): ComponentActivity? {
     var c: Context? = this
@@ -64,6 +66,11 @@ class LiveMic {
     val state = mutableStateOf(MicCapture.State.INTERRUPTED)
     val source = mutableStateOf<Pair<MicCapture.Source, MicCapture.Fallback?>?>(null)
 
+    /** Si hay una nota esperada (MIDI), el detector la busca en lo que entra y deja su respuesta en [detection]. */
+    @Volatile var expectedNote: Int? = null
+    val detection = mutableStateOf<NoteDetection?>(null)
+    private val detector = NoteDetector(MicCapture.SAMPLE_RATE)
+
     @Volatile var tap: ((ShortArray, Int) -> Unit)? = null
     @Volatile private var analyzer = LevelAnalyzer(MicCapture.SAMPLE_RATE)
     private val main = Handler(Looper.getMainLooper())
@@ -72,7 +79,16 @@ class LiveMic {
         override fun onSamples(samples: ShortArray, count: Int) {
             val r = analyzer.process(samples, count)
             tap?.invoke(samples, count)
-            main.post { reading.value = r }
+            var found: NoteDetection? = null
+            val expected = expectedNote
+            if (expected != null) {
+                detector.process(samples, count)
+                if (detector.consumeFresh()) found = detector.detect(expected)
+            }
+            main.post {
+                reading.value = r
+                if (expected == null) detection.value = null else if (found != null) detection.value = found
+            }
         }
 
         override fun onState(state: MicCapture.State, source: MicCapture.Source?, fallback: MicCapture.Fallback?) {
@@ -85,7 +101,9 @@ class LiveMic {
 
     fun reset() {
         analyzer = LevelAnalyzer(MicCapture.SAMPLE_RATE)
+        detector.reset()
         reading.value = null
+        detection.value = null
     }
 }
 

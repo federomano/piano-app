@@ -13,10 +13,15 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -29,6 +34,7 @@ import com.federomano.pianoapp.audio.LevelAnalyzer
 import com.federomano.pianoapp.audio.LevelReading
 import com.federomano.pianoapp.audio.LevelStatus
 import com.federomano.pianoapp.audio.MicCapture
+import com.federomano.pianoapp.audio.RecordingScript
 
 /** Mensaje en palabras simples para cada estado de la señal. */
 fun levelMessage(status: LevelStatus): String = when (status) {
@@ -68,7 +74,41 @@ fun MicTestScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
                 Text("Probar el micrófono", color = InkColor, fontSize = 22.sp, fontWeight = FontWeight.Bold)
                 Text("Tocá el piano y mirá la barra: tiene que quedar en la zona del medio.", color = InkColor.copy(alpha = 0.75f), fontSize = 13.sp)
                 LiveLevelBlock(live)
+                NoteCheckBlock(live)
             }
+        }
+    }
+}
+
+/** «¿Suena esta nota?»: se elige una nota y se muestra en grande si el detector la oye (PIA-78). */
+@Composable
+private fun NoteCheckBlock(live: LiveMic) {
+    var midi by remember { mutableIntStateOf(60) }
+    DisposableEffect(midi) {
+        live.expectedNote = midi
+        onDispose { live.expectedNote = null }
+    }
+    val sounding = live.detection.value?.sounding == true
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(top = 14.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text("¿Suena esta nota?", color = InkColor, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+        Text("Elegí una nota y tocala en tu piano. Tiene que decir «suena» solo con esa nota, no con las de al lado ni con el mismo Do en otra octava.", color = InkColor.copy(alpha = 0.75f), fontSize = 13.sp)
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            OutlinedButton(enabled = midi > 36, onClick = { midi-- }) { Text("‹") }
+            Text(RecordingScript.noteName(midi), color = InkColor, fontSize = 26.sp, fontWeight = FontWeight.Bold)
+            OutlinedButton(enabled = midi < 84, onClick = { midi++ }) { Text("›") }
+            OutlinedButton(enabled = midi > 36, onClick = { midi = (midi - 12).coerceAtLeast(36) }) { Text("8ª ↓") }
+            OutlinedButton(enabled = midi < 84, onClick = { midi = (midi + 12).coerceAtMost(84) }) { Text("8ª ↑") }
+        }
+        Text(
+            if (sounding) "SUENA ✓" else "no suena",
+            color = if (sounding) GoodColor else InkColor.copy(alpha = 0.5f),
+            fontSize = 34.sp, fontWeight = FontWeight.Bold,
+        )
+        live.detection.value?.let {
+            Text("puntaje %.1f · mejor rival %.1f".format(it.score, it.rival), color = InkColor.copy(alpha = 0.45f), fontSize = 11.sp)
         }
     }
 }
