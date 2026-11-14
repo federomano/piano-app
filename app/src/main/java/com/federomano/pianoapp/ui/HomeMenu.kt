@@ -50,6 +50,7 @@ fun HomeMenu(
     onOpenExample: (ExampleScore) -> Unit,
     onOpenEntry: (LibraryEntry) -> Unit,
     onPickFiles: () -> Unit,
+    onOpenMicTest: () -> Unit,
     onRename: (id: String, title: String) -> Unit,
     onDelete: (id: String) -> Unit,
     modifier: Modifier = Modifier,
@@ -90,6 +91,12 @@ fun HomeMenu(
                         DropdownMenuItem(text = { Text("Borrar") }, onClick = { close(); deleting = entry })
                     },
                 )
+            }
+            item {
+                Text("Modo escucha (en preparación)", color = InkColor, fontSize = 18.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 10.dp))
+            }
+            item {
+                ScoreCard("Probar el micrófono", "Mirá con qué nivel la app escucha tu piano", onClick = onOpenMicTest)
             }
             item {
                 Text("Ejemplos", color = InkColor, fontSize = 18.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 10.dp))
