@@ -1,0 +1,484 @@
+{
+    "takes": [
+        {
+            "id": "nota-do2",
+            "piano": "acustico",
+            "group": "Notas sueltas",
+            "instruction": "Tocá Do2 una vez y dejala sonar.",
+            "expected": [
+                [
+                    36
+                ]
+            ],
+            "source": "VOICE_RECOGNITION",
+            "sampleRate": 44100,
+            "seconds": 4.0,
+            "file": "acustico/nota-do2.wav"
+        },
+        {
+            "id": "nota-sol2",
+            "piano": "acustico",
+            "group": "Notas sueltas",
+            "instruction": "Tocá Sol2 una vez y dejala sonar.",
+            "expected": [
+                [
+                    43
+                ]
+            ],
+            "source": "VOICE_RECOGNITION",
+            "sampleRate": 44100,
+            "seconds": 4.0,
+            "file": "acustico/nota-sol2.wav"
+        },
+        {
+            "id": "nota-do3",
+            "piano": "acustico",
+            "group": "Notas sueltas",
+            "instruction": "Tocá Do3 una vez y dejala sonar.",
+            "expected": [
+                [
+                    48
+                ]
+            ],
+            "source": "VOICE_RECOGNITION",
+            "sampleRate": 44100,
+            "seconds": 4.0,
+            "file": "acustico/nota-do3.wav"
+        },
+        {
+            "id": "nota-mi3",
+            "piano": "acustico",
+            "group": "Notas sueltas",
+            "instruction": "Tocá Mi3 una vez y dejala sonar.",
+            "expected": [
+                [
+                    52
+                ]
+            ],
+            "source": "VOICE_RECOGNITION",
+            "sampleRate": 44100,
+            "seconds": 4.0,
+            "file": "acustico/nota-mi3.wav"
+        },
+        {
+            "id": "nota-sol3",
+            "piano": "acustico",
+            "group": "Notas sueltas",
+            "instruction": "Tocá Sol3 una vez y dejala sonar.",
+            "expected": [
+                [
+                    55
+                ]
+            ],
+            "source": "VOICE_RECOGNITION",
+            "sampleRate": 44100,
+            "seconds": 4.0,
+            "file": "acustico/nota-sol3.wav"
+        },
+        {
+            "id": "nota-do4",
+            "piano": "acustico",
+            "group": "Notas sueltas",
+            "instruction": "Tocá Do4 una vez y dejala sonar.",
+            "expected": [
+                [
+                    60
+                ]
+            ],
+            "source": "VOICE_RECOGNITION",
+            "sampleRate": 44100,
+            "seconds": 4.0,
+            "file": "acustico/nota-do4.wav"
+        },
+        {
+            "id": "nota-mi4",
+            "piano": "acustico",
+            "group": "Notas sueltas",
+            "instruction": "Tocá Mi4 una vez y dejala sonar.",
+            "expected": [
+                [
+                    64
+                ]
+            ],
+            "source": "VOICE_RECOGNITION",
+            "sampleRate": 44100,
+            "seconds": 4.0,
+            "file": "acustico/nota-mi4.wav"
+        },
+        {
+            "id": "nota-sol4",
+            "piano": "acustico",
+            "group": "Notas sueltas",
+            "instruction": "Tocá Sol4 una vez y dejala sonar.",
+            "expected": [
+                [
+                    67
+                ]
+            ],
+            "source": "VOICE_RECOGNITION",
+            "sampleRate": 44100,
+            "seconds": 4.0,
+            "file": "acustico/nota-sol4.wav"
+        },
+        {
+            "id": "nota-do5",
+            "piano": "acustico",
+            "group": "Notas sueltas",
+            "instruction": "Tocá Do5 una vez y dejala sonar.",
+            "expected": [
+                [
+                    72
+                ]
+            ],
+            "source": "VOICE_RECOGNITION",
+            "sampleRate": 44100,
+            "seconds": 4.0,
+            "file": "acustico/nota-do5.wav"
+        },
+        {
+            "id": "nota-mi5",
+            "piano": "acustico",
+            "group": "Notas sueltas",
+            "instruction": "Tocá Mi5 una vez y dejala sonar.",
+            "expected": [
+                [
+                    76
+                ]
+            ],
+            "source": "VOICE_RECOGNITION",
+            "sampleRate": 44100,
+            "seconds": 4.0,
+            "file": "acustico/nota-mi5.wav"
+        },
+        {
+            "id": "nota-sol5",
+            "piano": "acustico",
+            "group": "Notas sueltas",
+            "instruction": "Tocá Sol5 una vez y dejala sonar.",
+            "expected": [
+                [
+                    79
+                ]
+            ],
+            "source": "VOICE_RECOGNITION",
+            "sampleRate": 44100,
+            "seconds": 4.0,
+            "file": "acustico/nota-sol5.wav"
+        },
+        {
+            "id": "nota-do6",
+            "piano": "acustico",
+            "group": "Notas sueltas",
+            "instruction": "Tocá Do6 una vez y dejala sonar.",
+            "expected": [
+                [
+                    84
+                ]
+            ],
+            "source": "VOICE_RECOGNITION",
+            "sampleRate": 44100,
+            "seconds": 4.0,
+            "file": "acustico/nota-do6.wav"
+        },
+        {
+            "id": "nota-do4-suave",
+            "piano": "acustico",
+            "group": "Volumen",
+            "instruction": "Tocá Do4 una vez, bien suave, y dejala sonar.",
+            "expected": [
+                [
+                    60
+                ]
+            ],
+            "source": "VOICE_RECOGNITION",
+            "sampleRate": 44100,
+            "seconds": 4.0,
+            "file": "acustico/nota-do4-suave.wav"
+        },
+        {
+            "id": "nota-do4-fuerte",
+            "piano": "acustico",
+            "group": "Volumen",
+            "instruction": "Tocá Do4 una vez, bien fuerte, y dejala sonar.",
+            "expected": [
+                [
+                    60
+                ]
+            ],
+            "source": "VOICE_RECOGNITION",
+            "sampleRate": 44100,
+            "seconds": 4.0,
+            "file": "acustico/nota-do4-fuerte.wav"
+        },
+        {
+            "id": "nota-do4-x3",
+            "piano": "acustico",
+            "group": "Repeticiones",
+            "instruction": "Tocá Do4 tres veces seguidas, una por segundo, soltando la tecla entre una y otra.",
+            "expected": [
+                [
+                    60
+                ],
+                [
+                    60
+                ],
+                [
+                    60
+                ]
+            ],
+            "source": "VOICE_RECOGNITION",
+            "sampleRate": 44100,
+            "seconds": 6.0,
+            "file": "acustico/nota-do4-x3.wav"
+        },
+        {
+            "id": "quinta-do3-sol3",
+            "piano": "acustico",
+            "group": "Intervalos",
+            "instruction": "Tocá Do3 y Sol3 (una quinta grave) a la vez y dejalo sonar.",
+            "expected": [
+                [
+                    48,
+                    55
+                ]
+            ],
+            "source": "VOICE_RECOGNITION",
+            "sampleRate": 44100,
+            "seconds": 4.0,
+            "file": "acustico/quinta-do3-sol3.wav"
+        },
+        {
+            "id": "quinta-do4-sol4",
+            "piano": "acustico",
+            "group": "Intervalos",
+            "instruction": "Tocá Do4 y Sol4 (una quinta) a la vez y dejalo sonar.",
+            "expected": [
+                [
+                    60,
+                    67
+                ]
+            ],
+            "source": "VOICE_RECOGNITION",
+            "sampleRate": 44100,
+            "seconds": 4.0,
+            "file": "acustico/quinta-do4-sol4.wav"
+        },
+        {
+            "id": "octava-do3-do4",
+            "piano": "acustico",
+            "group": "Intervalos",
+            "instruction": "Tocá Do3 y Do4 (una octava) a la vez y dejalo sonar.",
+            "expected": [
+                [
+                    48,
+                    60
+                ]
+            ],
+            "source": "VOICE_RECOGNITION",
+            "sampleRate": 44100,
+            "seconds": 4.0,
+            "file": "acustico/octava-do3-do4.wav"
+        },
+        {
+            "id": "acorde-do-mayor",
+            "piano": "acustico",
+            "group": "Acordes",
+            "instruction": "Tocá Do4, Mi4 y Sol4 (Do mayor) a la vez y dejalo sonar.",
+            "expected": [
+                [
+                    60,
+                    64,
+                    67
+                ]
+            ],
+            "source": "VOICE_RECOGNITION",
+            "sampleRate": 44100,
+            "seconds": 4.0,
+            "file": "acustico/acorde-do-mayor.wav"
+        },
+        {
+            "id": "acorde-sol-mayor",
+            "piano": "acustico",
+            "group": "Acordes",
+            "instruction": "Tocá Sol3, Si3 y Re4 (Sol mayor) a la vez y dejalo sonar.",
+            "expected": [
+                [
+                    55,
+                    59,
+                    62
+                ]
+            ],
+            "source": "VOICE_RECOGNITION",
+            "sampleRate": 44100,
+            "seconds": 4.0,
+            "file": "acustico/acorde-sol-mayor.wav"
+        },
+        {
+            "id": "acorde-la-menor",
+            "piano": "acustico",
+            "group": "Acordes",
+            "instruction": "Tocá La3, Do4 y Mi4 (La menor) a la vez y dejalo sonar.",
+            "expected": [
+                [
+                    57,
+                    60,
+                    64
+                ]
+            ],
+            "source": "VOICE_RECOGNITION",
+            "sampleRate": 44100,
+            "seconds": 4.0,
+            "file": "acustico/acorde-la-menor.wav"
+        },
+        {
+            "id": "acorde-fa-mayor",
+            "piano": "acustico",
+            "group": "Acordes",
+            "instruction": "Tocá Fa3, La3 y Do4 (Fa mayor) a la vez y dejalo sonar.",
+            "expected": [
+                [
+                    53,
+                    57,
+                    60
+                ]
+            ],
+            "source": "VOICE_RECOGNITION",
+            "sampleRate": 44100,
+            "seconds": 4.0,
+            "file": "acustico/acorde-fa-mayor.wav"
+        },
+        {
+            "id": "dos-manos-do",
+            "piano": "acustico",
+            "group": "Dos manos",
+            "instruction": "Tocá Do3 con la izquierda y Do4, Mi4, Sol4 con la derecha a la vez y dejalo sonar.",
+            "expected": [
+                [
+                    48,
+                    60,
+                    64,
+                    67
+                ]
+            ],
+            "source": "VOICE_RECOGNITION",
+            "sampleRate": 44100,
+            "seconds": 4.0,
+            "file": "acustico/dos-manos-do.wav"
+        },
+        {
+            "id": "escala-do-mayor",
+            "piano": "acustico",
+            "group": "Pasajes",
+            "instruction": "Tocá la escala de Do mayor subiendo, de Do4 a Do5, una nota por segundo.",
+            "expected": [
+                [
+                    60
+                ],
+                [
+                    62
+                ],
+                [
+                    64
+                ],
+                [
+                    65
+                ],
+                [
+                    67
+                ],
+                [
+                    69
+                ],
+                [
+                    71
+                ],
+                [
+                    72
+                ]
+            ],
+            "source": "VOICE_RECOGNITION",
+            "sampleRate": 44100,
+            "seconds": 10.0,
+            "file": "acustico/escala-do-mayor.wav"
+        },
+        {
+            "id": "himno-alegria",
+            "piano": "acustico",
+            "group": "Pasajes",
+            "instruction": "Tocá el comienzo del Himno a la alegría, una nota por segundo: Mi Mi Fa Sol Sol Fa Mi Re Do Do Re Mi Mi Re Re.",
+            "expected": [
+                [
+                    64
+                ],
+                [
+                    64
+                ],
+                [
+                    65
+                ],
+                [
+                    67
+                ],
+                [
+                    67
+                ],
+                [
+                    65
+                ],
+                [
+                    64
+                ],
+                [
+                    62
+                ],
+                [
+                    60
+                ],
+                [
+                    60
+                ],
+                [
+                    62
+                ],
+                [
+                    64
+                ],
+                [
+                    64
+                ],
+                [
+                    62
+                ],
+                [
+                    62
+                ]
+            ],
+            "source": "VOICE_RECOGNITION",
+            "sampleRate": 44100,
+            "seconds": 17.0,
+            "file": "acustico/himno-alegria.wav"
+        },
+        {
+            "id": "silencio",
+            "piano": "acustico",
+            "group": "Silencio",
+            "instruction": "No toques nada: que quede el silencio de la habitación.",
+            "expected": [],
+            "source": "VOICE_RECOGNITION",
+            "sampleRate": 44100,
+            "seconds": 5.0,
+            "file": "acustico/silencio.wav"
+        },
+        {
+            "id": "ruido-ambiente",
+            "piano": "acustico",
+            "group": "Silencio",
+            "instruction": "No toques nada, pero hacé ruido de fondo: hablá, tené la tele o la música baja.",
+            "expected": [],
+            "source": "VOICE_RECOGNITION",
+            "sampleRate": 44100,
+            "seconds": 5.0,
+            "file": "acustico/ruido-ambiente.wav"
+        }
+    ]
+}
