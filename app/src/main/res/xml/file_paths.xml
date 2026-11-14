@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- Los .zip de grabaciones de prueba (PIA-38) se arman acá para compartirlos y se pueden volver a generar cuando se quiera. -->
+    <cache-path name="exports" path="exports/" />
+</paths>

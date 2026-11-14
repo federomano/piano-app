@@ -21,14 +21,20 @@ import android.media.audiofx.NoiseSuppressor
 class MicCapture(context: Context, val sampleRate: Int = SAMPLE_RATE) {
     enum class Source(val label: String, val raw: Boolean) {
         UNPROCESSED("sin procesar", true),
-        VOICE_RECOGNITION("modo reconocimiento de voz (este celu no ofrece el audio sin procesar)", false),
+        VOICE_RECOGNITION("modo reconocimiento de voz", false),
+    }
+
+    /** Por qué se usó el modo de voz en vez del audio sin procesar. */
+    enum class Fallback(val explanation: String) {
+        NOT_OFFERED("el celu no ofrece el audio sin procesar"),
+        FAILED_TO_OPEN("el celu lo ofrece, pero no se pudo abrir"),
     }
 
     enum class State { LISTENING, INTERRUPTED, FAILED }
 
     interface Listener {
         fun onSamples(samples: ShortArray, count: Int)
-        fun onState(state: State, source: Source?)
+        fun onState(state: State, source: Source?, fallback: Fallback? = null)
     }
 
     private val audioManager = context.applicationContext.getSystemService(Context.AUDIO_SERVICE) as AudioManager
@@ -56,7 +62,7 @@ class MicCapture(context: Context, val sampleRate: Int = SAMPLE_RATE) {
         thread = null
     }
 
-    private class Opened(val record: AudioRecord, val source: Source, val effects: List<AudioEffect>)
+    private class Opened(val record: AudioRecord, val source: Source, val effects: List<AudioEffect>, val fallback: Fallback?)
 
     @SuppressLint("MissingPermission")
     private fun open(): Opened? {
@@ -82,7 +88,12 @@ class MicCapture(context: Context, val sampleRate: Int = SAMPLE_RATE) {
                 record.release()
                 continue
             }
-            return Opened(record, source, if (source.raw) emptyList() else switchOffFilters(record.audioSessionId))
+            val fallback = when {
+                source.raw -> null
+                supportsUnprocessed -> Fallback.FAILED_TO_OPEN
+                else -> Fallback.NOT_OFFERED
+            }
+            return Opened(record, source, if (source.raw) emptyList() else switchOffFilters(record.audioSessionId), fallback)
         }
         return null
     }
@@ -117,7 +128,7 @@ class MicCapture(context: Context, val sampleRate: Int = SAMPLE_RATE) {
                 record.startRecording()
                 if (record.recordingState == AudioRecord.RECORDSTATE_RECORDING) {
                     failures = 0
-                    listener.onState(State.LISTENING, opened.source)
+                    listener.onState(State.LISTENING, opened.source, opened.fallback)
                     while (running) {
                         val n = record.read(buffer, 0, buffer.size)
                         if (n > 0) listener.onSamples(buffer, n) else if (n < 0) break

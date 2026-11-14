@@ -51,6 +51,7 @@ fun HomeMenu(
     onOpenEntry: (LibraryEntry) -> Unit,
     onPickFiles: () -> Unit,
     onOpenMicTest: () -> Unit,
+    onOpenRecorder: () -> Unit,
     onRename: (id: String, title: String) -> Unit,
     onDelete: (id: String) -> Unit,
     modifier: Modifier = Modifier,
@@ -97,6 +98,9 @@ fun HomeMenu(
             }
             item {
                 ScoreCard("Probar el micrófono", "Mirá con qué nivel la app escucha tu piano", onClick = onOpenMicTest)
+            }
+            item {
+                ScoreCard("Grabar audios de prueba", "Una lista guiada de qué tocar, para medir la detección con tus pianos", onClick = onOpenRecorder)
             }
             item {
                 Text("Ejemplos", color = InkColor, fontSize = 18.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 10.dp))

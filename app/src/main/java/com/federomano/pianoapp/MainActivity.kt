@@ -49,6 +49,7 @@ import androidx.compose.runtime.setValue
 import com.federomano.pianoapp.ui.HomeMenu
 import com.federomano.pianoapp.ui.InkColor
 import com.federomano.pianoapp.ui.MicTestScreen
+import com.federomano.pianoapp.ui.RecordingScreen
 import com.federomano.pianoapp.ui.PaperColor
 import com.federomano.pianoapp.ui.ScoreView
 import androidx.core.view.WindowCompat
@@ -222,9 +223,10 @@ private fun HomeScreen(
     onRename: (String, String) -> Unit,
     onDelete: (String) -> Unit,
 ) {
-    var micTest by remember { mutableStateOf(false) }
+    // Herramientas del modo escucha: "mic" (probar el micrófono) o "rec" (grabar audios de prueba). null = ninguna.
+    var tool by remember { mutableStateOf<String?>(null) }
     // El botón Atrás del celu vuelve al menú.
-    BackHandler(enabled = open != null || micTest) { if (micTest) micTest = false else onOpenChange(null) }
+    BackHandler(enabled = open != null || tool != null) { if (tool != null) tool = null else onOpenChange(null) }
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -232,15 +234,18 @@ private fun HomeScreen(
             .windowInsetsPadding(WindowInsets.displayCutout.only(WindowInsetsSides.Horizontal)),
     ) {
         val selected = open
-        if (micTest) {
-            MicTestScreen(onBack = { micTest = false })
+        if (tool == "mic") {
+            MicTestScreen(onBack = { tool = null })
+        } else if (tool == "rec") {
+            RecordingScreen(onBack = { tool = null })
         } else if (selected == null) {
             HomeMenu(
                 entries = entries,
                 onOpenExample = { onOpenChange(OpenScore("ex-" + it.id, it.create)) },
                 onOpenEntry = { entry -> onOpenChange(OpenScore("mine-" + entry.id + "-" + entry.modified) { entry.score }) },
                 onPickFiles = onPickFiles,
-                onOpenMicTest = { micTest = true },
+                onOpenMicTest = { tool = "mic" },
+                onOpenRecorder = { tool = "rec" },
                 onRename = onRename,
                 onDelete = onDelete,
             )
