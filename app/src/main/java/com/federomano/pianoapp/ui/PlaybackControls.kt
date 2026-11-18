@@ -44,11 +44,23 @@ import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.offset
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
+import com.federomano.pianoapp.score.layout.Geometry
+
+/** Ancho de la solapa y del panel de ajustes (PIA-80). */
+private val TAB_WIDTH = 45.dp
+private val PANEL_WIDTH = 580.dp
 
 /**
  * Controles siempre visibles abajo: el botón de reiniciar, la barra de progreso, la velocidad y el botón
- * de silenciar. No hay botones de play ni pausa: eso se hace con un toque en la partitura. Tocar la
- * velocidad abre un panel con atajos y un deslizador.
+ * de silenciar. No hay botones de play ni pausa: eso se hace con un toque en la partitura. A la derecha, una
+ * solapa abre y cierra el panel de ajustes: ocupa todo el alto, no tapa la partitura con ningún velo (se puede
+ * seguir tocando y arrastrando la parte libre) y la barra de abajo se comprime al espacio que queda.
  *
  * [currentTick] y [bpm] se leen al dibujar (no al componer), así se mueven sin recomponer en cada cuadro.
  */
@@ -105,9 +117,26 @@ fun BoxScope.PlaybackControls(
     scratch: Boolean,
     onScratch: () -> Unit,
 ) {
-    var panelOpen by remember { mutableStateOf(false) }
-    if (panelOpen) {
+    // El panel arranca cerrado la primera vez y después recuerda cómo se dejó.
+    val context = LocalContext.current
+    val prefs = remember { context.getSharedPreferences("piano", android.content.Context.MODE_PRIVATE) }
+    var panelOpen by remember { mutableStateOf(prefs.getBoolean("panelOpen", false)) }
+    LaunchedEffect(panelOpen) { prefs.edit().putBoolean("panelOpen", panelOpen).apply() }
+    // El panel nunca llega hasta la línea de reproducción: si la pantalla es angosta, se achica.
+    val screenWidth = LocalConfiguration.current.screenWidthDp.dp
+    val panelWidth = minOf(PANEL_WIDTH, screenWidth * (1f - Geometry.PLAYHEAD_FRACTION) - TAB_WIDTH - 12.dp)
+        .coerceAtLeast(280.dp)
+    val panelShift by animateDpAsState(if (panelOpen) 0.dp else panelWidth, label = "panel")
+    val barEnd by animateDpAsState(if (panelOpen) TAB_WIDTH + panelWidth else TAB_WIDTH, label = "bar")
+    Row(
+        modifier = Modifier
+            .align(Alignment.CenterEnd)
+            .fillMaxHeight()
+            .offset(x = panelShift),
+    ) {
+        PanelTab(open = panelOpen) { panelOpen = !panelOpen }
         SpeedPanel(
+            Modifier.width(panelWidth).fillMaxHeight(),
             speed, onSpeed, bass, onBass, rightMuted, leftMuted, onRightMuted, onLeftMuted, dimMuted, onDimMuted,
             zoom, zoomMax, onZoom,
             highlight, onHighlight,
@@ -133,7 +162,7 @@ fun BoxScope.PlaybackControls(
         modifier = Modifier
             .align(Alignment.BottomCenter)
             .fillMaxWidth()
-            .padding(start = 12.dp, end = 12.dp, bottom = 8.dp),
+            .padding(start = 12.dp, end = barEnd, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         RestartButton(onRestart)
@@ -142,15 +171,49 @@ fun BoxScope.PlaybackControls(
         Spacer(Modifier.width(4.dp))
         LoopButton(active = loopStartTick != null, picking = loopPicking, onClick = onLoopButton)
         Spacer(Modifier.width(4.dp))
-        SpeedButton(speed, bpm, open = panelOpen) { panelOpen = !panelOpen }
-        Spacer(Modifier.width(4.dp))
+        // Con el panel abierto se cierra con la solapa: este botón se va para dejar lugar a la barra.
+        if (!panelOpen) {
+            SpeedButton(speed, bpm, open = false) { panelOpen = true }
+            Spacer(Modifier.width(4.dp))
+        }
         MuteButton(muted, onMuteToggle)
     }
 }
 
-/** Panel de velocidad: atajos (50% a 150%) y deslizador de 25% a 200%. */
+/** Solapa del panel (PIA-80): bloque negro; la flecha "<" abre el panel y ">" lo cierra. */
 @Composable
-private fun BoxScope.SpeedPanel(
+private fun PanelTab(open: Boolean, onClick: () -> Unit) {
+    Canvas(
+        modifier = Modifier
+            .width(TAB_WIDTH)
+            .fillMaxHeight()
+            .background(Color.Black)
+            .clickable(onClick = onClick),
+    ) {
+        val halfW = 6.dp.toPx()
+        val halfH = 11.dp.toPx()
+        val tipX = if (open) center.x + halfW else center.x - halfW
+        val baseX = if (open) center.x - halfW else center.x + halfW
+        val chevron = Path().apply {
+            moveTo(baseX, center.y - halfH)
+            lineTo(tipX, center.y)
+            lineTo(baseX, center.y + halfH)
+        }
+        drawPath(
+            chevron, Color.White,
+            style = androidx.compose.ui.graphics.drawscope.Stroke(
+                width = 3.5.dp.toPx(),
+                cap = androidx.compose.ui.graphics.StrokeCap.Square,
+                join = androidx.compose.ui.graphics.StrokeJoin.Miter,
+            ),
+        )
+    }
+}
+
+/** Contenido actual de los ajustes (se reemplaza por columnas en las historias siguientes de PIA-76). */
+@Composable
+private fun SpeedPanel(
+    modifier: Modifier,
     speed: Float,
     onSpeed: (Float) -> Unit,
     bass: Int,
@@ -182,17 +245,12 @@ private fun BoxScope.SpeedPanel(
     onScratch: () -> Unit,
 ) {
     Column(
-        modifier = Modifier
-            .align(Alignment.BottomEnd)
-            .padding(end = 12.dp, bottom = 62.dp)
-            .width(340.dp)
-            .clip(RoundedCornerShape(14.dp))
+        modifier = modifier
             .background(PaperColor)
             .background(InkColor.copy(alpha = 0.10f))
             // Con tantas opciones, en un celular acostado no entra todo: se desliza.
-            .heightIn(max = 280.dp)
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 12.dp, vertical = 8.dp),
+            .padding(horizontal = 16.dp, vertical = 12.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             for (preset in Speed.PRESETS) {
