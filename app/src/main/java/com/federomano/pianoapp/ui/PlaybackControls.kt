@@ -48,7 +48,7 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.offset
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.platform.LocalContext
 import com.federomano.pianoapp.score.layout.Geometry
 
@@ -116,6 +116,8 @@ fun BoxScope.PlaybackControls(
     /** Sonido de vinilo al arrastrar la partitura (PIA-55). */
     scratch: Boolean,
     onScratch: () -> Unit,
+    /** Ancho del área de la partitura (no el de la pantalla: hay márgenes a los costados). */
+    areaWidth: Dp,
 ) {
     // El panel arranca cerrado la primera vez y después recuerda cómo se dejó.
     val context = LocalContext.current
@@ -123,8 +125,7 @@ fun BoxScope.PlaybackControls(
     var panelOpen by remember { mutableStateOf(prefs.getBoolean("panelOpen", false)) }
     LaunchedEffect(panelOpen) { prefs.edit().putBoolean("panelOpen", panelOpen).apply() }
     // El panel nunca llega hasta la línea de reproducción: si la pantalla es angosta, se achica.
-    val screenWidth = LocalConfiguration.current.screenWidthDp.dp
-    val panelWidth = minOf(PANEL_WIDTH, screenWidth * (1f - Geometry.PLAYHEAD_FRACTION) - TAB_WIDTH - 12.dp)
+    val panelWidth = minOf(PANEL_WIDTH, areaWidth * (1f - Geometry.PLAYHEAD_FRACTION) - TAB_WIDTH - 12.dp)
         .coerceAtLeast(280.dp)
     val panelShift by animateDpAsState(if (panelOpen) 0.dp else panelWidth, label = "panel")
     val barEnd by animateDpAsState(if (panelOpen) TAB_WIDTH + panelWidth else TAB_WIDTH, label = "bar")

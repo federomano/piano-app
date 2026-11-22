@@ -622,6 +622,7 @@ fun ScoreView(
                     else -> loopPicking = true
                 }
             },
+            areaWidth = maxWidth,
             rightMuted = rightMuted,
             leftMuted = leftMuted,
             onRightMuted = { rightMuted = !rightMuted },
