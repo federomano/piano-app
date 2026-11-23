@@ -1,0 +1,23 @@
+/* Motor de layout de la partitura (PIA-89). Calcula dónde va cada cosa; no dibuja. */
+export * from "./drawops";
+export * from "./geometry";
+export * from "./measure-layout";
+export { ScoreLayout, STAFF_LEAD, PLAYHEAD_SMOOTHING_SECONDS, SIGNATURE_LEFT } from "./score-layout";
+export type { Fit, Header, HeaderDraw, SignatureChange, ClefHeaderChange } from "./score-layout";
+export { Anchors } from "./spacing";
+export { TempoMap } from "./tempo-map";
+export { SmoothPath } from "./smooth-path";
+export type { Box } from "./extents";
+export type { ChordSpan, Built } from "./note-layout";
+export type { NoteLabel } from "./note-label-layout";
+export type { NoteState } from "./note-state";
+export * as Zoom from "./zoom";
+export * as HandBands from "./hand-bands";
+export * as NoteStates from "./note-state";
+export * as NoteLabels from "./note-label-layout";
+export * as Extents from "./extents";
+export * as Spacing from "./spacing";
+export * as NoteLayout from "./note-layout";
+export * as DynamicsLayout from "./dynamics-layout";
+export * as OttavaLayout from "./ottava-layout";
+export * as PedalLayout from "./pedal-layout";
