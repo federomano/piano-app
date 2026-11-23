@@ -3,6 +3,10 @@ name: Compilar APK
 on:
   push:
     branches: [main]
+    # Los cambios que son solo de la web no compilan ni publican un APK nuevo.
+    paths-ignore:
+      - "web/**"
+      - ".github/workflows/web.yml"
   workflow_dispatch:
 
 permissions:

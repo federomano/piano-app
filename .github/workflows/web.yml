@@ -1,0 +1,55 @@
+name: Publicar la web
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "web/**"
+      - ".github/workflows/web.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Una sola publicación a la vez; si llega otra, se cancela la anterior.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  probar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Tests
+        run: npm test
+
+      - name: Armar la web
+        run: npm run build
+
+      - name: Subir la web armada
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: web/dist
+
+  publicar:
+    needs: probar
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: github-pages
+      url: ${{ steps.pages.outputs.page_url }}
+    steps:
+      - name: Publicar en GitHub Pages
+        id: pages
+        uses: actions/deploy-pages@v4
