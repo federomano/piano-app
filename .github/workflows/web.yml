@@ -5,6 +5,8 @@ on:
     branches: [main]
     paths:
       - "web/**"
+      - "docs/ejemplos/**"
+      - "tools/validar_partitura.py"
       - ".github/workflows/web.yml"
   workflow_dispatch:
 
